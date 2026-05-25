@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>검토 제출 이력 - 특허 재평가 관리 시스템</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+            background-color: #FFFFFF;
+            color: #334155;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* 사이드바 */
+        .sidebar {
+            width: 240px;
+            background-color: #1E293B;
+            color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-logo {
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.5;
+            margin-bottom: 32px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 16px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            flex: 1;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 8px;
+        }
+
+        .sidebar-menu a {
+            display: block;
+            padding: 12px 16px;
+            color: #FFFFFF;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .sidebar-menu a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-menu a.active {
+            background-color: #2563EB;
+            color: #FFFFFF;
+        }
+
+        .sidebar-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 16px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 메인 콘텐츠 */
+        .main {
+            margin-left: 240px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 상단바 */
+        .header {
+            height: 56px;
+            background-color: #FFFFFF;
+            border-bottom: 1px solid #E2E8F0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1E293B;
+        }
+
+        .header-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-info {
+            text-align: right;
+        }
+
+        .name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1E293B;
+        }
+
+        .role {
+            font-size: 11px;
+            color: #64748B;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #DBEAFE;
+            color: #2563EB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* 콘텐츠 */
+        .content {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            background-color: #FFFFFF;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            font-size: 12px;
+            color: #64748B;
+        }
+
+        /* 필터 및 액션 바 */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #334155;
+            white-space: nowrap;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 12px;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            background-color: #FFFFFF;
+            color: #334155;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: #2563EB;
+            background-color: #DBEAFE;
+        }
+
+        .filter-btn.active {
+            background-color: #2563EB;
+            color: #FFFFFF;
+            border-color: #2563EB;
+        }
+
+        .action-buttons {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            padding: 8px 16px;
+            background-color: #F8FAFC;
+            color: #334155;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background-color: #E2E8F0;
+        }
+
+        /* 테이블 */
+        .table-container {
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        thead {
+            background-color: #FFFFFF;
+            border-bottom: 2px solid #E2E8F0;
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #1E293B;
+            background-color: #F8FAFC;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #E2E8F0;
+            color: #334155;
+        }
+
+        tbody tr {
+            background-color: #FFFFFF;
+            transition: background-color 0.2s;
+        }
+
+        tbody tr:hover {
+            background-color: #F8FAFC;
+        }
+
+        /* 특허명 링크 */
+        .patent-link {
+            font-weight: 600;
+            color: #2563EB;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .patent-link:hover {
+            text-decoration: underline;
+        }
+
+        .patent-number {
+            font-size: 11px;
+            color: #64748B;
+            margin-top: 2px;
+        }
+
+        /* 배지 */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-green {
+            background-color: #DCFCE7;
+            color: #16A34A;
+        }
+
+        .badge-red {
+            background-color: #FEE2E2;
+            color: #DC2626;
+        }
+
+        .badge-blue {
+            background-color: #DBEAFE;
+            color: #2563EB;
+        }
+
+        /* 코멘트 셀 */
+        .comment-cell {
+            max-width: 300px;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+
+        /* AI 평가 셀 */
+        .ai-result-cell {
+            font-size: 11px;
+            line-height: 1.5;
+            color: #334155;
+        }
+
+        /* 액션 버튼 */
+        .action-cell {
+            display: flex;
+            gap: 6px;
+        }
+
+        .action-btn {
+            padding: 4px 8px;
+            border: 1px solid #E2E8F0;
+            background-color: #FFFFFF;
+            color: #2563EB;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background-color: #DBEAFE;
+            border-color: #2563EB;
+        }
+
+        /* 페이지네이션 */
+        .pagination-info {
+            font-size: 11px;
+            color: #64748B;
+            margin-top: 12px;
+            padding: 12px 16px;
+        }
+
+        /* 모달 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: #FFFFFF;
+            border-radius: 8px;
+            padding: 32px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 24px;
+        }
+
+        .modal-body {
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 8px;
+        }
+
+        .form-value {
+            font-size: 13px;
+            color: #1E293B;
+            line-height: 1.6;
+            padding: 12px;
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+        }
+
+        .form-value.highlight {
+            background-color: #DCFCE7;
+            border-color: #16A34A;
+            color: #16A34A;
+            font-weight: 600;
+        }
+
+        .form-value.abandoned {
+            background-color: #FEE2E2;
+            border-color: #DC2626;
+            color: #DC2626;
+            font-weight: 600;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .btn-cancel {
+            padding: 8px 16px;
+            background-color: #F8FAFC;
+            color: #334155;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-cancel:hover {
+            background-color: #E2E8F0;
+        }
+
+        /* 통계 카드 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748B;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2563EB;
+        }
+
+        @media (max-width: 1440px) {
+            .content {
+                padding: 32px;
+            }
+
+            table {
+                font-size: 11px;
+            }
+
+            th, td {
+                padding: 8px 12px;
+            }
+
+            .comment-cell {
+                max-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 사이드바 -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">특허 재평가<br>관리 시스템</div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard-business.html">메인 대시보드</a></li>
+                <li><a href="guide-business.html">특허 재평가 안내</a></li>
+                <li><a href="patent-status-business.html">담당 특허 현황</a></li>
+                <li><a href="quarterly-review-business.html">이번 분기 검토 대상</a></li>
+                <li><a href="submission-history-business.html" class="active">검토 제출 이력</a></li>
+                <li style="margin-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 16px;"><a href="patent-search-common.html">전체 특허 검색</a></li>
+                <li><a href="new-invention-report.html">신규 발명 신고</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                디스플레이 사업부<br>
+                <span style="font-size: 11px;">v1.0</span>
+            </div>
+        </aside>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="main">
+            <!-- 상단바 -->
+            <header class="header">
+                <div class="header-title">검토 제출 이력</div>
+                <div class="header-user">
+                    <div class="user-info">
+                        <div class="name">이영업</div>
+                        <div class="role">디스플레이사업부 과장</div>
+                    </div>
+                    <div class="user-avatar">이</div>
+                </div>
+            </header>
+
+            <!-- 콘텐츠 -->
+            <div class="content">
+                <!-- 페이지 헤더 -->
+                <div class="page-header">
+                    <div class="page-title">검토 제출 이력</div>
+                    <div class="page-subtitle">과거 제출한 특허 재평가 의견 조회</div>
+                </div>
+
+                <!-- 통계 -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">총 제출 건</div>
+                        <div class="stat-value">12</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">유지 의견</div>
+                        <div class="stat-value" style="color: #16A34A;">8</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">포기 의견</div>
+                        <div class="stat-value" style="color: #DC2626;">4</div>
+                    </div>
+                </div>
+
+                <!-- 필터 및 액션 바 -->
+                <div class="filter-bar">
+                    <div class="filter-label">결정:</div>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" onclick="filterByDecision('all')">전체</button>
+                        <button class="filter-btn" onclick="filterByDecision('keep')">유지</button>
+                        <button class="filter-btn" onclick="filterByDecision('abandon')">포기</button>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-secondary" onclick="exportList()">내보내기</button>
+                    </div>
+                </div>
+
+                <!-- 테이블 -->
+                <div class="table-container">
+                    <table id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>특허명</th>
+                                <th style="width: 110px;">출원번호</th>
+                                <th style="width: 85px;">최종 의견</th>
+                                <th style="width: 100px;">제출 날짜</th>
+                                <th style="width: 200px;">제출 코멘트</th>
+                                <th style="width: 80px;">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr data-decision="keep">
+                                <td>
+                                    <a href="#" class="patent-link">고분자 합성 및 가공 기술</a>
+                                    <div class="patent-number">10-2023-0045821</div>
+                                </td>
+                                <td>KR 10-0123456</td>
+                                <td><span class="badge badge-green">유지</span></td>
+                                <td>2025.01.15</td>
+                                <td class="comment-cell">기술 혁신성이 높고, 차세대 제품 개발에 필수적인 특허입니다. 계속 유지를 권장합니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(1)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr data-decision="keep">
+                                <td>
+                                    <a href="#" class="patent-link">디스플레이 발광 소자 구조</a>
+                                    <div class="patent-number">10-2023-0038456</div>
+                                </td>
+                                <td>KR 10-0234567</td>
+                                <td><span class="badge badge-green">유지</span></td>
+                                <td>2025.01.15</td>
+                                <td class="comment-cell">현재 제품에 적용 중이며, 경쟁사 대비 차별화 기술입니다. 지속적 유지 필요합니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(2)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr data-decision="abandon">
+                                <td>
+                                    <a href="#" class="patent-link">나노 소재 합성 공정</a>
+                                    <div class="patent-number">10-2023-0033894</div>
+                                </td>
+                                <td>KR 10-0345678</td>
+                                <td><span class="badge badge-red">포기</span></td>
+                                <td>2024.12.10</td>
+                                <td class="comment-cell">시장성이 낮고, 더 이상 사용하지 않는 기술입니다. 포기를 권장합니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(3)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr data-decision="keep">
+                                <td>
+                                    <a href="#" class="patent-link">광학 필터 제조 공정</a>
+                                    <div class="patent-number">10-2023-0031209</div>
+                                </td>
+                                <td>KR 10-0456789</td>
+                                <td><span class="badge badge-green">유지</span></td>
+                                <td>2024.12.05</td>
+                                <td class="comment-cell">핵심 기술 로드맵에 포함되어 있으며, 향후 상용화 계획이 있습니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(4)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr data-decision="keep">
+                                <td>
+                                    <a href="#" class="patent-link">반도체 소자 패터닝 방법</a>
+                                    <div class="patent-number">10-2023-0052134</div>
+                                </td>
+                                <td>KR 10-0567890</td>
+                                <td><span class="badge badge-green">유지</span></td>
+                                <td>2024.11.28</td>
+                                <td class="comment-cell">신규 사업 개발에 활용될 예정이며, 경제적 가치가 높습니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(5)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr data-decision="abandon">
+                                <td>
+                                    <a href="#" class="patent-link">화학 촉매 복합체 및 용도</a>
+                                    <div class="patent-number">10-2023-0041876</div>
+                                </td>
+                                <td>KR 10-0678901</td>
+                                <td><span class="badge badge-red">포기</span></td>
+                                <td>2024.11.20</td>
+                                <td class="comment-cell">관련 경쟁사 특허가 다수 존재하며, 상용화 가능성이 낮습니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(6)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr data-decision="keep">
+                                <td>
+                                    <a href="#" class="patent-link">배터리 셀 조립 기술</a>
+                                    <div class="patent-number">10-2023-0047123</div>
+                                </td>
+                                <td>KR 10-0789012</td>
+                                <td><span class="badge badge-green">유지</span></td>
+                                <td>2024.11.15</td>
+                                <td class="comment-cell">전략적으로 중요한 기술이며, 상용화 중인 제품에 포함되어 있습니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(7)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr data-decision="abandon">
+                                <td>
+                                    <a href="#" class="patent-link">폴리머 웹 코팅 장치</a>
+                                    <div class="patent-number">10-2023-0052567</div>
+                                </td>
+                                <td>KR 10-0890123</td>
+                                <td><span class="badge badge-red">포기</span></td>
+                                <td>2024.11.10</td>
+                                <td class="comment-cell">기술이 빠르게 진화 중이며, 현재 시장 가치가 감소하고 있습니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(8)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr data-decision="keep">
+                                <td>
+                                    <a href="#" class="patent-link">감지 센서 칩 설계</a>
+                                    <div class="patent-number">10-2023-0026789</div>
+                                </td>
+                                <td>KR 10-0901234</td>
+                                <td><span class="badge badge-green">유지</span></td>
+                                <td>2024.10.25</td>
+                                <td class="comment-cell">차세대 제품 라인업의 핵심 기술이며, 라이선싱 기회가 있습니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(9)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr data-decision="keep">
+                                <td>
+                                    <a href="#" class="patent-link">투명 도전성 산화물 필름</a>
+                                    <div class="patent-number">10-2023-0056234</div>
+                                </td>
+                                <td>KR 10-0912345</td>
+                                <td><span class="badge badge-green">유지</span></td>
+                                <td>2024.10.15</td>
+                                <td class="comment-cell">원가 경쟁력이 있는 핵심 소재 기술입니다. 지속적 투자가 필요합니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(10)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr data-decision="abandon">
+                                <td>
+                                    <a href="#" class="patent-link">극저온 동결 건조 공정</a>
+                                    <div class="patent-number">10-2023-0067890</div>
+                                </td>
+                                <td>KR 10-0923456</td>
+                                <td><span class="badge badge-red">포기</span></td>
+                                <td>2024.09.30</td>
+                                <td class="comment-cell">기술 대체 제품이 나왔으며, 유지 비용 대비 가치가 낮습니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(11)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr data-decision="keep">
+                                <td>
+                                    <a href="#" class="patent-link">그래핀 기반 방열 시트</a>
+                                    <div class="patent-number">10-2023-0075432</div>
+                                </td>
+                                <td>KR 10-0934567</td>
+                                <td><span class="badge badge-green">유지</span></td>
+                                <td>2024.09.20</td>
+                                <td class="comment-cell">신소재 분야의 선도 기술이며, 고부가가치 제품에 활용 예정입니다.</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="action-btn" onclick="openDetailModal(12)">상세</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="pagination-info">1-12 / 12개 표시</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달: 상세 이력 -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-title">검토 제출 이력 상세</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">특허명</label>
+                    <div class="form-value" id="detailPatentName"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">출원번호</label>
+                    <div class="form-value" id="detailAppNum"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">최종 의견</label>
+                    <div class="form-value" id="detailOpinion"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">제출 날짜</label>
+                    <div class="form-value" id="detailSubmissionDate"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">제출 코멘트</label>
+                    <div class="form-value" id="detailComment" style="height: auto; min-height: 60px; white-space: pre-wrap;"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">제출 당시 AI 평가 결과</label>
+                    <div class="form-value" id="detailAIResult" style="height: auto; min-height: 60px; white-space: pre-wrap;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeModal('detailModal')">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const historyData = {
+            1: {
+                name: '고분자 합성 및 가공 기술',
+                appNum: 'KR 10-0123456',
+                opinion: '유지',
+                submissionDate: '2025.01.15',
+                comment: '기술 혁신성이 높고, 차세대 제품 개발에 필수적인 특허입니다. 계속 유지를 권장합니다.',
+                aiResult: 'A (우수) - 85%\n기술 혁신성(85점), 시장성(80점), 법적자산성(90점)\n종합평가: 당사의 차세대 디스플레이 기술 로드맵에 매우 부합하는 기술'
+            },
+            2: {
+                name: '디스플레이 발광 소자 구조',
+                appNum: 'KR 10-0234567',
+                opinion: '유지',
+                submissionDate: '2025.01.15',
+                comment: '현재 제품에 적용 중이며, 경쟁사 대비 차별화 기술입니다. 지속적 유지 필요합니다.',
+                aiResult: 'B (양호) - 72%\n기술 혁신성(70점), 시장성(72점), 법적자산성(75점)\n종합평가: 기존 기술의 개선·응용 수준으로 제품 라인에서 활용 가능'
+            },
+            3: {
+                name: '나노 소재 합성 공정',
+                appNum: 'KR 10-0345678',
+                opinion: '포기',
+                submissionDate: '2024.12.10',
+                comment: '시장성이 낮고, 더 이상 사용하지 않는 기술입니다. 포기를 권장합니다.',
+                aiResult: 'C (보통) - 48%\n기술 혁신성(45점), 시장성(48점), 법적자산성(50점)\n종합평가: 기술 또는 시장성 제약이 있는 제한적 가치의 기술'
+            },
+            4: {
+                name: '광학 필터 제조 공정',
+                appNum: 'KR 10-0456789',
+                opinion: '유지',
+                submissionDate: '2024.12.05',
+                comment: '핵심 기술 로드맵에 포함되어 있으며, 향후 상용화 계획이 있습니다.',
+                aiResult: 'B (양호) - 68%\n기술 혁신성(65점), 시장성(68점), 법적자산성(70점)\n종합평가: 기술 개발 초기 단계로 상용화까지 추가 연구 필요'
+            },
+            5: {
+                name: '반도체 소자 패터닝 방법',
+                appNum: 'KR 10-0567890',
+                opinion: '유지',
+                submissionDate: '2024.11.28',
+                comment: '신규 사업 개발에 활용될 예정이며, 경제적 가치가 높습니다.',
+                aiResult: 'A (우수) - 82%\n기술 혁신성(82점), 시장성(81점), 법적자산성(83점)\n종합평가: 높은 전략적 가치를 가진 우수 기술'
+            },
+            6: {
+                name: '화학 촉매 복합체 및 용도',
+                appNum: 'KR 10-0678901',
+                opinion: '포기',
+                submissionDate: '2024.11.20',
+                comment: '관련 경쟁사 특허가 다수 존재하며, 상용화 가능성이 낮습니다.',
+                aiResult: 'C (보통) - 52%\n기술 혁신성(50점), 시장성(52점), 법적자산성(55점)\n종합평가: 경쟁기술 현황이 높아 제한적 가치'
+            },
+            7: {
+                name: '배터리 셀 조립 기술',
+                appNum: 'KR 10-0789012',
+                opinion: '유지',
+                submissionDate: '2024.11.15',
+                comment: '전략적으로 중요한 기술이며, 상용화 중인 제품에 포함되어 있습니다.',
+                aiResult: 'A (우수) - 88%\n기술 혁신성(87점), 시장성(89점), 법적자산성(88점)\n종합평가: 당사 핵심 사업에 매우 중요한 기술'
+            },
+            8: {
+                name: '폴리머 웹 코팅 장치',
+                appNum: 'KR 10-0890123',
+                opinion: '포기',
+                submissionDate: '2024.11.10',
+                comment: '기술이 빠르게 진화 중이며, 현재 시장 가치가 감소하고 있습니다.',
+                aiResult: 'D (미흡) - 38%\n기술 혁신성(38점), 시장성(38점), 법적자산성(40점)\n종합평가: 전략적 중요도가 없는 낮은 가치 기술'
+            },
+            9: {
+                name: '감지 센서 칩 설계',
+                appNum: 'KR 10-0901234',
+                opinion: '유지',
+                submissionDate: '2024.10.25',
+                comment: '차세대 제품 라인업의 핵심 기술이며, 라이선싱 기회가 있습니다.',
+                aiResult: 'A (우수) - 84%\n기술 혁신성(84점), 시장성(83점), 법적자산성(85점)\n종합평가: 높은 기술 가치와 상용화 가능성'
+            },
+            10: {
+                name: '투명 도전성 산화물 필름',
+                appNum: 'KR 10-0912345',
+                opinion: '유지',
+                submissionDate: '2024.10.15',
+                comment: '원가 경쟁력이 있는 핵심 소재 기술입니다. 지속적 투자가 필요합니다.',
+                aiResult: 'B (양호) - 75%\n기술 혁신성(76점), 시장성(74점), 법적자산성(77점)\n종합평가: 중간 이상의 가치를 가진 소재 기술'
+            },
+            11: {
+                name: '극저온 동결 건조 공정',
+                appNum: 'KR 10-0923456',
+                opinion: '포기',
+                submissionDate: '2024.09.30',
+                comment: '기술 대체 제품이 나왔으며, 유지 비용 대비 가치가 낮습니다.',
+                aiResult: 'C (보통) - 42%\n기술 혁신성(40점), 시장성(42점), 법적자산성(45점)\n종합평가: 기술이 구식화되어 제한적 가치'
+            },
+            12: {
+                name: '그래핀 기반 방열 시트',
+                appNum: 'KR 10-0934567',
+                opinion: '유지',
+                submissionDate: '2024.09.20',
+                comment: '신소재 분야의 선도 기술이며, 고부가가치 제품에 활용 예정입니다.',
+                aiResult: 'A (우수) - 86%\n기술 혁신성(87점), 시장성(85점), 법적자산성(86점)\n종합평가: 신소재 분야 선도 기술로 높은 전략적 가치'
+            }
+        };
+
+        function filterByDecision(decision) {
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const rows = document.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                if (decision === 'all' || row.dataset.decision === decision) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function openDetailModal(id) {
+            const data = historyData[id];
+            document.getElementById('detailPatentName').textContent = data.name;
+            document.getElementById('detailAppNum').textContent = data.appNum;
+            
+            const opinionDiv = document.getElementById('detailOpinion');
+            opinionDiv.textContent = data.opinion;
+            opinionDiv.classList.remove('highlight', 'abandoned');
+            if (data.opinion === '유지') {
+                opinionDiv.classList.add('highlight');
+            } else {
+                opinionDiv.classList.add('abandoned');
+            }
+            
+            document.getElementById('detailSubmissionDate').textContent = data.submissionDate;
+            document.getElementById('detailComment').textContent = data.comment;
+            document.getElementById('detailAIResult').textContent = data.aiResult;
+            document.getElementById('detailModal').classList.add('show');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        function exportList() {
+            alert('목록이 내보내기되었습니다.');
+        }
+
+        // 모달 외부 클릭 시 닫기
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('show');
+            }
+        });
+
+        // 사이드바 메뉴 활성화
+        document.querySelectorAll('.sidebar-menu a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                if (e.currentTarget.classList.contains('active')) {
+                    e.preventDefault();
+                } else {
+                    document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
