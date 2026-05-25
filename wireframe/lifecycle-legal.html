@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Cycle - 특허 재평가 관리 시스템</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+            background-color: #FFFFFF;
+            color: #334155;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 사이드바 */
+        .sidebar {
+            width: 240px;
+            background-color: #1E293B;
+            color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            border-right: 1px solid #E2E8F0;
+        }
+
+        .sidebar-logo {
+            padding: 0 20px 30px 20px;
+            font-weight: 700;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            flex: 1;
+        }
+
+        .sidebar-menu li {
+            margin: 0;
+        }
+
+        .sidebar-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 13px;
+            transition: background-color 0.2s;
+        }
+
+        .sidebar-menu a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-menu a.active {
+            background-color: #2563EB;
+            font-weight: 600;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 메인 콘텐츠 */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 상단바 */
+        .header {
+            height: 56px;
+            background-color: #FFFFFF;
+            border-bottom: 1px solid #E2E8F0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+            flex-shrink: 0;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1E293B;
+        }
+
+        .header-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-info {
+            text-align: right;
+            font-size: 12px;
+        }
+
+        .user-info .name {
+            color: #1E293B;
+            font-weight: 600;
+        }
+
+        .user-info .role {
+            color: #64748B;
+            font-size: 11px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #2563EB;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* 콘텐츠 에어리어 */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px;
+            background-color: #FFFFFF;
+        }
+
+        /* 페이지 헤더 */
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            font-size: 12px;
+            color: #64748B;
+        }
+
+        /* 액션 바 */
+        .action-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            align-items: center;
+        }
+
+        .action-buttons {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            padding: 8px 16px;
+            background-color: #F8FAFC;
+            color: #334155;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background-color: #E2E8F0;
+        }
+
+        .btn-primary {
+            padding: 8px 16px;
+            background-color: #2563EB;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #1D4ED8;
+        }
+
+        /* 통계 카드 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #64748B;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 4px;
+        }
+
+        .stat-detail {
+            font-size: 11px;
+            color: #64748B;
+        }
+
+        /* 테이블 */
+        .table-container {
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        thead {
+            background-color: #FFFFFF;
+            border-bottom: 2px solid #E2E8F0;
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #1E293B;
+            background-color: #F8FAFC;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #E2E8F0;
+            color: #334155;
+        }
+
+        tbody tr {
+            background-color: #FFFFFF;
+            transition: background-color 0.2s;
+        }
+
+        tbody tr:hover {
+            background-color: #F8FAFC;
+        }
+
+        /* 특허명 */
+        .patent-name {
+            font-weight: 600;
+            color: #2563EB;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .patent-name:hover {
+            text-decoration: underline;
+        }
+
+        .patent-number {
+            font-size: 11px;
+            color: #64748B;
+        }
+
+        /* 배지 */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .status-expiring {
+            background-color: #FEE2E2;
+            color: #DC2626;
+        }
+
+        .status-critical {
+            background-color: #FECACA;
+            color: #9F1239;
+        }
+
+        /* 수명 바 */
+        .lifespan-bar {
+            width: 100%;
+            height: 24px;
+            background-color: #E2E8F0;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lifespan-fill {
+            height: 100%;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        .lifespan-1year {
+            background-color: #DC2626;
+        }
+
+        .lifespan-3year {
+            background-color: #F59E0B;
+        }
+
+        .lifespan-5year {
+            background-color: #2563EB;
+        }
+
+        /* 보고서 섹션 */
+        .reports-section {
+            margin-top: 32px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 16px;
+        }
+
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .report-card {
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .report-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1E293B;
+        }
+
+        .report-date {
+            font-size: 10px;
+            color: #64748B;
+        }
+
+        .report-status {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748B;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #E2E8F0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 12px 0;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #2563EB;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        .progress-complete {
+            background-color: #16A34A;
+        }
+
+        .progress-text {
+            font-size: 10px;
+            color: #64748B;
+            margin-bottom: 12px;
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            flex: 1;
+            padding: 6px 10px;
+            background-color: #FFFFFF;
+            color: #2563EB;
+            border: 1px solid #E2E8F0;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-small:hover {
+            background-color: #DBEAFE;
+            border-color: #2563EB;
+        }
+
+        .btn-small:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 스크롤바 */
+        .content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background-color: #CBD5E1;
+            border-radius: 4px;
+        }
+
+        .content::-webkit-scrollbar-thumb:hover {
+            background-color: #94A3B8;
+        }
+
+        @media (max-width: 1440px) {
+            .content {
+                padding: 32px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .reports-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 사이드바 -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">특허 재평가<br>관리 시스템</div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard-legal.html">메인 대시보드</a></li>
+                <li><a href="manage-evaluation-legal.html">재평가 관리</a></li>
+                <li><a href="patent-list-legal.html">특허 목록</a></li>
+                <li><a href="filing-examination-legal.html">출원 및 심사 관리</a></li>
+                <li><a href="portfolio-analysis-legal.html">포트폴리오 분석</a></li>
+                <li><a href="lifecycle-legal.html" class="active">Life Cycle</a></li>
+                <li style="margin-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 16px;"><a href="patent-search-common.html">전체 특허 검색</a></li>
+                <li><a href="new-invention-report.html">신규 발명 신고</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                리걸팀<br>
+                <span style="font-size: 11px;">v1.0</span>
+            </div>
+        </aside>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="main">
+            <!-- 상단바 -->
+            <header class="header">
+                <div class="header-title">Life Cycle</div>
+                <div class="header-user">
+                    <div class="user-info">
+                        <div class="name">김법무</div>
+                        <div class="role">리걸팀 팀장</div>
+                    </div>
+                    <div class="user-avatar">김</div>
+                </div>
+            </header>
+
+            <!-- 콘텐츠 -->
+            <div class="content">
+                <!-- 페이지 헤더 -->
+                <div class="page-header">
+                    <div class="page-title">만기 예정 특허</div>
+                    <div class="page-subtitle">특허별 남은 수명 및 갱신 관리 현황</div>
+                </div>
+
+                <!-- 액션 바 -->
+                <div class="action-bar">
+                    <div class="action-buttons">
+                        <button class="btn-secondary">내보내기</button>
+                    </div>
+                </div>
+
+                <!-- 통계 -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">1년 이내 만료</div>
+                        <div class="stat-value">8</div>
+                        <div class="stat-detail">즉시 갱신 필요</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">1-3년 만료 예정</div>
+                        <div class="stat-value">24</div>
+                        <div class="stat-detail">계획 수립 필요</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">3년 이상 남음</div>
+                        <div class="stat-value">280</div>
+                        <div class="stat-detail">정상 관리</div>
+                    </div>
+                </div>
+
+                <!-- 만기 예정 특허 목록 -->
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>특허명</th>
+                                <th style="width: 95px;">출원번호</th>
+                                <th style="width: 80px;">사업부</th>
+                                <th style="width: 85px;">등록일</th>
+                                <th style="width: 85px;">만료 예정일</th>
+                                <th style="width: 110px;">남은 수명</th>
+                                <th style="width: 85px;">상태</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 1년 이내 -->
+                            <tr>
+                                <td>
+                                    <a href="#" class="patent-name">고분자 합성 및 가공 기술</a>
+                                    <div class="patent-number">10-2013-0156234</div>
+                                </td>
+                                <td>10-2013-0156234</td>
+                                <td>디스플레이사업부</td>
+                                <td>2014.03.15</td>
+                                <td>2034.03.15</td>
+                                <td>
+                                    <div class="lifespan-bar">
+                                        <div class="lifespan-fill lifespan-1year" style="width: 2%;">0.6년</div>
+                                    </div>
+                                </td>
+                                <td><span class="badge status-critical">긴급</span></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <a href="#" class="patent-name">디스플레이 발광 소자 구조</a>
+                                    <div class="patent-number">10-2014-0045678</div>
+                                </td>
+                                <td>10-2014-0045678</td>
+                                <td>디스플레이사업부</td>
+                                <td>2015.06.20</td>
+                                <td>2035.06.20</td>
+                                <td>
+                                    <div class="lifespan-bar">
+                                        <div class="lifespan-fill lifespan-1year" style="width: 5%;">0.8년</div>
+                                    </div>
+                                </td>
+                                <td><span class="badge status-critical">긴급</span></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <a href="#" class="patent-name">배터리 셀 조립 기술</a>
+                                    <div class="patent-number">10-2014-0123456</div>
+                                </td>
+                                <td>10-2014-0123456</td>
+                                <td>에너지사업부</td>
+                                <td>2015.08.10</td>
+                                <td>2035.08.10</td>
+                                <td>
+                                    <div class="lifespan-bar">
+                                        <div class="lifespan-fill lifespan-1year" style="width: 8%;">0.9년</div>
+                                    </div>
+                                </td>
+                                <td><span class="badge status-critical">긴급</span></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <a href="#" class="patent-name">화학 촉매 복합체 및 용도</a>
+                                    <div class="patent-number">10-2014-0234567</div>
+                                </td>
+                                <td>10-2014-0234567</td>
+                                <td>화학사업부</td>
+                                <td>2015.09.05</td>
+                                <td>2035.09.05</td>
+                                <td>
+                                    <div class="lifespan-bar">
+                                        <div class="lifespan-fill lifespan-1year" style="width: 12%;">1.0년</div>
+                                    </div>
+                                </td>
+                                <td><span class="badge status-critical">긴급</span></td>
+                            </tr>
+
+                            <!-- 1-3년 -->
+                            <tr>
+                                <td>
+                                    <a href="#" class="patent-name">전자 기기 냉각 구조</a>
+                                    <div class="patent-number">10-2015-0067890</div>
+                                </td>
+                                <td>10-2015-0067890</td>
+                                <td>전기사업부</td>
+                                <td>2016.02.15</td>
+                                <td>2036.02.15</td>
+                                <td>
+                                    <div class="lifespan-bar">
+                                        <div class="lifespan-fill lifespan-3year" style="width: 25%;">1.5년</div>
+                                    </div>
+                                </td>
+                                <td><span class="badge status-expiring">만료 예정</span></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <a href="#" class="patent-name">나노 소재 합성 공정</a>
+                                    <div class="patent-number">10-2015-0178234</div>
+                                </td>
+                                <td>10-2015-0178234</td>
+                                <td>소재사업부</td>
+                                <td>2016.05.20</td>
+                                <td>2036.05.20</td>
+                                <td>
+                                    <div class="lifespan-bar">
+                                        <div class="lifespan-fill lifespan-3year" style="width: 45%;">1.9년</div>
+                                    </div>
+                                </td>
+                                <td><span class="badge status-expiring">만료 예정</span></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <a href="#" class="patent-name">감지 센서 칩 설계</a>
+                                    <div class="patent-number">10-2015-0289456</div>
+                                </td>
+                                <td>10-2015-0289456</td>
+                                <td>반도체사업부</td>
+                                <td>2016.07.12</td>
+                                <td>2036.07.12</td>
+                                <td>
+                                    <div class="lifespan-bar">
+                                        <div class="lifespan-fill lifespan-3year" style="width: 55%;">2.1년</div>
+                                    </div>
+                                </td>
+                                <td><span class="badge status-expiring">만료 예정</span></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <a href="#" class="patent-name">멀티레이어 코팅 기술</a>
+                                    <div class="patent-number">10-2016-0045671</div>
+                                </td>
+                                <td>10-2016-0045671</td>
+                                <td>화학사업부</td>
+                                <td>2017.03.08</td>
+                                <td>2037.03.08</td>
+                                <td>
+                                    <div class="lifespan-bar">
+                                        <div class="lifespan-fill lifespan-3year" style="width: 75%;">2.7년</div>
+                                    </div>
+                                </td>
+                                <td><span class="badge status-expiring">만료 예정</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 보고서 생성 섹션 -->
+                <div class="reports-section">
+                    <div class="section-title">보고서 생성 진행 상태</div>
+                    <div class="reports-grid">
+                        <!-- 완료 -->
+                        <div class="report-card">
+                            <div class="report-header">
+                                <div>
+                                    <div class="report-title">2025 Q1 만기 예정 특허 보고서</div>
+                                    <div class="report-date">생성일: 2025.01.15</div>
+                                </div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill progress-complete" style="width: 100%;">100%</div>
+                            </div>
+                            <div class="progress-text">완료됨</div>
+                            <div class="report-actions">
+                                <button class="btn-small">다운로드</button>
+                                <button class="btn-small">공유</button>
+                            </div>
+                        </div>
+
+                        <!-- 진행 중 -->
+                        <div class="report-card">
+                            <div class="report-header">
+                                <div>
+                                    <div class="report-title">2025 Q2 Life Cycle 분석 보고서</div>
+                                    <div class="report-date">시작일: 2025.04.01</div>
+                                </div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 68%;">68%</div>
+                            </div>
+                            <div class="progress-text">진행 중 (데이터 수집 85% 완료, 분석 중)</div>
+                            <div class="report-actions">
+                                <button class="btn-small">진행 상황 보기</button>
+                                <button class="btn-small" disabled>다운로드</button>
+                            </div>
+                        </div>
+
+                        <!-- 예약 -->
+                        <div class="report-card">
+                            <div class="report-header">
+                                <div>
+                                    <div class="report-title">2025 만료 특허 갱신 계획 보고서</div>
+                                    <div class="report-date">예약: 2025.05.15</div>
+                                </div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 0%;">0%</div>
+                            </div>
+                            <div class="progress-text">예약됨 (5월 15일 자동 생성 예정)</div>
+                            <div class="report-actions">
+                                <button class="btn-small">예약 변경</button>
+                                <button class="btn-small" disabled>다운로드</button>
+                            </div>
+                        </div>
+
+                        <!-- 완료 -->
+                        <div class="report-card">
+                            <div class="report-header">
+                                <div>
+                                    <div class="report-title">2024 사업부별 특허 수명 분석</div>
+                                    <div class="report-date">생성일: 2024.12.20</div>
+                                </div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill progress-complete" style="width: 100%;">100%</div>
+                            </div>
+                            <div class="progress-text">완료됨</div>
+                            <div class="report-actions">
+                                <button class="btn-small">다운로드</button>
+                                <button class="btn-small">공유</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 사이드바 메뉴 활성화
+        document.querySelectorAll('.sidebar-menu a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                if (e.currentTarget.classList.contains('active')) {
+                    e.preventDefault();
+                }
+                document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

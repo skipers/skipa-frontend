@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메인 대시보드 - 특허 재평가 관리 시스템</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+            background-color: #FFFFFF;
+            color: #334155;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* 사이드바 */
+        .sidebar {
+            width: 240px;
+            background-color: #1E293B;
+            color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-logo {
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.5;
+            margin-bottom: 32px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 16px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            flex: 1;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 8px;
+        }
+
+        .sidebar-menu a {
+            display: block;
+            padding: 12px 16px;
+            color: #FFFFFF;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .sidebar-menu a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-menu a.active {
+            background-color: #2563EB;
+            color: #FFFFFF;
+        }
+
+        .sidebar-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 16px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 메인 콘텐츠 */
+        .main {
+            margin-left: 240px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 상단바 */
+        .header {
+            height: 56px;
+            background-color: #FFFFFF;
+            border-bottom: 1px solid #E2E8F0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1E293B;
+        }
+
+        .header-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-info {
+            text-align: right;
+        }
+
+        .name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1E293B;
+        }
+
+        .role {
+            font-size: 11px;
+            color: #64748B;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #DBEAFE;
+            color: #2563EB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* 콘텐츠 */
+        .content {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            background-color: #FFFFFF;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            font-size: 12px;
+            color: #64748B;
+        }
+
+        /* 대시보드 섹션 */
+        .dashboard-section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1E293B;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* 카드 그리드 */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.2s;
+        }
+
+        .card:hover {
+            border-color: #2563EB;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+        }
+
+        .card-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748B;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2563EB;
+            margin-bottom: 8px;
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            color: #64748B;
+        }
+
+        .card-badge {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-urgent {
+            background-color: #FEE2E2;
+            color: #DC2626;
+        }
+
+        .badge-normal {
+            background-color: #DBEAFE;
+            color: #2563EB;
+        }
+
+        /* 긴급 마감 카드 */
+        .deadline-card {
+            background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
+            border: 2px solid #E2E8F0;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .deadline-info {
+            flex: 1;
+        }
+
+        .deadline-patent {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1E293B;
+            margin-bottom: 4px;
+        }
+
+        .deadline-date {
+            font-size: 12px;
+            color: #64748B;
+            margin-bottom: 4px;
+        }
+
+        .deadline-days {
+            font-size: 11px;
+            color: #64748B;
+        }
+
+        .deadline-tag {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .tag-urgent {
+            background-color: #FEE2E2;
+            color: #DC2626;
+        }
+
+        .tag-warning {
+            background-color: #FEF3C7;
+            color: #D97706;
+        }
+
+        .tag-normal {
+            background-color: #DBEAFE;
+            color: #2563EB;
+        }
+
+        /* 테이블 */
+        .table-container {
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        thead {
+            background-color: #FFFFFF;
+            border-bottom: 2px solid #E2E8F0;
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #1E293B;
+            background-color: #F8FAFC;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #E2E8F0;
+            color: #334155;
+        }
+
+        tbody tr {
+            background-color: #FFFFFF;
+            transition: background-color 0.2s;
+        }
+
+        tbody tr:hover {
+            background-color: #F8FAFC;
+        }
+
+        /* 특허명 링크 */
+        .patent-link {
+            font-weight: 600;
+            color: #2563EB;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .patent-link:hover {
+            text-decoration: underline;
+        }
+
+        .patent-number {
+            font-size: 11px;
+            color: #64748B;
+            margin-top: 2px;
+        }
+
+        /* 배지 */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-green {
+            background-color: #DCFCE7;
+            color: #16A34A;
+        }
+
+        .badge-yellow {
+            background-color: #FEF3C7;
+            color: #D97706;
+        }
+
+        .badge-red {
+            background-color: #FEE2E2;
+            color: #DC2626;
+        }
+
+        .badge-blue {
+            background-color: #DBEAFE;
+            color: #2563EB;
+        }
+
+        .badge-gray {
+            background-color: #F1F5F9;
+            color: #64748B;
+        }
+
+        /* 통계 바 */
+        .stat-bar {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            height: 20px;
+            background-color: #E2E8F0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .stat-bar-segment {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        .stat-bar-submitted {
+            background-color: #16A34A;
+        }
+
+        .stat-bar-pending {
+            background-color: #D97706;
+        }
+
+        .stat-bar-not-submitted {
+            background-color: #E2E8F0;
+        }
+
+        /* 2열 레이아웃 */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1440px) {
+            .content {
+                padding: 32px;
+            }
+
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 11px;
+            }
+
+            th, td {
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 사이드바 -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">특허 재평가<br>관리 시스템</div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard-business.html" class="active">메인 대시보드</a></li>
+                <li><a href="guide-business.html">특허 재평가 안내</a></li>
+                <li><a href="patent-status-business.html">담당 특허 현황</a></li>
+                <li><a href="quarterly-review-business.html">이번 분기 검토 대상</a></li>
+                <li><a href="submission-history-business.html">검토 제출 이력</a></li>
+                <li style="margin-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 16px;"><a href="patent-search-common.html">전체 특허 검색</a></li>
+                <li><a href="new-invention-report.html">신규 발명 신고</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                디스플레이 사업부<br>
+                <span style="font-size: 11px;">v1.0</span>
+            </div>
+        </aside>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="main">
+            <!-- 상단바 -->
+            <header class="header">
+                <div class="header-title">메인 대시보드</div>
+                <div class="header-user">
+                    <div class="user-info">
+                        <div class="name">이영업</div>
+                        <div class="role">디스플레이사업부 과장</div>
+                    </div>
+                    <div class="user-avatar">이</div>
+                </div>
+            </header>
+
+            <!-- 콘텐츠 -->
+            <div class="content">
+                <!-- 페이지 헤더 -->
+                <div class="page-header">
+                    <div class="page-title">메인 대시보드</div>
+                    <div class="page-subtitle">특허 재평가 현황 및 검토 현황 요약</div>
+                </div>
+
+                <!-- 섹션 1: 검토 마감 현황 -->
+                <div class="dashboard-section">
+                    <div class="section-title">⏰ 검토 마감 현황</div>
+                    <div class="deadline-card">
+                        <div class="deadline-info">
+                            <div class="deadline-patent">고분자 합성 및 가공 기술</div>
+                            <div class="deadline-date">마감: 2025.02.01 (토요일)</div>
+                            <div class="deadline-days">D-7 (7일 남음)</div>
+                        </div>
+                        <div class="deadline-tag tag-urgent">긴급</div>
+                    </div>
+                    <div class="deadline-card">
+                        <div class="deadline-info">
+                            <div class="deadline-patent">디스플레이 발광 소자 구조</div>
+                            <div class="deadline-date">마감: 2025.02.08 (토요일)</div>
+                            <div class="deadline-days">D-14 (14일 남음)</div>
+                        </div>
+                        <div class="deadline-tag tag-warning">주의</div>
+                    </div>
+                    <div class="deadline-card">
+                        <div class="deadline-info">
+                            <div class="deadline-patent">광학 필터 제조 공정</div>
+                            <div class="deadline-date">마감: 2025.02.21 (금요일)</div>
+                            <div class="deadline-days">D-27 (27일 남음)</div>
+                        </div>
+                        <div class="deadline-tag tag-normal">정상</div>
+                    </div>
+                </div>
+
+                <!-- 섹션 2: 현황 통계 -->
+                <div class="dashboard-section">
+                    <div class="section-title">📊 우리 부서 특허 현황</div>
+                    <div class="card-grid">
+                        <div class="card">
+                            <div class="card-title">총 관리 특허</div>
+                            <div class="card-value">24</div>
+                            <div class="card-subtitle">디스플레이사업부 보유 특허</div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">금년 검토 대상</div>
+                            <div class="card-value">3</div>
+                            <div class="card-subtitle">이번 분기 재평가 대상</div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">제출 완료</div>
+                            <div class="card-value">1</div>
+                            <div class="card-subtitle">검토 의견 제출 완료</div>
+                            <span class="card-badge badge-green">33%</span>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">미제출</div>
+                            <div class="card-value">2</div>
+                            <div class="card-subtitle">검토 의견 미제출</div>
+                            <span class="card-badge badge-urgent">67%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 섹션 3: 2열 레이아웃 -->
+                <div class="two-column">
+                    <!-- 좌측: 검토 대상 특허 상태 -->
+                    <div class="dashboard-section">
+                        <div class="section-title">검토 대상 특허 현황</div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>특허명</th>
+                                        <th style="width: 80px;">상태</th>
+                                        <th style="width: 100px;">마감일</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <div style="font-weight: 600; color: #2563EB;">고분자 합성 및 가공 기술</div>
+                                            <div class="patent-number">10-2023-0045821</div>
+                                        </td>
+                                        <td><span class="badge badge-green">제출 완료</span></td>
+                                        <td>2025.02.01</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div style="font-weight: 600; color: #2563EB;">디스플레이 발광 소자 구조</div>
+                                            <div class="patent-number">10-2023-0038456</div>
+                                        </td>
+                                        <td><span class="badge badge-red">미제출</span></td>
+                                        <td>2025.02.08</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div style="font-weight: 600; color: #2563EB;">광학 필터 제조 공정</div>
+                                            <div class="patent-number">10-2023-0031209</div>
+                                        </td>
+                                        <td><span class="badge badge-red">미제출</span></td>
+                                        <td>2025.02.21</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 우측: 지난 분기 제출 이력 -->
+                    <div class="dashboard-section">
+                        <div class="section-title">지난 분기 제출 이력</div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>특허명</th>
+                                        <th style="width: 70px;">결정</th>
+                                        <th style="width: 80px;">제출일</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <div style="font-weight: 600; color: #2563EB;">배터리 셀 조립 기술</div>
+                                            <div class="patent-number">10-2023-0047123</div>
+                                        </td>
+                                        <td><span class="badge badge-green">유지</span></td>
+                                        <td>2024.12.15</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div style="font-weight: 600; color: #2563EB;">광학 필터 제조 공정</div>
+                                            <div class="patent-number">10-2023-0031209</div>
+                                        </td>
+                                        <td><span class="badge badge-green">유지</span></td>
+                                        <td>2024.12.10</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div style="font-weight: 600; color: #2563EB;">나노 소재 합성 공정</div>
+                                            <div class="patent-number">10-2023-0033894</div>
+                                        </td>
+                                        <td><span class="badge badge-red">포기</span></td>
+                                        <td>2024.12.05</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 섹션 4: 의견 제출 현황 -->
+                <div class="dashboard-section">
+                    <div class="section-title">💬 의견 제출 현황</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>특허명</th>
+                                    <th style="width: 80px;">법적상태</th>
+                                    <th style="width: 90px;">제출 현황</th>
+                                    <th style="width: 100px;">AI 평가</th>
+                                    <th style="width: 120px;">담당자</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600; color: #2563EB;">고분자 합성 및 가공 기술</div>
+                                        <div class="patent-number">10-2023-0045821</div>
+                                    </td>
+                                    <td><span class="badge badge-green">등록</span></td>
+                                    <td><span class="badge badge-green">제출 완료</span></td>
+                                    <td style="font-size: 12px; font-weight: 600;">A (우수)</td>
+                                    <td style="font-size: 12px;">이영업</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600; color: #2563EB;">디스플레이 발광 소자 구조</div>
+                                        <div class="patent-number">10-2023-0038456</div>
+                                    </td>
+                                    <td><span class="badge badge-yellow">심사중</span></td>
+                                    <td><span class="badge badge-red">미제출</span></td>
+                                    <td style="font-size: 12px; font-weight: 600;">B (양호)</td>
+                                    <td style="font-size: 12px;">최기술</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600; color: #2563EB;">광학 필터 제조 공정</div>
+                                        <div class="patent-number">10-2023-0031209</div>
+                                    </td>
+                                    <td><span class="badge badge-green">등록</span></td>
+                                    <td><span class="badge badge-red">미제출</span></td>
+                                    <td style="font-size: 12px; font-weight: 600;">B (양호)</td>
+                                    <td style="font-size: 12px;">김개발</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 사이드바 메뉴 활성화
+        document.querySelectorAll('.sidebar-menu a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                if (e.currentTarget.classList.contains('active')) {
+                    e.preventDefault();
+                } else {
+                    document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
