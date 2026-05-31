@@ -66,6 +66,15 @@ function logout() {
     </nav>
 
     <div class="px-5 py-4 border-t border-white/10">
+      <div v-if="auth.isDept" class="mb-3 p-3 rounded-lg" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+        <div class="text-xs mb-2" style="color:rgba(255,255,255,0.75);">궁금한 점이 있으신가요?</div>
+        <button
+          @click="router.push('/dept/lab')"
+          class="w-full px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer"
+          style="background:#FF7A00; color:#fff; border:none;"
+        >AI 챗봇에게 질문하기</button>
+      </div>
+
       <div class="mb-3">
         <div class="font-semibold text-white text-sm">{{ auth.currentUser?.name }}</div>
         <div class="text-xs mt-0.5" style="color:rgba(255,255,255,0.5);">

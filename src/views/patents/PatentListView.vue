@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
@@ -13,7 +13,14 @@ const search = ref('')
 const filterStatus = ref('')
 const filterDept = ref('')
 const filterCountry = ref('')
+const filterFilingStart = ref('')
+const filterFilingEnd = ref('')
+const filterExpiryStart = ref('')
+const filterExpiryEnd = ref('')
+const filterKeyword = ref('')
+const filterIpc = ref('')
 const sortBy = ref('filingDate')
+const showMoreFilters = ref(false)
 const page = ref(1)
 const perPage = 10
 
@@ -33,6 +40,18 @@ const filtered = computed(() => {
   if (filterStatus.value) list = list.filter((p) => p.status === filterStatus.value)
   if (filterDept.value) list = list.filter((p) => p.dept === filterDept.value)
   if (filterCountry.value) list = list.filter((p) => p.country === filterCountry.value)
+  if (filterFilingStart.value) list = list.filter((p) => p.filingDate >= filterFilingStart.value)
+  if (filterFilingEnd.value) list = list.filter((p) => p.filingDate <= filterFilingEnd.value)
+  if (filterExpiryStart.value) list = list.filter((p) => p.expiryDate >= filterExpiryStart.value)
+  if (filterExpiryEnd.value) list = list.filter((p) => p.expiryDate <= filterExpiryEnd.value)
+  if (filterKeyword.value) {
+    const q = filterKeyword.value.toLowerCase()
+    list = list.filter((p) => (p.keywords || '').toLowerCase().includes(q))
+  }
+  if (filterIpc.value) {
+    const q = filterIpc.value.toLowerCase()
+    list = list.filter((p) => (p.ipc || '').toLowerCase().includes(q))
+  }
   list = [...list].sort((a, b) => {
     if (sortBy.value === 'citations') return b.citations - a.citations
     if (sortBy.value === 'expiryDate') return a.expiryDate.localeCompare(b.expiryDate)
@@ -43,6 +62,13 @@ const filtered = computed(() => {
 
 const totalPages = computed(() => Math.ceil(filtered.value.length / perPage))
 const paginated = computed(() => filtered.value.slice((page.value - 1) * perPage, page.value * perPage))
+
+watch(
+  [search, filterStatus, filterDept, filterCountry, filterFilingStart, filterFilingEnd, filterExpiryStart, filterExpiryEnd, filterKeyword, filterIpc, sortBy],
+  () => {
+    page.value = 1
+  },
+)
 </script>
 
 <template>
@@ -62,7 +88,7 @@ const paginated = computed(() => filtered.value.slice((page.value - 1) * perPage
           <option value="">상태 전체</option>
           <option>등록</option>
           <option>만료 예정</option>
-          <option>포기+만료</option>
+          <option>포기/만료</option>
         </select>
         <select v-if="auth.isLegal" v-model="filterDept" class="px-3 py-2 text-sm rounded-lg outline-none cursor-pointer" style="border:1px solid #E2E8F0;">
           <option value="">사업부 전체</option>
@@ -77,6 +103,11 @@ const paginated = computed(() => filtered.value.slice((page.value - 1) * perPage
           <option value="expiryDate">만료일순</option>
           <option value="citations">피인용수순</option>
         </select>
+        <button
+          @click="showMoreFilters = !showMoreFilters"
+          class="px-3 py-2 text-xs rounded-lg cursor-pointer"
+          style="background:#fff; color:#64748b; border:1px solid #E2E8F0;"
+        >{{ showMoreFilters ? '필터 접기' : '필터 더보기' }}</button>
         <div class="flex-1" />
         <button
           @click="router.push('/patents/register')"
@@ -86,6 +117,33 @@ const paginated = computed(() => filtered.value.slice((page.value - 1) * perPage
           + 특허 등록
         </button>
       </div>
+
+      <div v-if="showMoreFilters" class="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">출원일 시작</label>
+          <input v-model="filterFilingStart" type="date" class="w-full px-3 py-2 text-sm rounded-lg outline-none" style="border:1px solid #E2E8F0;" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">출원일 끝</label>
+          <input v-model="filterFilingEnd" type="date" class="w-full px-3 py-2 text-sm rounded-lg outline-none" style="border:1px solid #E2E8F0;" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">만료일 시작</label>
+          <input v-model="filterExpiryStart" type="date" class="w-full px-3 py-2 text-sm rounded-lg outline-none" style="border:1px solid #E2E8F0;" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">만료일 끝</label>
+          <input v-model="filterExpiryEnd" type="date" class="w-full px-3 py-2 text-sm rounded-lg outline-none" style="border:1px solid #E2E8F0;" />
+        </div>
+        <div class="md:col-span-1 lg:col-span-2">
+          <label class="block text-xs font-medium text-gray-500 mb-1">키워드</label>
+          <input v-model="filterKeyword" placeholder="예: 반도체, 딥러닝" class="w-full px-3 py-2 text-sm rounded-lg outline-none" style="border:1px solid #E2E8F0;" />
+        </div>
+        <div class="md:col-span-1 lg:col-span-2">
+          <label class="block text-xs font-medium text-gray-500 mb-1">IPC</label>
+          <input v-model="filterIpc" placeholder="예: G06T, H04L" class="w-full px-3 py-2 text-sm rounded-lg outline-none" style="border:1px solid #E2E8F0;" />
+        </div>
+      </div>
     </div>
 
     <!-- 테이블 -->
@@ -93,7 +151,7 @@ const paginated = computed(() => filtered.value.slice((page.value - 1) * perPage
       <table class="w-full text-sm">
         <thead>
           <tr style="background:#F8FAFC; border-bottom:1px solid #E2E8F0;">
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">특허번호</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">출원번호</th>
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">특허명</th>
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">상태</th>
             <th v-if="auth.isLegal" class="px-4 py-3 text-left text-xs font-semibold text-gray-500">사업부</th>
@@ -132,7 +190,7 @@ const paginated = computed(() => filtered.value.slice((page.value - 1) * perPage
           <button
             v-for="p in totalPages" :key="p"
             @click="page = p"
-            class="w-7 h-7 text-xs rounded cursor-pointer"
+            class="w-8 h-8 text-xs rounded-full cursor-pointer"
             :style="page === p
               ? 'background:#FF7A00; color:#fff; border:none;'
               : 'background:transparent; color:#6b7280; border:1px solid #E2E8F0;'"

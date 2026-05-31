@@ -8,17 +8,20 @@ import { PATENTS, ANNUAL_DATA } from '@/data/patents.js'
 
 ChartJS.register(ArcElement, LineElement, BarElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
 
-const COLORS = ['#FF7A00', '#EA002C', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#94A3B8']
+const INDIGO_PRIMARY = '#4B6BFB'
+const DONUT_COLORS = ['#4B6BFB', '#7C3AED', '#059669', '#D97706']
 
-// 기술 분야별 트리맵 (CSS 기반으로 구현)
-const techData = computed(() => {
+// 기술 분야별 히스토그램
+const techHistogramData = computed(() => {
   const counts = {}
   PATENTS.forEach((p) => { counts[p.techField] = (counts[p.techField] || 0) + 1 })
-  const total = PATENTS.length
-  return Object.entries(counts)
-    .sort(([, a], [, b]) => b - a)
-    .map(([name, count], i) => ({ name, count, pct: Math.round((count / total) * 100), color: COLORS[i % COLORS.length] }))
+  const labels = Object.keys(counts).sort((a, b) => counts[b] - counts[a])
+  return {
+    labels,
+    datasets: [{ data: labels.map((l) => counts[l]), backgroundColor: INDIGO_PRIMARY, borderRadius: 4 }],
+  }
 })
+const techHistogramOpts = { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
 
 // 국가별
 const countryBarData = computed(() => {
@@ -27,7 +30,7 @@ const countryBarData = computed(() => {
   const labels = Object.keys(counts).sort((a, b) => counts[b] - counts[a])
   return {
     labels,
-    datasets: [{ data: labels.map((l) => counts[l]), backgroundColor: '#3B82F6', borderRadius: 4 }],
+    datasets: [{ data: labels.map((l) => counts[l]), backgroundColor: INDIGO_PRIMARY, borderRadius: 4 }],
   }
 })
 const hbarOpts = { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
@@ -48,12 +51,36 @@ const deptData = computed(() => {
   const counts = {}
   PATENTS.forEach((p) => { counts[p.dept] = (counts[p.dept] || 0) + 1 })
   const labels = Object.keys(counts)
+  const values = labels.map((l) => counts[l])
   return {
     labels,
-    datasets: [{ data: labels.map((l) => counts[l]), backgroundColor: COLORS.slice(0, labels.length), borderWidth: 2, borderColor: '#fff' }],
+    datasets: [{ data: values, backgroundColor: DONUT_COLORS.slice(0, labels.length), borderWidth: 2, borderColor: '#fff' }],
   }
 })
-const donutOpts = { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
+const donutOpts = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '64%',
+  plugins: {
+    legend: {
+      position: 'right',
+      labels: {
+        color: '#334155',
+        font: { size: 12, weight: '600' },
+        usePointStyle: true,
+        pointStyle: 'circle',
+        padding: 14,
+      },
+    },
+  },
+}
+
+const deptCountList = computed(() => {
+  const counts = {}
+  PATENTS.forEach((p) => { counts[p.dept] = (counts[p.dept] || 0) + 1 })
+  return Object.entries(counts)
+})
+const deptTotal = computed(() => deptCountList.value.reduce((sum, [, count]) => sum + count, 0))
 
 // 가치평가 등급 분포
 const gradeData = computed(() => {
@@ -61,7 +88,7 @@ const gradeData = computed(() => {
   PATENTS.forEach((p) => { if (p.aiScore?.grade) counts[p.aiScore.grade]++ })
   return {
     labels: ['S등급', 'A등급', 'B등급', 'C등급'],
-    datasets: [{ data: [counts.S, counts.A, counts.B, counts.C], backgroundColor: ['#FF7A00', '#3B82F6', '#10B981', '#94A3B8'], borderRadius: 4 }],
+    datasets: [{ data: [counts.S, counts.A, counts.B, counts.C], backgroundColor: [INDIGO_PRIMARY, '#059669', '#D97706', '#94A3B8'], borderRadius: 4 }],
   }
 })
 const barOpts = { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
@@ -70,19 +97,9 @@ const barOpts = { responsive: true, plugins: { legend: { display: false } }, sca
 <template>
   <AppLayout title="포트폴리오 분석">
     <div class="grid grid-cols-2 gap-4">
-      <!-- 기술 분야별 트리맵 (CSS) -->
+      <!-- 기술 분야별 히스토그램 -->
       <AppCard title="기술 분야별 분포">
-        <div class="flex flex-wrap gap-2">
-          <div
-            v-for="item in techData"
-            :key="item.name"
-            class="flex-none rounded-xl flex flex-col items-center justify-center text-white font-semibold"
-            :style="`background:${item.color}; width:${Math.max(item.pct * 2.2, 60)}px; height:${Math.max(item.pct * 1.8, 50)}px; font-size:${item.pct > 10 ? 14 : 11}px;`"
-          >
-            <div>{{ item.name }}</div>
-            <div class="text-xs opacity-80 mt-0.5">{{ item.count }}건</div>
-          </div>
-        </div>
+        <Bar :data="techHistogramData" :options="techHistogramOpts" style="max-height:220px;" />
       </AppCard>
 
       <!-- 국가별 -->
@@ -96,14 +113,20 @@ const barOpts = { responsive: true, plugins: { legend: { display: false } }, sca
       </AppCard>
 
       <!-- 사업부별 도넛 -->
-      <AppCard title="사업부별 보유 현황">
-        <div style="height:220px; display:flex; align-items:center; justify-content:center;">
-          <Doughnut :data="deptData" :options="donutOpts" style="max-height:220px;" />
+      <AppCard title="사업부별 보유 현황" class="pb-10">
+        <div class="relative" style="height:220px; display:flex; align-items:center; justify-content:center;">
+          <Doughnut :data="deptData" :options="donutOpts" style="max-height:220px; width:220px;" />
+          <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div class="text-center rounded-xl px-2 py-1" style="background:rgba(255,255,255,0.9); border:1px solid #E2E8F0; min-width:120px;">
+              <div class="text-[11px] text-gray-500">총 보유</div>
+              <div class="text-base font-bold" style="color:#FF7A00;">{{ deptTotal }}건</div>
+            </div>
+          </div>
         </div>
       </AppCard>
 
       <!-- 가치평가 등급 -->
-      <AppCard title="가치평가 등급 분포">
+      <AppCard title="가치평가 등급 분포" class="pb-10">
         <Bar :data="gradeData" :options="barOpts" style="max-height:220px;" />
       </AppCard>
     </div>

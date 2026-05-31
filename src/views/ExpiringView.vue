@@ -22,9 +22,9 @@ function dayDiff(dateStr) {
   return (new Date(dateStr) - now) / (1000 * 60 * 60 * 24 * 365)
 }
 
-const within1y = computed(() => basePatents.value.filter((p) => p.status !== '포기+만료' && new Date(p.expiryDate) > now && dayDiff(p.expiryDate) <= 1).length)
-const within3y = computed(() => basePatents.value.filter((p) => p.status !== '포기+만료' && new Date(p.expiryDate) > now && dayDiff(p.expiryDate) <= 3).length)
-const within5y = computed(() => basePatents.value.filter((p) => p.status !== '포기+만료' && new Date(p.expiryDate) > now && dayDiff(p.expiryDate) <= 5).length)
+const within1y = computed(() => basePatents.value.filter((p) => p.status !== '포기/만료' && new Date(p.expiryDate) > now && dayDiff(p.expiryDate) <= 1).length)
+const within3y = computed(() => basePatents.value.filter((p) => p.status !== '포기/만료' && new Date(p.expiryDate) > now && dayDiff(p.expiryDate) <= 3).length)
+const within5y = computed(() => basePatents.value.filter((p) => p.status !== '포기/만료' && new Date(p.expiryDate) > now && dayDiff(p.expiryDate) <= 5).length)
 
 const barData = computed(() => ({
   labels: ['1년 이내', '3년 이내', '5년 이내'],
@@ -34,7 +34,7 @@ const barOptions = { responsive: true, plugins: { legend: { display: false } }, 
 
 const pieData = computed(() => {
   const techCounts = {}
-  basePatents.value.filter((p) => p.status !== '포기+만료').forEach((p) => { techCounts[p.techField] = (techCounts[p.techField] || 0) + 1 })
+  basePatents.value.filter((p) => p.status !== '포기/만료').forEach((p) => { techCounts[p.techField] = (techCounts[p.techField] || 0) + 1 })
   const labels = Object.keys(techCounts)
   const data = labels.map((l) => techCounts[l])
   const COLORS = ['#FF7A00', '#EA002C', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6']
@@ -72,7 +72,7 @@ function expiringOnDay(day) {
   const m = String(calendarMonth.value.getMonth() + 1).padStart(2, '0')
   const dd = String(day).padStart(2, '0')
   const dateStr = `${y}-${m}-${dd}`
-  return basePatents.value.filter((p) => p.expiryDate === dateStr && p.status !== '포기+만료')
+  return basePatents.value.filter((p) => p.expiryDate === dateStr && p.status !== '포기/만료')
 }
 
 function clickDay(day) {

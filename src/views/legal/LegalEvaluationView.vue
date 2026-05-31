@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AppCard from '@/components/ui/AppCard.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
@@ -8,8 +8,17 @@ import AppModal from '@/components/ui/AppModal.vue'
 import { PATENTS } from '@/data/patents.js'
 
 const router = useRouter()
+const route = useRoute()
 const activeTab = ref('전체')
 const tabs = ['전체', '요청 전', '요청 완료', '지연', '회신 완료']
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (typeof tab === 'string' && tabs.includes(tab)) activeTab.value = tab
+  },
+  { immediate: true },
+)
 
 const evalPatents = computed(() => PATENTS.filter((p) => p.evaluation?.quarter === '2025-Q1'))
 
@@ -38,6 +47,7 @@ function openAssign(patent) {
 
 function confirmAssign() {
   if (assignTarget.value) {
+    assignTarget.value.dept = selectedDept.value
     assignTarget.value.evaluation.status = '요청 완료'
     assignTarget.value.evaluation.requestDate = '2025-05-29'
     assignTarget.value.evaluation.dueDate = '2025-06-30'
@@ -50,31 +60,31 @@ function confirmAssign() {
   <AppLayout title="재평가 관리">
     <!-- 상단 정보 -->
     <AppCard class="mb-4">
-      <div class="flex items-center justify-between">
-        <div>
-          <div class="text-sm font-semibold text-gray-800">2025년 1분기 재평가</div>
-          <div class="text-xs text-gray-500 mt-0.5">제출 마감일: 2025년 3월 31일</div>
-        </div>
-        <div class="text-right">
-          <div class="text-xs text-gray-500 mb-1">보고서 생성 현황 {{ progress.done }} / {{ progress.total }}건 완료</div>
-          <div class="w-48 h-2 rounded-full bg-gray-200 overflow-hidden">
-            <div class="h-2 rounded-full transition-all" style="background:#FF7A00;" :style="`width:${progress.pct}%`" />
-          </div>
-          <div class="text-xs mt-1" style="color:#FF7A00;">{{ progress.pct }}%</div>
-        </div>
+      <div>
+        <div class="text-sm font-semibold text-gray-800">2025년 1분기 재평가</div>
+        <div class="text-xs text-gray-500 mt-0.5">제출 마감일: 2025년 3월 31일</div>
       </div>
     </AppCard>
 
+    <div class="mb-4 rounded-xl p-4" style="border:1px solid #E2E8F0; background:#FFFFFF;">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-sm font-semibold text-gray-700">보고서 생성 현황</div>
+        <div class="text-xs text-gray-500">{{ progress.pct }}%</div>
+      </div>
+      <div class="text-xs text-gray-600 mb-2">2025년 1분기 재평가 {{ progress.total }}건 중 {{ progress.done }}건 보고서 생성 완료</div>
+      <div class="h-2.5 rounded-full bg-gray-200 overflow-hidden">
+        <div class="h-full rounded-full transition-all" style="background:#FF7A00;" :style="`width:${progress.pct}%`" />
+      </div>
+    </div>
+
     <!-- 탭 필터 -->
-    <div class="flex gap-2 mb-4">
+    <div class="flex gap-6 border-b border-gray-200 mb-4">
       <button
         v-for="tab in tabs"
         :key="tab"
         @click="activeTab = tab"
-        class="px-4 py-2 text-sm rounded-lg cursor-pointer transition-all"
-        :style="activeTab === tab
-          ? 'background:#FF7A00; color:#fff; border:none;'
-          : 'background:#fff; color:#6b7280; border:1px solid #E2E8F0;'"
+        class="pb-3 text-sm cursor-pointer -mb-px"
+        :class="activeTab === tab ? 'border-b-2 border-[#FF7A00] text-[#FF7A00] font-semibold' : 'text-gray-500 hover:text-gray-700'"
       >{{ tab }}</button>
     </div>
 
@@ -83,7 +93,7 @@ function confirmAssign() {
       <table class="w-full text-sm">
         <thead>
           <tr style="background:#F8FAFC; border-bottom:1px solid #E2E8F0;">
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">특허번호</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">출원번호</th>
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">특허명</th>
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">사업부</th>
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">상태</th>
@@ -117,6 +127,12 @@ function confirmAssign() {
                 class="px-3 py-1.5 text-xs font-semibold rounded-lg cursor-pointer"
                 style="background:#FF7A00; color:#fff; border:none;"
               >부서 배정</button>
+              <button
+                v-else
+                @click="router.push(`/patents/${p.id}`)"
+                class="text-xs font-semibold cursor-pointer"
+                style="background:transparent; border:none; color:#FF7A00;"
+              >상세 보기</button>
             </td>
           </tr>
         </tbody>

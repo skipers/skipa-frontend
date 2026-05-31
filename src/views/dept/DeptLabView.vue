@@ -2,14 +2,13 @@
 import { ref, nextTick } from 'vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 
-const activeTab = ref('직접 입력')
-const inputForm = ref({ title: '', description: '', countries: '', business: '', ipc: '' })
+const inputForm = ref({ title: '', description: '', countries: '', business: '', ipc: '', claims: [''] })
 const evaluating = ref(false)
 const result = ref(null)
 
 const sessions = ref([
-  { id: 1, title: '딥러닝 기반 결함 탐지', date: '2025-05-20' },
-  { id: 2, title: '배터리 최적화 알고리즘', date: '2025-05-15' },
+  { id: 1, title: '딥러닝 기반 결함 탐지', date: '2025-05-20', grade: 'A' },
+  { id: 2, title: '배터리 최적화 알고리즘', date: '2025-05-15', grade: 'B' },
 ])
 const currentSessionId = ref(null)
 
@@ -22,7 +21,12 @@ const dummyScores = {
   rights: 75,
   business: 88,
   grade: 'A',
-  comment: '기술적 독창성이 있으며 청구항 설정에 따라 권리 범위를 충분히 확보할 수 있습니다. 제시된 사업 분야에서의 상업적 활용 가능성이 높게 평가됩니다. 다만, 선행 기술 조사를 통해 신규성 확보 여부를 사전 검토하시기 바랍니다.',
+  comments: {
+    tech: '핵심 알고리즘의 차별성이 비교적 명확하며 구현 난이도 대비 성능 개선 폭이 커 기술성 점수가 높습니다.',
+    rights: '청구항 초안의 범위가 다소 넓어 거절 가능성이 있어, 핵심 구성요소 중심으로 권리화 전략을 정교화하는 것이 좋습니다.',
+    business: '현재 사업부 로드맵과 직접 연결되며 도입 시 비용 절감 효과가 예상되어 사업성이 높게 평가되었습니다.',
+    overall: '선행기술 대비 차별 포인트를 명세서에서 더 명확히 제시하면 종합 등급 상향 가능성이 있습니다.',
+  },
 }
 
 function startEvaluation() {
@@ -32,12 +36,28 @@ function startEvaluation() {
   setTimeout(() => {
     result.value = { ...dummyScores }
     evaluating.value = false
+    // simple IPC auto-assignment based on keywords in inputs
+    inputForm.value.ipc = assignIPC(`${inputForm.value.title} ${inputForm.value.description} ${inputForm.value.business} ${inputForm.value.claims.join(' ')}`)
+
     const newId = Date.now()
-    sessions.value.unshift({ id: newId, title: inputForm.value.title || '새 평가', date: new Date().toISOString().slice(0, 10) })
+    sessions.value.unshift({ id: newId, title: inputForm.value.title || '새 평가', date: new Date().toISOString().slice(0, 10), grade: dummyScores.grade })
     currentSessionId.value = newId
-    chatMessages.value.push({ role: 'assistant', text: `안녕하세요! "${inputForm.value.title || '입력하신 특허'}"에 대한 AI 사전 평가가 완료되었습니다. 평가 결과에 대해 궁금한 점이 있으시면 질문해 주세요.` })
+    chatMessages.value.push({ role: 'assistant', text: `안녕하세요! "${inputForm.value.title || '입력하신 특허'}"에 대한 AI 사전 평가가 완료되었습니다. 배정된 IPC: ${inputForm.value.ipc}. 평가 결과에 대해 궁금한 점이 있으시면 질문해 주세요.` })
   }, 2000)
 }
+
+function assignIPC(text) {
+  const t = (text || '').toLowerCase()
+  if (t.includes('딥러닝') || t.includes('cnn') || t.includes('비전') || t.includes('이미지')) return 'G06T 7/00'
+  if (t.includes('연합학습') || t.includes('federated') || t.includes('ml') || t.includes('ai')) return 'G06N 20/00'
+  if (t.includes('통신') || t.includes('5g') || t.includes('빔포밍') || t.includes('qkd') || t.includes('네트워크')) return 'H04L 12/00'
+  if (t.includes('태양광') || t.includes('수소') || t.includes('에너지') || t.includes('연료전지')) return 'H02J 3/38'
+  if (t.includes('로봇') || t.includes('제조') || t.includes('스마트팩토리')) return 'B25J 9/16'
+  return 'G06F 9/50' // fallback
+}
+
+function addClaim() { inputForm.value.claims.push('') }
+function removeClaim(i) { if (inputForm.value.claims.length > 1) inputForm.value.claims.splice(i, 1) }
 
 async function sendChat() {
   const msg = chatInput.value.trim()
@@ -80,10 +100,16 @@ const gradeColor = { S: '#FF7A00', A: '#3B82F6', B: '#10B981', C: '#94A3B8' }
               @click="currentSessionId = s.id"
             >
               <div class="font-medium text-gray-800 truncate">{{ s.title }}</div>
-              <div class="text-gray-400 mt-0.5">{{ s.date }}</div>
+              <div class="mt-1 flex items-center justify-between gap-2">
+                <div class="text-gray-400">{{ s.date }}</div>
+                <span
+                  class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold"
+                  style="background:#FFF7F0; color:#FF7A00; border:1px solid rgba(255,122,0,0.2);"
+                >{{ s.grade || '-' }}</span>
+              </div>
             </div>
             <button
-              @click="result = null; chatMessages = []; currentSessionId = null; inputForm = { title: '', description: '', countries: '', business: '', ipc: '' };"
+              @click="result = null; chatMessages = []; currentSessionId = null; inputForm = { title: '', description: '', countries: '', business: '', ipc: '', claims: [''] };"
               class="w-full py-2 text-xs rounded-lg cursor-pointer"
               style="background:transparent; border:1px dashed #E2E8F0; color:#94A3B8;"
             >+ 새 평가 시작</button>
@@ -95,17 +121,7 @@ const gradeColor = { S: '#FF7A00', A: '#3B82F6', B: '#10B981', C: '#94A3B8' }
       <div class="flex-1 flex flex-col gap-4">
         <!-- 입력 영역 -->
         <div class="bg-white rounded-xl p-5" style="border:1px solid #E2E8F0;">
-          <div class="flex gap-0 mb-4">
-            <button
-              v-for="tab in ['직접 입력', 'PDF 업로드']"
-              :key="tab"
-              @click="activeTab = tab"
-              class="px-4 py-2 text-sm cursor-pointer"
-              :style="activeTab === tab ? 'color:#FF7A00; border-bottom:2px solid #FF7A00; background:transparent; border-left:none; border-right:none; border-top:none;' : 'color:#9ca3af; border:none; background:transparent;'"
-            >{{ tab }}</button>
-          </div>
-
-          <div v-if="activeTab === '직접 입력'" class="space-y-3">
+          <div class="space-y-3">
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">특허명 *</label>
@@ -120,6 +136,19 @@ const gradeColor = { S: '#FF7A00', A: '#3B82F6', B: '#10B981', C: '#94A3B8' }
               <label class="block text-xs font-medium text-gray-600 mb-1">기술 설명 *</label>
               <textarea v-model="inputForm.description" rows="3" placeholder="발명의 핵심 기술 내용을 입력하세요" class="field resize-none" />
             </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-2">청구항</label>
+              <div class="space-y-2">
+                <div v-for="(c, i) in inputForm.claims" :key="i" class="flex items-start gap-2">
+                  <textarea v-model="inputForm.claims[i]" rows="2" placeholder="청구항 내용을 입력하세요" class="field flex-1 resize-none"></textarea>
+                  <div class="flex flex-col gap-2">
+                    <button @click="addClaim" class="px-2 py-1 bg-gray-100 rounded-md text-sm" title="추가">+</button>
+                    <button @click="removeClaim(i)" :disabled="inputForm.claims.length<=1" class="px-2 py-1 bg-gray-100 rounded-md text-sm" title="삭제">-</button>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">관련 사업</label>
@@ -132,17 +161,13 @@ const gradeColor = { S: '#FF7A00', A: '#3B82F6', B: '#10B981', C: '#94A3B8' }
             </div>
           </div>
 
-          <div v-else class="border-2 border-dashed border-gray-200 rounded-xl p-10 text-center">
-            <div class="text-4xl mb-3">📄</div>
-            <div class="text-sm font-medium text-gray-600 mb-1">PDF 파일을 드래그하거나 클릭하여 업로드</div>
-            <div class="text-xs text-gray-400">특허 명세서 PDF 파일 지원</div>
-          </div>
+          <!-- PDF upload removed: only direct input is supported -->
 
           <button
             @click="startEvaluation"
-            :disabled="evaluating || (!inputForm.title && activeTab === '직접 입력')"
+            :disabled="evaluating || !inputForm.title"
             class="mt-4 px-6 py-2.5 text-sm font-semibold text-white rounded-lg cursor-pointer"
-            :style="evaluating || (!inputForm.title && activeTab === '직접 입력')
+            :style="evaluating || !inputForm.title
               ? 'background:#D1D5DB; border:none; cursor:not-allowed;'
               : 'background:#FF7A00; border:none;'"
           >
@@ -167,13 +192,36 @@ const gradeColor = { S: '#FF7A00', A: '#3B82F6', B: '#10B981', C: '#94A3B8' }
               <div class="text-3xl font-bold" :style="`color:${gradeColor[result.grade]};`">{{ result.grade }}</div>
             </div>
           </div>
-          <p class="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-lg p-4">{{ result.comment }}</p>
+          <div class="space-y-2">
+            <div class="text-sm font-semibold text-gray-700">항목별 AI 코멘트</div>
+            <div class="rounded-lg p-3" style="background:#F8FAFC; border:1px solid #E2E8F0;">
+              <div class="text-xs font-semibold text-gray-500 mb-1">기술성</div>
+              <div class="text-sm text-gray-700 leading-relaxed">{{ result.comments.tech }}</div>
+            </div>
+            <div class="rounded-lg p-3" style="background:#F8FAFC; border:1px solid #E2E8F0;">
+              <div class="text-xs font-semibold text-gray-500 mb-1">권리성</div>
+              <div class="text-sm text-gray-700 leading-relaxed">{{ result.comments.rights }}</div>
+            </div>
+            <div class="rounded-lg p-3" style="background:#F8FAFC; border:1px solid #E2E8F0;">
+              <div class="text-xs font-semibold text-gray-500 mb-1">사업성</div>
+              <div class="text-sm text-gray-700 leading-relaxed">{{ result.comments.business }}</div>
+            </div>
+            <div class="rounded-lg p-3" style="background:#FFF7F0; border:1px solid rgba(255,122,0,0.2);">
+              <div class="text-xs font-semibold mb-1" style="color:#FF7A00;">종합 코멘트</div>
+              <div class="text-sm text-gray-700 leading-relaxed">{{ result.comments.overall }}</div>
+            </div>
+          </div>
+          <div v-if="inputForm.ipc" class="mt-3 text-sm text-gray-700">
+            <span class="font-medium">배정된 IPC:</span>
+            <span class="ml-2">{{ inputForm.ipc }}</span>
+          </div>
         </div>
 
         <!-- 챗봇 영역 -->
         <div v-if="result" class="bg-white rounded-xl flex flex-col" style="border:1px solid #E2E8F0; min-height:300px;">
           <div class="px-5 py-3 border-b border-gray-100">
             <div class="text-sm font-semibold text-gray-700">평가 결과 질의응답</div>
+            <div class="text-xs text-gray-500 mt-0.5">평가 결과에 대해 질문하세요</div>
           </div>
           <div ref="chatScrollEl" class="flex-1 p-4 space-y-3 overflow-y-auto" style="max-height:280px;">
             <div
