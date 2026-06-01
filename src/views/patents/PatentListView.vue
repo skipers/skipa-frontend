@@ -172,7 +172,12 @@ watch(
             @mouseleave="$event.currentTarget.style.background='';"
           >
             <td class="px-4 py-3 text-xs font-mono text-gray-600">{{ patent.number }}</td>
-            <td class="px-4 py-3 font-medium text-gray-800 max-w-xs truncate">{{ patent.title }}</td>
+            <td class="px-4 py-3">
+              <div class="font-medium text-gray-800">{{ patent.title }}</div>
+              <div v-if="patent.aiTags?.length" class="flex flex-wrap gap-1 mt-1">
+                <span v-for="tag in patent.aiTags" :key="tag" style="background:#F1F5F9;color:#64748B;font-size:11px;border-radius:4px;padding:2px 6px;">{{ tag }}</span>
+              </div>
+            </td>
             <td class="px-4 py-3"><StatusBadge :status="patent.status" /></td>
             <td v-if="auth.isLegal" class="px-4 py-3 text-gray-600 text-xs">{{ patent.dept }}</td>
             <td class="px-4 py-3 text-gray-600 text-xs">{{ patent.country }}</td>

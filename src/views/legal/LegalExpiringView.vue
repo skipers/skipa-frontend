@@ -1,162 +1,191 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { Bar } from 'vue-chartjs'
-import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
+import { computed, ref } from 'vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AppCard from '@/components/ui/AppCard.vue'
-import StatusBadge from '@/components/ui/StatusBadge.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import { PATENTS } from '@/data/patents.js'
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend)
-
-const calendarMonth = ref(new Date('2025-05-01'))
-const selectedDatePatents = ref([])
+const calendarMonth = ref(new Date('2025-07-01'))
 const selectedDateLabel = ref('')
+const selectedDatePatents = ref([])
 const modalShow = ref(false)
-const activePeriodTab = ref('전체')
 
-const periodTabs = ['전체', '단기(1년)', '중기(3년)', '장기(5년)']
 const baseDate = new Date('2025-03-15')
 
-function prevMonth() { const d = new Date(calendarMonth.value); d.setMonth(d.getMonth() - 1); calendarMonth.value = d }
-function nextMonth() { const d = new Date(calendarMonth.value); d.setMonth(d.getMonth() + 1); calendarMonth.value = d }
+function prevMonth() {
+  const next = new Date(calendarMonth.value)
+  next.setMonth(next.getMonth() - 1)
+  calendarMonth.value = next
+}
+
+function nextMonth() {
+  const next = new Date(calendarMonth.value)
+  next.setMonth(next.getMonth() + 1)
+  calendarMonth.value = next
+}
 
 const calendarLabel = computed(() => `${calendarMonth.value.getFullYear()}년 ${calendarMonth.value.getMonth() + 1}월`)
 
 const calendarDays = computed(() => {
-  const y = calendarMonth.value.getFullYear()
-  const m = calendarMonth.value.getMonth()
-  const first = new Date(y, m, 1).getDay()
-  const daysInMonth = new Date(y, m + 1, 0).getDate()
+  const year = calendarMonth.value.getFullYear()
+  const month = calendarMonth.value.getMonth()
+  const firstDay = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
   const cells = []
-  for (let i = 0; i < first; i++) cells.push(null)
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  for (let i = 0; i < firstDay; i += 1) cells.push(null)
+  for (let day = 1; day <= daysInMonth; day += 1) cells.push(day)
   return cells
 })
 
+const expiringPatents = computed(() =>
+  PATENTS.filter((patent) => patent.status === '만료 예정').sort((a, b) => a.expiryDate.localeCompare(b.expiryDate))
+)
+
+const within1y = computed(() => countWithinDays(365))
+const within3y = computed(() => countWithinDays(365 * 3))
+const within5y = computed(() => countWithinDays(365 * 5))
+
+function daysFromBase(dateStr) {
+  return Math.floor((new Date(dateStr) - baseDate) / (1000 * 60 * 60 * 24))
+}
+
+function countWithinDays(limit) {
+  return expiringPatents.value.filter((patent) => {
+    const diff = daysFromBase(patent.expiryDate)
+    return diff >= 0 && diff <= limit
+  }).length
+}
+
+function dateStringForDay(day) {
+  const year = calendarMonth.value.getFullYear()
+  const month = String(calendarMonth.value.getMonth() + 1).padStart(2, '0')
+  const date = String(day).padStart(2, '0')
+  return `${year}-${month}-${date}`
+}
+
 function expiringOnDay(day) {
   if (!day) return []
-  const y = calendarMonth.value.getFullYear()
-  const m = String(calendarMonth.value.getMonth() + 1).padStart(2, '0')
-  const dd = String(day).padStart(2, '0')
-  const dateStr = `${y}-${m}-${dd}`
-  return PATENTS.filter((p) => p.expiryDate === dateStr && p.status !== '포기/만료')
+  const dateStr = dateStringForDay(day)
+  return expiringPatents.value.filter((patent) => patent.expiryDate === dateStr)
 }
 
 function clickDay(day) {
   const patents = expiringOnDay(day)
-  if (patents.length) {
-    const y = calendarMonth.value.getFullYear()
-    const m = String(calendarMonth.value.getMonth() + 1).padStart(2, '0')
-    const dd = String(day).padStart(2, '0')
-    selectedDateLabel.value = `${y}-${m}-${dd}`
-    selectedDatePatents.value = patents
-    modalShow.value = true
-  }
+  if (!patents.length) return
+  selectedDateLabel.value = dateStringForDay(day)
+  selectedDatePatents.value = patents
+  modalShow.value = true
 }
 
-// 경쟁사 뷰 (더미 데이터)
-const competitorData = computed(() => ({
-  labels: ['AI/ML', '반도체', '통신', '에너지', '제조'],
-  datasets: [
-    { label: '자사', data: [8, 5, 4, 4, 4], backgroundColor: '#FF7A00', borderRadius: 4 },
-    { label: '경쟁사', data: [5, 7, 6, 3, 5], backgroundColor: '#4B6BFB', borderRadius: 4 },
-  ],
-}))
-const competitorOpts = { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-
-const expiringList = computed(() => {
-  const list = PATENTS.filter((p) => p.status === '만료 예정')
-  const daysByTab = {
-    '단기(1년)': 365,
-    '중기(3년)': 365 * 3,
-    '장기(5년)': 365 * 5,
-  }
-
-  if (activePeriodTab.value === '전체') {
-    return [...list].sort((a, b) => a.expiryDate.localeCompare(b.expiryDate))
-  }
-
-  const limit = daysByTab[activePeriodTab.value]
-  return list
-    .filter((p) => {
-      const diff = Math.floor((new Date(p.expiryDate) - baseDate) / (1000 * 60 * 60 * 24))
-      return diff >= 0 && diff <= limit
-    })
-    .sort((a, b) => a.expiryDate.localeCompare(b.expiryDate))
-})
+function isSelectedDay(day) {
+  return Boolean(day && selectedDateLabel.value === dateStringForDay(day))
+}
 </script>
 
 <template>
   <AppLayout title="만료 예정 관리">
-    <div class="pt-2 md:pt-3">
-      <div class="grid grid-cols-2 gap-4 mb-4">
-      <!-- 캘린더 -->
-      <AppCard title="만료 캘린더">
-        <div class="flex items-center justify-between mb-3">
-          <button @click="prevMonth" class="text-gray-400 hover:text-gray-600 cursor-pointer" style="background:none;border:none;font-size:20px;">‹</button>
-          <span class="text-sm font-semibold text-gray-700">{{ calendarLabel }}</span>
-          <button @click="nextMonth" class="text-gray-400 hover:text-gray-600 cursor-pointer" style="background:none;border:none;font-size:20px;">›</button>
-        </div>
-        <div class="grid grid-cols-7 gap-0.5 text-center">
-          <div v-for="dow in ['일','월','화','수','목','금','토']" :key="dow" class="text-xs text-gray-400 py-1">{{ dow }}</div>
-          <div
-            v-for="(day, i) in calendarDays"
-            :key="i"
-            class="text-xs py-2 rounded relative"
-            :class="day && expiringOnDay(day).length ? 'cursor-pointer font-bold' : ''"
-            :style="day && expiringOnDay(day).length ? 'background:#FFF7F0; color:#FF7A00;' : 'color:#6b7280;'"
-            @click="clickDay(day)"
-          >
-            {{ day }}
-            <span v-if="day && expiringOnDay(day).length" class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full" style="background:#FF7A00;" />
-          </div>
-        </div>
-      </AppCard>
-
-      <!-- 경쟁사 뷰 -->
-      <AppCard title="자사 vs 경쟁사 특허 현황">
-        <div class="text-xs text-gray-500 mb-3">기술 분야별 보유 특허 비교</div>
-        <Bar :data="competitorData" :options="competitorOpts" style="max-height:200px;" />
-        <div class="mt-3 px-3 py-2 rounded-lg text-xs" style="border-left:3px solid #EA002C; background:rgba(234,0,44,0.05); color:#EA002C;">
-          ⚠ 반도체·통신 분야에서 경쟁사 특허가 자사 대비 증가 추세입니다.
-        </div>
-      </AppCard>
+    <div class="space-y-3">
+      <!-- 상단 요약 카드 3개 -->
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <AppCard padding="p-4">
+          <div class="text-xs font-semibold text-gray-500">1년 이내 만료</div>
+          <div class="mt-1 text-2xl font-bold" style="color:#EA002C;">{{ within1y }}건</div>
+        </AppCard>
+        <AppCard padding="p-4">
+          <div class="text-xs font-semibold text-gray-500">3년 이내 만료</div>
+          <div class="mt-1 text-2xl font-bold" style="color:#FF7A00;">{{ within3y }}건</div>
+        </AppCard>
+        <AppCard padding="p-4">
+          <div class="text-xs font-semibold text-gray-500">5년 이내 만료</div>
+          <div class="mt-1 text-2xl font-bold" style="color:#10B981;">{{ within5y }}건</div>
+        </AppCard>
       </div>
 
-      <!-- 만료 예정 목록 -->
-      <AppCard title="만료 예정 특허 목록">
-        <div class="flex gap-6 border-b border-gray-200 mb-3">
-          <button
-            v-for="tab in periodTabs"
-            :key="tab"
-            @click="activePeriodTab = tab"
-            class="pb-3 text-sm cursor-pointer -mb-px"
-            :class="activePeriodTab === tab ? 'border-b-2 border-[#FF7A00] text-[#FF7A00] font-semibold' : 'text-gray-500 hover:text-gray-700'"
-          >{{ tab }}</button>
+      <!-- 만료 캘린더 (전체 너비) -->
+      <AppCard padding="p-4">
+        <div class="mb-4 flex items-center justify-between">
+          <div class="section-title">만료 캘린더뷰</div>
+          <div class="flex items-center gap-2">
+            <button
+              @click="prevMonth"
+              class="h-7 w-7 rounded-md text-sm text-gray-500 hover:bg-gray-100"
+              style="border:1px solid #E2E8F0; background:#FFFFFF;"
+              aria-label="이전 달"
+            >‹</button>
+            <div class="min-w-24 text-center text-sm font-semibold text-gray-800">{{ calendarLabel }}</div>
+            <button
+              @click="nextMonth"
+              class="h-7 w-7 rounded-md text-sm text-gray-500 hover:bg-gray-100"
+              style="border:1px solid #E2E8F0; background:#FFFFFF;"
+              aria-label="다음 달"
+            >›</button>
+          </div>
         </div>
 
-        <table class="w-full text-sm">
-          <thead>
-            <tr style="background:#F8FAFC; border-bottom:1px solid #E2E8F0;">
-              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">출원번호</th>
-              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">특허명</th>
-              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">만료일</th>
-              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">사업부</th>
-              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">상태</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in expiringList" :key="p.id" style="border-bottom:1px solid #F1F5F9;">
-              <td class="px-4 py-2.5 text-xs font-mono text-gray-600">{{ p.number }}</td>
-              <td class="px-4 py-2.5 text-gray-800 text-sm">{{ p.title }}</td>
-              <td class="px-4 py-2.5 text-xs font-semibold" style="color:#FF7A00;">{{ p.expiryDate }}</td>
-              <td class="px-4 py-2.5 text-xs text-gray-600">{{ p.dept }}</td>
-              <td class="px-4 py-2.5"><StatusBadge :status="p.status" /></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="calendar-grid text-center">
+          <div v-for="dayName in ['일', '월', '화', '수', '목', '금', '토']" :key="dayName" class="py-2 text-xs font-semibold text-gray-400 border-b border-gray-100">
+            {{ dayName }}
+          </div>
+          <button
+            v-for="(day, index) in calendarDays"
+            :key="index"
+            class="calendar-day relative flex flex-col items-center justify-center rounded-lg"
+            :class="[
+              day && expiringOnDay(day).length ? 'cursor-pointer font-semibold text-gray-800 hover:bg-orange-50' : 'text-gray-400',
+              isSelectedDay(day) ? 'selected-day' : '',
+            ]"
+            :style="day ? 'border:1px solid #EEF2F7; background:#FFFFFF;' : 'border:1px solid transparent; background:transparent;'"
+            :disabled="!day || expiringOnDay(day).length === 0"
+            @click="clickDay(day)"
+          >
+            <span v-if="day" class="text-sm">{{ day }}</span>
+            <span
+              v-if="day && expiringOnDay(day).length"
+              class="mt-0.5 h-1.5 w-1.5 rounded-full"
+              style="background:#FF7A00;"
+            ></span>
+          </button>
+        </div>
+
+        <div class="mt-3 flex items-center gap-2 text-xs text-gray-400">
+          <span class="inline-block h-2 w-2 rounded-full" style="background:#FF7A00;"></span>
+          만료 예정 특허 있음 · 날짜를 클릭하면 목록을 확인할 수 있습니다
+        </div>
+      </AppCard>
+
+      <!-- 만료 예정 특허 목록 -->
+      <AppCard padding="p-4">
+        <div class="section-title mb-3">만료 예정 특허 목록</div>
+        <div class="overflow-x-auto rounded-lg" style="border:1px solid #D9E2EC;">
+          <table class="expiry-table w-full min-w-[760px] text-sm">
+            <thead>
+              <tr>
+                <th class="px-4 py-2.5 text-left text-xs font-bold text-gray-600">출원번호</th>
+                <th class="px-4 py-2.5 text-left text-xs font-bold text-gray-600">특허명</th>
+                <th class="px-4 py-2.5 text-left text-xs font-bold text-gray-600">만료일</th>
+                <th class="px-4 py-2.5 text-left text-xs font-bold text-gray-600">사업부</th>
+                <th class="px-4 py-2.5 text-left text-xs font-bold text-gray-600">상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="patent in expiringPatents" :key="patent.id">
+                <td class="px-4 py-3 text-xs font-mono text-gray-600">{{ patent.number }}</td>
+                <td class="px-4 py-3">
+                  <div class="text-gray-800">{{ patent.title }}</div>
+                  <div v-if="patent.aiTags?.length" class="flex flex-wrap gap-1 mt-1">
+                    <span v-for="tag in patent.aiTags" :key="tag" style="background:#F1F5F9;color:#64748B;font-size:11px;border-radius:4px;padding:2px 6px;">{{ tag }}</span>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-xs font-semibold" style="color:#FF7A00;">{{ patent.expiryDate }}</td>
+                <td class="px-4 py-3 text-xs text-gray-600">{{ patent.dept }}</td>
+                <td class="px-4 py-3"><span class="expiry-badge">만료 예정</span></td>
+              </tr>
+              <tr v-if="expiringPatents.length === 0">
+                <td colspan="5" class="px-4 py-10 text-center text-sm text-gray-400">표시할 만료 예정 특허가 없습니다.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </AppCard>
     </div>
 
@@ -171,10 +200,10 @@ const expiringList = computed(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in selectedDatePatents" :key="p.id" style="border-bottom:1px solid #F1F5F9;">
-              <td class="px-3 py-2 text-xs font-mono text-gray-600">{{ p.number }}</td>
-              <td class="px-3 py-2 text-sm text-gray-800">{{ p.title }}</td>
-              <td class="px-3 py-2 text-xs text-gray-600">{{ p.dept }}</td>
+            <tr v-for="patent in selectedDatePatents" :key="patent.id" style="border-bottom:1px solid #F1F5F9;">
+              <td class="px-3 py-2 text-xs font-mono text-gray-600">{{ patent.number }}</td>
+              <td class="px-3 py-2 text-sm text-gray-800">{{ patent.title }}</td>
+              <td class="px-3 py-2 text-xs text-gray-600">{{ patent.dept }}</td>
             </tr>
           </tbody>
         </table>
@@ -182,3 +211,59 @@ const expiringList = computed(() => {
     </AppModal>
   </AppLayout>
 </template>
+
+<style scoped>
+.section-title {
+  color: #1F2937;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.calendar-day {
+  height: 56px;
+}
+
+.calendar-day:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.selected-day {
+  border-color: rgba(255, 122, 0, 0.55) !important;
+  background: #FFF7F0 !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 122, 0, 0.35);
+}
+
+.expiry-table thead tr {
+  background: #F1F5F9;
+  border-bottom: 1px solid #CBD5E1;
+}
+
+.expiry-table tbody tr {
+  height: 44px;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.expiry-table tbody tr:hover {
+  background: #FFF7F0;
+}
+
+.expiry-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 6px;
+  padding: 3px 9px;
+  background: rgba(255, 122, 0, 0.14);
+  color: #D97706;
+  font-size: 12px;
+  font-weight: 700;
+}
+</style>

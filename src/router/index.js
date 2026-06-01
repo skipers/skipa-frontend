@@ -3,6 +3,12 @@ import { useAuthStore } from '@/stores/auth.js'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior(to) {
+    if (to.hash) {
+      return { el: to.hash, behavior: 'smooth' }
+    }
+    return { top: 0 }
+  },
   routes: [
     { path: '/', redirect: '/login' },
     { path: '/login', component: () => import('@/views/LoginView.vue') },
@@ -21,6 +27,7 @@ const router = createRouter({
     { path: '/dept/review', component: () => import('@/views/dept/DeptReviewView.vue'), meta: { requiresAuth: true, role: 'dept' } },
     { path: '/dept/patents', component: () => import('@/views/dept/DeptPatentsView.vue'), meta: { requiresAuth: true, role: 'dept' } },
     { path: '/dept/lab', component: () => import('@/views/dept/DeptLabView.vue'), meta: { requiresAuth: true, role: 'dept' } },
+    { path: '/dept/guide', component: () => import('@/views/dept/DeptGuideView.vue'), meta: { requiresAuth: true, role: 'dept' } },
   ],
 })
 

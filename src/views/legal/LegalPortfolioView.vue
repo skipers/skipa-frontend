@@ -9,7 +9,18 @@ import { PATENTS, ANNUAL_DATA } from '@/data/patents.js'
 ChartJS.register(ArcElement, LineElement, BarElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
 
 const INDIGO_PRIMARY = '#4B6BFB'
-const DONUT_COLORS = ['#4B6BFB', '#7C3AED', '#059669', '#D97706']
+const DEPT_COLORS = {
+  반도체사업부: '#4B6BFB',
+  통신사업부: '#7C3AED',
+  에너지사업부: '#059669',
+  제조사업부: '#D97706',
+}
+const GRADE_COLORS = {
+  S: '#4B6BFB',
+  A: '#059669',
+  B: '#D97706',
+  C: '#94A3B8',
+}
 
 // 기술 분야별 히스토그램
 const techHistogramData = computed(() => {
@@ -54,7 +65,7 @@ const deptData = computed(() => {
   const values = labels.map((l) => counts[l])
   return {
     labels,
-    datasets: [{ data: values, backgroundColor: DONUT_COLORS.slice(0, labels.length), borderWidth: 2, borderColor: '#fff' }],
+    datasets: [{ data: values, backgroundColor: labels.map((label) => DEPT_COLORS[label] || '#94A3B8'), borderWidth: 2, borderColor: '#fff' }],
   }
 })
 const donutOpts = {
@@ -88,7 +99,7 @@ const gradeData = computed(() => {
   PATENTS.forEach((p) => { if (p.aiScore?.grade) counts[p.aiScore.grade]++ })
   return {
     labels: ['S등급', 'A등급', 'B등급', 'C등급'],
-    datasets: [{ data: [counts.S, counts.A, counts.B, counts.C], backgroundColor: [INDIGO_PRIMARY, '#059669', '#D97706', '#94A3B8'], borderRadius: 4 }],
+    datasets: [{ data: [counts.S, counts.A, counts.B, counts.C], backgroundColor: [GRADE_COLORS.S, GRADE_COLORS.A, GRADE_COLORS.B, GRADE_COLORS.C], borderRadius: 4 }],
   }
 })
 const barOpts = { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }

@@ -1,15 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { Bar, Pie } from 'vue-chartjs'
-import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AppCard from '@/components/ui/AppCard.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import { PATENTS } from '@/data/patents.js'
 import { useAuthStore } from '@/stores/auth.js'
-
-ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
 const auth = useAuthStore()
 
@@ -25,25 +21,6 @@ function dayDiff(dateStr) {
 const within1y = computed(() => basePatents.value.filter((p) => p.status !== '포기/만료' && new Date(p.expiryDate) > now && dayDiff(p.expiryDate) <= 1).length)
 const within3y = computed(() => basePatents.value.filter((p) => p.status !== '포기/만료' && new Date(p.expiryDate) > now && dayDiff(p.expiryDate) <= 3).length)
 const within5y = computed(() => basePatents.value.filter((p) => p.status !== '포기/만료' && new Date(p.expiryDate) > now && dayDiff(p.expiryDate) <= 5).length)
-
-const barData = computed(() => ({
-  labels: ['1년 이내', '3년 이내', '5년 이내'],
-  datasets: [{ data: [within1y.value, within3y.value, within5y.value], backgroundColor: ['#EA002C', '#FF7A00', '#94A3B8'], borderRadius: 4 }],
-}))
-const barOptions = { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-
-const pieData = computed(() => {
-  const techCounts = {}
-  basePatents.value.filter((p) => p.status !== '포기/만료').forEach((p) => { techCounts[p.techField] = (techCounts[p.techField] || 0) + 1 })
-  const labels = Object.keys(techCounts)
-  const data = labels.map((l) => techCounts[l])
-  const COLORS = ['#FF7A00', '#EA002C', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6']
-  return {
-    labels,
-    datasets: [{ data, backgroundColor: COLORS.slice(0, labels.length), borderWidth: 2, borderColor: '#fff' }],
-  }
-})
-const pieOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { size: 12 } } } } }
 
 // Calendar
 const calendarMonth = ref(new Date('2025-05-01'))
@@ -106,40 +83,35 @@ const expiringList = computed(() =>
       </AppCard>
     </div>
 
-    <div class="grid grid-cols-3 gap-4 mb-4">
-      <!-- 바 차트 -->
-      <AppCard title="기간별 만료 예정 건수">
-        <Bar :data="barData" :options="barOptions" style="max-height:200px;" />
-      </AppCard>
-
-      <!-- 파이 차트 -->
-      <AppCard title="기술 분야별 분포">
-        <Pie :data="pieData" :options="pieOptions" style="max-height:200px;" />
-      </AppCard>
-
-      <!-- 캘린더 -->
-      <AppCard title="만료 캘린더">
-        <div class="flex items-center justify-between mb-2">
-          <button @click="prevMonth" class="text-gray-400 hover:text-gray-600 cursor-pointer" style="background:none;border:none;font-size:20px;">‹</button>
-          <span class="text-sm font-semibold text-gray-700">{{ calendarLabel }}</span>
-          <button @click="nextMonth" class="text-gray-400 hover:text-gray-600 cursor-pointer" style="background:none;border:none;font-size:20px;">›</button>
+    <!-- 만료 캘린더 (전체 너비) -->
+    <AppCard title="만료 캘린더" class="mb-4">
+      <div class="flex items-center justify-between mb-4">
+        <button @click="prevMonth" class="text-gray-400 hover:text-gray-600 cursor-pointer" style="background:none;border:none;font-size:24px;">‹</button>
+        <span class="text-base font-semibold text-gray-700">{{ calendarLabel }}</span>
+        <button @click="nextMonth" class="text-gray-400 hover:text-gray-600 cursor-pointer" style="background:none;border:none;font-size:24px;">›</button>
+      </div>
+      <div class="grid grid-cols-7 text-center" style="gap:2px;">
+        <div v-for="dow in ['일','월','화','수','목','금','토']" :key="dow" class="text-xs font-semibold text-gray-400 py-2 border-b border-gray-100">{{ dow }}</div>
+        <div
+          v-for="(day, i) in calendarDays"
+          :key="i"
+          class="relative flex flex-col items-center justify-center rounded-lg py-3"
+          :class="day && expiringOnDay(day).length ? 'cursor-pointer hover:bg-orange-50' : ''"
+          @click="clickDay(day)"
+        >
+          <span
+            class="text-sm w-8 h-8 flex items-center justify-center rounded-full"
+            :class="day && expiringOnDay(day).length ? 'font-bold' : 'text-gray-500'"
+            :style="day && expiringOnDay(day).length ? 'color:#FF7A00;' : ''"
+          >{{ day }}</span>
+          <span v-if="day && expiringOnDay(day).length" class="mt-1 w-1.5 h-1.5 rounded-full" style="background:#FF7A00;" />
         </div>
-        <div class="grid grid-cols-7 gap-0.5 text-center">
-          <div v-for="dow in ['일','월','화','수','목','금','토']" :key="dow" class="text-xs text-gray-400 py-1">{{ dow }}</div>
-          <div
-            v-for="(day, i) in calendarDays"
-            :key="i"
-            class="text-xs py-1.5 rounded relative"
-            :class="day && expiringOnDay(day).length ? 'cursor-pointer font-bold' : ''"
-            :style="day && expiringOnDay(day).length ? 'background:#FFF7F0; color:#FF7A00;' : 'color:#6b7280;'"
-            @click="clickDay(day)"
-          >
-            {{ day }}
-            <span v-if="day && expiringOnDay(day).length" class="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full" style="background:#FF7A00;" />
-          </div>
-        </div>
-      </AppCard>
-    </div>
+      </div>
+      <div class="mt-3 flex items-center gap-2 text-xs text-gray-400">
+        <span class="inline-block w-2 h-2 rounded-full" style="background:#FF7A00;"></span>
+        만료 예정 특허 있음 · 날짜를 클릭하면 목록을 확인할 수 있습니다
+      </div>
+    </AppCard>
 
     <!-- 목록 -->
     <AppCard title="만료 예정 특허 목록">

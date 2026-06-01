@@ -1,15 +1,12 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Doughnut } from 'vue-chartjs'
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
+import { CalendarDays } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AppCard from '@/components/ui/AppCard.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import { PATENTS } from '@/data/patents.js'
 import { useAuthStore } from '@/stores/auth.js'
-
-ChartJS.register(ArcElement, Tooltip, Legend)
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -20,7 +17,6 @@ const myPatents = computed(() => PATENTS.filter((p) => p.dept === auth.currentUs
 const quarterTargets = computed(() =>
   myPatents.value.filter((p) => p.evaluation?.quarter === '2025-Q1' && p.evaluation?.status !== '요청 전')
 )
-
 const submitted = computed(() => quarterTargets.value.filter((p) => p.evaluation?.replyDate).length)
 const pending = computed(() => quarterTargets.value.length - submitted.value)
 const submissionPct = computed(() => (quarterTargets.value.length > 0 ? Math.round((submitted.value / quarterTargets.value.length) * 100) : 0))
@@ -40,30 +36,13 @@ function aiOpinion(patent) {
 const aiMaintain = computed(() => quarterTargets.value.filter((p) => aiOpinion(p) === '유지 권고').length)
 const aiRecheck = computed(() => quarterTargets.value.filter((p) => aiOpinion(p) === '재검토 필요').length)
 const aiDrop = computed(() => quarterTargets.value.filter((p) => aiOpinion(p) === '포기 권고').length)
+const aiSegmentTotal = computed(() => quarterTargets.value.length || 1)
 
 const reviewPreview = computed(() =>
   [...quarterTargets.value]
     .sort((a, b) => (a.evaluation?.dueDate || '').localeCompare(b.evaluation?.dueDate || ''))
     .slice(0, 5)
 )
-
-const highPotentialCount = computed(() => quarterTargets.value.filter((p) => (p.projects || []).some((project) => project.relevance >= 90)).length)
-const riskyCount = computed(() => quarterTargets.value.filter((p) => (p.similarPatents || []).some((sp) => sp.similarity >= 80)).length)
-const lowEfficiencyCount = computed(() => quarterTargets.value.filter((p) => aiScore(p) < 70 && p.status === '등록').length)
-
-const submissionDonutData = computed(() => ({
-  labels: ['제출 완료', '미제출'],
-  datasets: [{ data: [submitted.value, pending.value], backgroundColor: ['#10B981', '#94A3B8'], borderWidth: 2, borderColor: '#fff' }],
-}))
-const donutOpts = {
-  responsive: true,
-  maintainAspectRatio: false,
-  cutout: '70%',
-  plugins: {
-    legend: { display: false },
-    tooltip: { enabled: false },
-  },
-}
 
 const reviewStart = new Date('2026-03-01')
 const deadline = new Date('2026-03-31')
@@ -92,53 +71,61 @@ function opinionBadgeStyle(opinion) {
   return 'background:rgba(234,0,44,0.1); color:#EA002C; border:1px solid rgba(234,0,44,0.25);'
 }
 
-function goInsight(type) {
-  router.push({ path: '/dept/patents', query: { insight: type } })
+function segmentWidth(count) {
+  return `${(count / aiSegmentTotal.value) * 100}%`
 }
 </script>
 
 <template>
   <AppLayout :title="deptDisplayName">
-    <div class="mb-4 rounded-xl px-4 py-3" style="border:1px solid #E2E8F0; background:#FFFFFF;">
+    <div class="mb-4 rounded-lg px-4 py-3" style="border:1px solid #E2E8F0; background:#F8FAFC;">
       <div class="flex items-center justify-between gap-4">
-        <div>
-          <div v-if="dday !== null" class="text-sm font-semibold text-gray-700">2026-03-01 ~ 2026-03-31 재평가 진행 중</div>
-          <div v-else class="text-sm font-semibold text-gray-700">현재 재평가 기간이 아닙니다.</div>
-          <div v-if="dday === null" class="text-xs text-gray-500 mt-1">다음 재평가 기간: 2026-03-01 ~ 2026-03-31</div>
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style="background:#FFFFFF; border:1px solid #E2E8F0; color:#FF7A00;">
+            <CalendarDays class="h-5 w-5" />
+          </div>
+          <div>
+            <div v-if="dday !== null" class="text-sm font-semibold text-gray-700">2026-03-01 ~ 2026-03-31 재평가 진행 중</div>
+            <div v-else class="text-sm font-semibold text-gray-700">현재 재평가 기간이 아닙니다.</div>
+            <div v-if="dday === null" class="text-xs text-gray-500 mt-1">다음 재평가 기간: 2026-03-01 ~ 2026-03-31</div>
+          </div>
         </div>
 
         <div class="flex items-center gap-4">
           <div v-if="dday !== null" class="text-3xl font-bold" style="color:#FF7A00;">D-{{ dday }}</div>
-          <button @click="router.push('/dept/review')" class="text-sm font-semibold cursor-pointer" style="background:transparent; border:none; color:#FF7A00;">일정 재평가 자세히 보기 ></button>
+          <button @click="router.push('/dept/review')" class="text-sm font-semibold cursor-pointer" style="background:transparent; border:none; color:#FF7A00;">재평가 일정 보기 ></button>
         </div>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
-      <AppCard padding="p-4">
-        <div class="text-xs text-gray-500">📌 이번 분기 검토 대상</div>
-        <div class="text-3xl font-bold text-gray-800 mt-1">{{ quarterTargets.length }}건</div>
-        <button @click="router.push('/dept/review')" class="mt-2 text-xs font-semibold cursor-pointer" style="background:transparent; border:none; color:#4B5563;">내 검토 목록 보기 ></button>
-      </AppCard>
-      <AppCard padding="p-4" style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2);">
-        <div class="text-xs" style="color:#059669;">✅ AI 유지 권고</div>
-        <div class="text-3xl font-bold mt-1" style="color:#059669;">{{ aiMaintain }}건</div>
-        <div class="text-xs text-gray-500 mt-1">사업 활용 가능성이 높은 건</div>
-      </AppCard>
-      <AppCard padding="p-4" style="background:rgba(255,122,0,0.06); border:1px solid rgba(255,122,0,0.2);">
-        <div class="text-xs" style="color:#D97706;">⚠ 재검토 필요</div>
-        <div class="text-3xl font-bold mt-1" style="color:#D97706;">{{ aiRecheck }}건</div>
-        <div class="text-xs text-gray-500 mt-1">추가 검토가 필요한 건</div>
-      </AppCard>
-      <AppCard padding="p-4" style="background:rgba(234,0,44,0.06); border:1px solid rgba(234,0,44,0.2);">
-        <div class="text-xs" style="color:#EA002C;">⛔ AI 포기 권고</div>
-        <div class="text-3xl font-bold mt-1" style="color:#EA002C;">{{ aiDrop }}건</div>
-        <div class="text-xs text-gray-500 mt-1">비용 대비 효율이 낮은 건</div>
-      </AppCard>
-    </div>
+    <AppCard class="mb-4" padding="p-4">
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <div class="text-base font-semibold text-gray-800">이번 분기 AI 검토 결과</div>
+        <div class="text-sm text-gray-500">전체 {{ quarterTargets.length }}건</div>
+      </div>
+      <div class="flex h-3 w-full overflow-hidden rounded-full bg-gray-200">
+        <div v-if="aiMaintain > 0" class="h-full" :style="{ width: segmentWidth(aiMaintain), background: '#10B981' }"></div>
+        <div v-if="aiRecheck > 0" class="h-full" :style="{ width: segmentWidth(aiRecheck), background: '#FF7A00' }"></div>
+        <div v-if="aiDrop > 0" class="h-full" :style="{ width: segmentWidth(aiDrop), background: '#EA002C' }"></div>
+      </div>
+      <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600">
+        <div class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 rounded-full" style="background:#10B981;"></span>
+          <span>유지 권고 {{ aiMaintain }}건</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 rounded-full" style="background:#FF7A00;"></span>
+          <span>재검토 필요 {{ aiRecheck }}건</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 rounded-full" style="background:#EA002C;"></span>
+          <span>포기 권고 {{ aiDrop }}건</span>
+        </div>
+      </div>
+    </AppCard>
 
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
-      <AppCard class="xl:col-span-2" padding="p-4">
+    <div class="mb-4">
+      <AppCard padding="p-4">
         <div class="flex items-center justify-between mb-3">
           <div class="text-base font-semibold text-gray-800">이번 분기 검토 대상 특허</div>
           <button @click="router.push('/dept/review')" class="text-sm font-semibold cursor-pointer" style="background:transparent; border:none; color:#FF7A00;">전체 보기 ></button>
@@ -164,7 +151,12 @@ function goInsight(type) {
                 @mouseenter="$event.currentTarget.style.background='#FFF7F0';"
                 @mouseleave="$event.currentTarget.style.background='';"
               >
-                <td class="px-3 py-2.5 text-sm text-gray-800 max-w-[220px] truncate">{{ p.title }}</td>
+                <td class="px-3 py-2.5">
+                  <div class="text-sm text-gray-800">{{ p.title }}</div>
+                  <div v-if="p.aiTags?.length" class="flex flex-wrap gap-1 mt-1">
+                    <span v-for="tag in p.aiTags" :key="tag" style="background:#F1F5F9;color:#64748B;font-size:11px;border-radius:4px;padding:2px 6px;">{{ tag }}</span>
+                  </div>
+                </td>
                 <td class="px-3 py-2.5 text-xs font-mono text-gray-600">{{ p.number }}</td>
                 <td class="px-3 py-2.5">
                   <span class="inline-flex px-2 py-1 rounded text-xs font-semibold" :style="opinionBadgeStyle(aiOpinion(p))">{{ aiOpinion(p) }}</span>
@@ -184,42 +176,25 @@ function goInsight(type) {
           </table>
         </div>
       </AppCard>
-
-      <AppCard padding="p-4">
-        <div class="text-base font-semibold text-gray-800 mb-3">AI 인사이트</div>
-        <div class="space-y-2">
-          <button @click="goInsight('high-potential')" class="w-full text-left p-3 rounded-lg cursor-pointer" style="border:1px solid rgba(16,185,129,0.2); background:rgba(16,185,129,0.06);">
-            <div class="text-sm font-semibold text-gray-800">활용 가능성이 높은 특허</div>
-            <div class="text-xs text-gray-500 mt-0.5">내부 프로젝트 연관 특허 {{ highPotentialCount }}건</div>
-          </button>
-          <button @click="goInsight('risky')" class="w-full text-left p-3 rounded-lg cursor-pointer" style="border:1px solid rgba(255,122,0,0.2); background:rgba(255,122,0,0.06);">
-            <div class="text-sm font-semibold text-gray-800">주의가 필요한 특허</div>
-            <div class="text-xs text-gray-500 mt-0.5">유사 특허 증가 분야 {{ riskyCount }}건</div>
-          </button>
-          <button @click="goInsight('low-efficiency')" class="w-full text-left p-3 rounded-lg cursor-pointer" style="border:1px solid rgba(234,0,44,0.2); background:rgba(234,0,44,0.06);">
-            <div class="text-sm font-semibold text-gray-800">비용 대비 효율 검토 필요</div>
-            <div class="text-xs text-gray-500 mt-0.5">유지 비용 대비 활용도 낮은 특허 {{ lowEfficiencyCount }}건</div>
-          </button>
-        </div>
-      </AppCard>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
       <AppCard padding="p-4">
-        <div class="flex items-center justify-between mb-2">
-          <div class="text-base font-semibold text-gray-800">의견 제출 현황</div>
-          <button @click="router.push('/dept/review')" class="text-sm font-semibold cursor-pointer" style="background:transparent; border:none; color:#FF7A00;">의견 제출 내역 보기 ></button>
-        </div>
-        <div class="flex items-center justify-center" style="height:220px;">
-          <div class="relative" style="width:220px; height:220px;">
-            <Doughnut :data="submissionDonutData" :options="donutOpts" />
-            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <div class="text-xs text-gray-500">진행률</div>
-              <div class="text-2xl font-bold" style="color:#FF7A00;">{{ submissionPct }}%</div>
-              <div class="text-[11px] text-gray-500 mt-1">{{ submitted }} / {{ quarterTargets.length }} 완료</div>
-            </div>
+        <div class="mb-4 text-base font-semibold text-gray-800">제출 현황</div>
+        <div class="mb-4 grid grid-cols-2 gap-3">
+          <div>
+            <div class="text-xs font-medium text-gray-500">완료</div>
+            <div class="mt-1 text-3xl font-bold" style="color:#FF7A00;">{{ submitted }}건</div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-gray-500">미제출</div>
+            <div class="mt-1 text-3xl font-bold text-gray-500">{{ pending }}건</div>
           </div>
         </div>
+        <div class="flex h-3 w-full overflow-hidden rounded-full bg-gray-200">
+          <div class="h-full rounded-full" :style="{ width: `${submissionPct}%`, background: '#FF7A00' }"></div>
+        </div>
+        <div class="mt-3 text-sm text-gray-500">{{ quarterTargets.length }}건 중 {{ submitted }}건 완료 ({{ submissionPct }}%)</div>
       </AppCard>
 
       <AppCard padding="p-4">

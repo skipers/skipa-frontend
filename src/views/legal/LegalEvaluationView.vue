@@ -114,8 +114,13 @@ function confirmAssign() {
             @mouseleave="$event.currentTarget.style.background='';"
           >
             <td class="px-4 py-3 text-xs font-mono text-gray-600">{{ p.number }}</td>
-            <td class="px-4 py-3 text-gray-800 font-medium max-w-xs truncate">{{ p.title }}</td>
-            <td class="px-4 py-3 text-xs text-gray-600">{{ p.dept }}</td>
+            <td class="px-4 py-3">
+              <div class="font-medium text-gray-800">{{ p.title }}</div>
+              <div v-if="p.aiTags?.length" class="flex flex-wrap gap-1 mt-1">
+                <span v-for="tag in p.aiTags" :key="tag" style="background:#F1F5F9;color:#64748B;font-size:11px;border-radius:4px;padding:2px 6px;">{{ tag }}</span>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-xs text-gray-600">{{ p.evaluation.status === '요청 전' ? '-' : p.dept }}</td>
             <td class="px-4 py-3"><StatusBadge :status="p.evaluation.status" /></td>
             <td class="px-4 py-3 text-xs text-gray-500">{{ p.evaluation.requestDate || '-' }}</td>
             <td class="px-4 py-3 text-xs text-gray-500">{{ p.evaluation.dueDate || '-' }}</td>

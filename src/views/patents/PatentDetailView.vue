@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Bot, Maximize2, Minimize2, Send, X } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import { PATENTS } from '@/data/patents.js'
@@ -28,12 +29,57 @@ function submitOpinion() {
 function goBack() {
   router.back()
 }
+
+// Chatbot
+const chatbotOpen = ref(false)
+const chatbotExpanded = ref(false)
+const chatMessages = ref([])
+const chatInput = ref('')
+const chatScrollEl = ref(null)
+const typingIndicator = ref(false)
+
+const panelWidth = computed(() => (chatbotExpanded.value ? '100vw' : '400px'))
+const contentOffset = computed(() => (chatbotOpen.value && !chatbotExpanded.value ? panelWidth.value : '0px'))
+
+function toggleChatbot() {
+  chatbotOpen.value = !chatbotOpen.value
+  if (chatbotOpen.value && chatMessages.value.length === 0) {
+    chatMessages.value.push({ role: 'assistant', text: `안녕하세요! "${patent.value?.title}" 특허에 대해 궁금한 점을 질문해주세요.` })
+  }
+  if (!chatbotOpen.value) chatbotExpanded.value = false
+}
+
+function toggleExpand() {
+  chatbotExpanded.value = !chatbotExpanded.value
+}
+
+async function sendChat() {
+  const message = chatInput.value.trim()
+  if (!message || typingIndicator.value) return
+
+  chatMessages.value.push({ role: 'user', text: message })
+  chatInput.value = ''
+  typingIndicator.value = true
+  await nextTick()
+  if (chatScrollEl.value) chatScrollEl.value.scrollTop = chatScrollEl.value.scrollHeight
+
+  setTimeout(async () => {
+    typingIndicator.value = false
+    chatMessages.value.push({
+      role: 'assistant',
+      text: '해당 특허의 기술성 점수가 높은 이유는 선행 기술 대비 독창적인 구조를 채택했기 때문입니다.',
+    })
+    await nextTick()
+    if (chatScrollEl.value) chatScrollEl.value.scrollTop = chatScrollEl.value.scrollHeight
+  }, 1000)
+}
 </script>
 
 <template>
   <AppLayout :title="patent?.title || '특허 상세'">
     <div v-if="!patent" class="text-center py-20 text-gray-400">특허를 찾을 수 없습니다.</div>
     <template v-else>
+      <div class="transition-[padding-right] duration-300 ease-in-out" :style="{ paddingRight: contentOffset }">
       <!-- 헤더 카드 -->
       <div class="bg-white rounded-xl p-5 mb-4" style="border:1px solid #E2E8F0;">
         <div class="flex items-start justify-between gap-4">
@@ -47,6 +93,9 @@ function goBack() {
               <StatusBadge :status="patent.status" />
               <span class="text-xs text-gray-500">{{ patent.country }}</span>
               <span class="text-xs text-gray-500">{{ patent.dept }}</span>
+            </div>
+            <div v-if="patent.aiTags?.length" class="flex flex-wrap gap-1 mt-2">
+              <span v-for="tag in patent.aiTags" :key="tag" style="background:#F1F5F9;color:#64748B;font-size:11px;border-radius:4px;padding:2px 6px;">{{ tag }}</span>
             </div>
           </div>
           <div class="text-right shrink-0">
@@ -239,6 +288,110 @@ function goBack() {
           </div>
         </div>
       </div>
+      </div><!-- end transition wrapper -->
+
+      <!-- 챗봇 플로팅 버튼 -->
+      <button
+        v-if="!chatbotOpen"
+        @click="toggleChatbot"
+        class="fixed bottom-8 right-8 z-[230] flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[0_12px_30px_rgba(255,122,0,0.35)] transition-transform duration-200 hover:scale-105"
+        style="background:#FF7A00; border:none;"
+        aria-label="챗봇 열기"
+      >
+        <Bot class="h-6 w-6" />
+      </button>
+
+      <!-- 챗봇 패널 -->
+      <transition name="chatbot-panel">
+        <aside
+          v-if="chatbotOpen"
+          class="fixed right-0 top-0 bottom-0 z-[240] flex flex-col overflow-hidden bg-white"
+          :style="{ width: panelWidth, borderLeft: '1px solid #E2E8F0', transition: 'width 0.3s ease, transform 0.3s ease' }"
+        >
+          <div class="flex items-center justify-between gap-3 px-4 py-3" style="background:#FF7A00; color:#fff;">
+            <button @click="toggleExpand" class="flex items-center gap-2 rounded-md px-3 py-2 text-white transition-transform hover:scale-105" style="background:rgba(255,255,255,0.16); border:none;">
+              <component :is="chatbotExpanded ? Minimize2 : Maximize2" class="h-4 w-4" />
+              <span class="text-xs font-semibold">{{ chatbotExpanded ? '축소' : '확대' }}</span>
+            </button>
+            <div class="text-sm font-bold tracking-wide">SKIPA AI</div>
+            <button @click="toggleChatbot" class="flex items-center gap-2 rounded-md px-3 py-2 text-white transition-transform hover:scale-105" style="background:rgba(255,255,255,0.16); border:none;">
+              <X class="h-4 w-4" />
+              <span class="text-xs font-semibold">닫기</span>
+            </button>
+          </div>
+
+          <div ref="chatScrollEl" class="flex-1 overflow-y-auto bg-white p-4">
+            <div class="mx-auto flex h-full max-w-3xl flex-col gap-3">
+              <div
+                v-for="(msg, index) in chatMessages"
+                :key="index"
+                class="flex"
+                :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
+              >
+                <div
+                  class="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
+                  :style="msg.role === 'user'
+                    ? 'background:#FF7A00; color:#fff; border-bottom-right-radius:4px;'
+                    : 'background:#F8FAFC; color:#374151; border:1px solid #E2E8F0; border-bottom-left-radius:4px;'"
+                >{{ msg.text }}</div>
+              </div>
+              <div v-if="typingIndicator" class="flex justify-start">
+                <div class="flex items-center gap-1 rounded-2xl bg-gray-100 px-4 py-3" style="border:1px solid #E2E8F0; border-bottom-left-radius:4px;">
+                  <span class="typing-dot" />
+                  <span class="typing-dot" />
+                  <span class="typing-dot" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-100 bg-white p-3">
+            <div class="mx-auto flex max-w-3xl gap-2">
+              <input
+                v-model="chatInput"
+                placeholder="질문을 입력하세요..."
+                class="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
+                style="border:1px solid #E2E8F0;"
+                @keyup.enter.prevent="sendChat"
+              />
+              <button
+                @click="sendChat"
+                :disabled="typingIndicator"
+                class="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white"
+                :style="!typingIndicator ? 'background:#FF7A00; border:none;' : 'background:#D1D5DB; border:none; cursor:not-allowed;'"
+              >
+                <Send class="h-4 w-4" />
+                전송
+              </button>
+            </div>
+          </div>
+        </aside>
+      </transition>
     </template>
   </AppLayout>
 </template>
+
+<style scoped>
+.chatbot-panel-enter-active,
+.chatbot-panel-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.chatbot-panel-enter-from,
+.chatbot-panel-leave-to {
+  opacity: 0;
+  transform: translateX(100%);
+}
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #FF7A00;
+  animation: typingPulse 1s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typingPulse {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-3px); opacity: 1; }
+}
+</style>
