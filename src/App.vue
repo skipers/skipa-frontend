@@ -15,7 +15,7 @@
 body {
   font-family: 'Pretendard', 'Apple SD Gothic Neo', -apple-system, sans-serif;
   background: #f5f4f0;
-  color: #0f172a;
+  color: var(--color-text);
   -webkit-font-smoothing: antialiased;
 }
 

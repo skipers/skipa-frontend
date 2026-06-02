@@ -280,28 +280,28 @@ onMounted(load)
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: #10b981;
+  color: var(--c-green-400);
   margin: 0 0 5px;
 }
 
 .greeting__title {
   font-size: 24px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0 0 4px;
   letter-spacing: -0.02em;
 }
-.greeting__title span { color: #059669; }
+.greeting__title span { color: var(--c-green-500); }
 
-.greeting__desc { font-size: 13.5px; color: #64748b; margin: 0; }
+.greeting__desc { font-size: 13.5px; color: var(--color-text-muted); margin: 0; }
 
 .btn-goto {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #0f172a;
-  color: #fff;
+  background: var(--color-text);
+  color: var(--color-surface);
   border-radius: 10px;
   text-decoration: none;
   font-size: 13.5px;
@@ -309,7 +309,7 @@ onMounted(load)
   transition: background .15s, transform .12s;
   white-space: nowrap;
 }
-.btn-goto:hover { background: #1e293b; transform: translateY(-1px); }
+.btn-goto:hover { background: var(--color-navy-hover); transform: translateY(-1px); }
 
 /* ── 상단 행 ─────────────────────────────────────── */
 .top-row {
@@ -328,8 +328,8 @@ onMounted(load)
 
 /* ── D-Day 카드 ──────────────────────────────────── */
 .dday-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 18px;
   padding: 24px 20px;
   display: flex;
@@ -341,8 +341,8 @@ onMounted(load)
 }
 
 .dday-card--urgent {
-  background: linear-gradient(145deg, #fff5f5, #fff);
-  border-color: #fecaca;
+  background: linear-gradient(145deg, var(--c-red-50), var(--color-surface));
+  border-color: var(--color-danger-border);
 }
 
 .dday-card__label {
@@ -350,7 +350,7 @@ onMounted(load)
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .06em;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
 }
 
 .dday-card__main {
@@ -362,7 +362,7 @@ onMounted(load)
 .dday-card__prefix {
   font-size: 42px;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--color-text);
   letter-spacing: -0.04em;
   line-height: 1;
 }
@@ -370,17 +370,17 @@ onMounted(load)
 .dday-card__num {
   font-size: 42px;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--color-text);
   letter-spacing: -0.04em;
   line-height: 1;
 }
 
 .dday-card--urgent .dday-card__num,
-.dday-card--urgent .dday-card__prefix { color: #dc2626; }
+.dday-card--urgent .dday-card__prefix { color: var(--color-danger); }
 
 .dday-card__date {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   margin: 0;
 }
 
@@ -389,8 +389,8 @@ onMounted(load)
   align-items: center;
   gap: 5px;
   padding: 5px 10px;
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
   border-radius: 7px;
   font-size: 11.5px;
   font-weight: 600;
@@ -405,8 +405,8 @@ onMounted(load)
 }
 
 .status-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 14px 18px;
   display: flex;
@@ -433,7 +433,7 @@ onMounted(load)
 
 .status-card__label {
   font-size: 12px;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-weight: 500;
   margin: 0;
   margin-left: auto;
@@ -441,8 +441,8 @@ onMounted(load)
 
 /* ── 제출 진행률 카드 ────────────────────────────── */
 .submit-progress-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 20px;
   display: flex;
@@ -457,18 +457,18 @@ onMounted(load)
   align-items: center;
 }
 
-.submit-progress-card__title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
-.submit-progress-card__pct   { font-size: 15px; font-weight: 800; color: #10b981; }
+.submit-progress-card__title { font-size: 14px; font-weight: 700; color: var(--color-text); margin: 0; }
+.submit-progress-card__pct   { font-size: 15px; font-weight: 800; color: var(--c-green-400); }
 
 .progress-track {
   height: 8px;
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   border-radius: 4px;
   overflow: hidden;
 }
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #059669, #34d399);
+  background: linear-gradient(90deg, var(--c-green-500), var(--c-green-300));
   border-radius: 4px;
   transition: width .6s cubic-bezier(.4,0,.2,1);
 }
@@ -477,13 +477,13 @@ onMounted(load)
   display: flex;
   justify-content: space-between;
   font-size: 12.5px;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
-.submit-progress-card__detail strong { color: #0f172a; font-weight: 700; }
+.submit-progress-card__detail strong { color: var(--color-text); font-weight: 700; }
 
 /* 미제출 미리보기 */
 .pending-preview {
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--color-surface-muted);
   padding-top: 12px;
   display: flex;
   flex-direction: column;
@@ -495,7 +495,7 @@ onMounted(load)
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .04em;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   margin: 0 0 4px;
 }
 
@@ -504,17 +504,17 @@ onMounted(load)
   align-items: center;
   gap: 8px;
   padding: 7px 10px;
-  background: #f8fafc;
+  background: var(--color-surface-hover);
   border-radius: 7px;
   cursor: pointer;
   transition: background .12s;
 }
-.pending-item:hover { background: #f1f5f9; }
+.pending-item:hover { background: var(--color-surface-muted); }
 
 .pending-item__dot {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: #f59e0b;
+  background: var(--color-warn);
   flex-shrink: 0;
 }
 
@@ -522,7 +522,7 @@ onMounted(load)
   flex: 1;
   font-size: 12.5px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -531,7 +531,7 @@ onMounted(load)
 .pending-more {
   font-size: 12.5px;
   font-weight: 600;
-  color: #6366f1;
+  color: var(--color-primary);
   text-decoration: none;
   padding: 4px 10px;
   text-align: center;
@@ -548,8 +548,8 @@ onMounted(load)
 
 /* ── 공통 카드 ────────────────────────────────────── */
 .card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 20px;
   display: flex;
@@ -558,14 +558,14 @@ onMounted(load)
 }
 
 .card__header { display: flex; align-items: center; justify-content: space-between; }
-.card__title  { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
-.card__link   { font-size: 12.5px; font-weight: 500; color: #6366f1; text-decoration: none; }
-.card__link:hover { color: #4338ca; }
-.card__empty  { font-size: 13px; color: #94a3b8; padding: 24px 0; text-align: center; }
+.card__title  { font-size: 14px; font-weight: 700; color: var(--color-text); margin: 0; }
+.card__link   { font-size: 12.5px; font-weight: 500; color: var(--color-primary); text-decoration: none; }
+.card__link:hover { color: var(--color-primary-darker); }
+.card__empty  { font-size: 13px; color: var(--color-text-subtle); padding: 24px 0; text-align: center; }
 .card__skel   { display: flex; flex-direction: column; gap: 8px; }
 .skel-row {
   height: 40px; border-radius: 8px;
-  background: linear-gradient(90deg, #f1f5f9 25%, #e8edf5 50%, #f1f5f9 75%);
+  background: linear-gradient(90deg, var(--color-surface-muted) 25%, var(--c-slate-150) 50%, var(--color-surface-muted) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -580,7 +580,7 @@ onMounted(load)
   justify-content: space-between;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid #f8fafc;
+  border-bottom: 1px solid var(--color-surface-hover);
 }
 .submission-item:last-child { border-bottom: none; }
 
@@ -600,24 +600,24 @@ onMounted(load)
   font-size: 14px;
   flex-shrink: 0;
 }
-.sub-icon--keep    { background: #f0fdf4; }
-.sub-icon--sell    { background: #eef2ff; }
-.sub-icon--dispose { background: #fef2f2; }
+.sub-icon--keep    { background: var(--color-success-bg); }
+.sub-icon--sell    { background: var(--color-primary-bg); }
+.sub-icon--dispose { background: var(--color-danger-bg); }
 
 .submission-item__title {
-  font-size: 13px; font-weight: 600; color: #0f172a;
+  font-size: 13px; font-weight: 600; color: var(--color-text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   margin: 0 0 2px;
 }
-.submission-item__date { font-size: 11.5px; color: #94a3b8; margin: 0; }
+.submission-item__date { font-size: 11.5px; color: var(--color-text-subtle); margin: 0; }
 
 .decision-badge {
   padding: 3px 9px; border-radius: 6px;
   font-size: 12px; font-weight: 700; flex-shrink: 0;
 }
-.decision-badge--keep    { background: #f0fdf4; color: #15803d; }
-.decision-badge--sell    { background: #eef2ff; color: #4338ca; }
-.decision-badge--dispose { background: #fef2f2; color: #dc2626; }
+.decision-badge--keep    { background: var(--color-success-bg); color: var(--color-success-dark); }
+.decision-badge--sell    { background: var(--color-primary-bg); color: var(--color-primary-darker); }
+.decision-badge--dispose { background: var(--color-danger-bg); color: var(--color-danger); }
 
 /* ── 담당 특허 현황 ───────────────────────────────── */
 .patent-stats { display: flex; flex-direction: column; gap: 10px; }
@@ -625,14 +625,14 @@ onMounted(load)
 .patent-stat { display: flex; flex-direction: column; gap: 5px; }
 
 .patent-stat__bar-wrap {
-  height: 7px; background: #f1f5f9; border-radius: 4px; overflow: hidden;
+  height: 7px; background: var(--color-surface-muted); border-radius: 4px; overflow: hidden;
 }
 .patent-stat__bar {
   height: 100%; border-radius: 4px;
   transition: width .7s cubic-bezier(.4,0,.2,1);
 }
 .patent-stat__info { display: flex; justify-content: space-between; align-items: center; }
-.patent-stat__label { font-size: 12.5px; color: #374151; font-weight: 500; }
+.patent-stat__label { font-size: 12.5px; color: var(--color-text-secondary); font-weight: 500; }
 .patent-stat__count { font-size: 12.5px; font-weight: 700; }
 
 /* ── Lab 프로모 ──────────────────────────────────── */
@@ -641,26 +641,26 @@ onMounted(load)
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: linear-gradient(135deg, #fafbff, #f5f3ff);
-  border: 1px solid #e0e7ff;
+  background: linear-gradient(135deg, var(--color-surface-soft), var(--c-primary-50));
+  border: 1px solid var(--color-primary-border);
   border-radius: 12px;
   text-decoration: none;
   margin-top: 4px;
   transition: border-color .15s, background .15s;
 }
-.lab-promo:hover { border-color: #c7d2fe; background: #f0edff; }
+.lab-promo:hover { border-color: var(--c-primary-200); background: var(--c-primary-50); }
 
 .lab-promo__icon {
   width: 36px; height: 36px;
-  background: #eef2ff;
+  background: var(--color-primary-bg);
   border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6366f1;
+  color: var(--color-primary);
   flex-shrink: 0;
 }
 
-.lab-promo__title { font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
-.lab-promo__desc  { font-size: 12px; color: #64748b; margin: 0; }
+.lab-promo__title { font-size: 13.5px; font-weight: 700; color: var(--color-text); margin: 0 0 2px; }
+.lab-promo__desc  { font-size: 12px; color: var(--color-text-muted); margin: 0; }
 </style>

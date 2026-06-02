@@ -399,19 +399,19 @@ async function scrollBottom() {
 }
 .page-header__eyebrow {
   font-size: 12px; font-weight: 600; letter-spacing: .06em;
-  text-transform: uppercase; color: #6366f1; margin: 0 0 5px;
+  text-transform: uppercase; color: var(--color-primary); margin: 0 0 5px;
 }
-.page-header__title { font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 4px; letter-spacing: -0.02em; }
-.page-header__desc  { font-size: 13.5px; color: #64748b; margin: 0; }
+.page-header__title { font-size: 22px; font-weight: 700; color: var(--color-text); margin: 0 0 4px; letter-spacing: -0.02em; }
+.page-header__desc  { font-size: 13.5px; color: var(--color-text-muted); margin: 0; }
 
 .btn-new-chat {
   display: flex; align-items: center; gap: 7px;
   padding: 9px 16px;
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 9px;
-  font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; color: #374151;
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 9px;
+  font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; color: var(--color-text-secondary);
   transition: background .13s;
 }
-.btn-new-chat:hover { background: #f8fafc; }
+.btn-new-chat:hover { background: var(--color-surface-hover); }
 
 /* ── 레이아웃 ─────────────────────────────────────── */
 .lab-layout {
@@ -425,8 +425,8 @@ async function scrollBottom() {
 .history-sidebar {
   width: 220px;
   flex-shrink: 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 16px;
   display: flex;
@@ -438,7 +438,7 @@ async function scrollBottom() {
 .history-sidebar__title {
   font-size: 11.5px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .06em;
-  color: #94a3b8; margin: 0;
+  color: var(--color-text-subtle); margin: 0;
 }
 
 .history-list { display: flex; flex-direction: column; gap: 4px; }
@@ -450,40 +450,40 @@ async function scrollBottom() {
   cursor: pointer;
   transition: background .12s;
 }
-.history-item:hover { background: #f8fafc; }
-.history-item--active { background: #eef2ff; }
+.history-item:hover { background: var(--color-surface-hover); }
+.history-item--active { background: var(--color-primary-bg); }
 
 .history-item__icon {
   width: 28px; height: 28px;
-  background: #f1f5f9; border-radius: 7px;
+  background: var(--color-surface-muted); border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
-  color: #64748b; flex-shrink: 0;
+  color: var(--color-text-muted); flex-shrink: 0;
 }
-.history-item--active .history-item__icon { background: #e0e7ff; color: #6366f1; }
+.history-item--active .history-item__icon { background: var(--color-primary-border); color: var(--color-primary); }
 
 .history-item__info { flex: 1; min-width: 0; }
 .history-item__title {
-  font-size: 12.5px; font-weight: 600; color: #0f172a;
+  font-size: 12.5px; font-weight: 600; color: var(--color-text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 0 2px;
 }
-.history-item__date { font-size: 11px; color: #94a3b8; margin: 0; }
+.history-item__date { font-size: 11px; color: var(--color-text-subtle); margin: 0; }
 
 .history-item__del {
-  background: none; border: none; cursor: pointer; color: #cbd5e1;
+  background: none; border: none; cursor: pointer; color: var(--c-slate-300);
   display: none; padding: 2px; border-radius: 4px;
   transition: color .12s, background .12s;
 }
 .history-item:hover .history-item__del { display: flex; }
-.history-item__del:hover { color: #ef4444; background: #fef2f2; }
+.history-item__del:hover { color: var(--color-danger-light); background: var(--color-danger-bg); }
 
-.history-empty { padding: 20px 0; text-align: center; font-size: 12.5px; color: #cbd5e1; }
+.history-empty { padding: 20px 0; text-align: center; font-size: 12.5px; color: var(--c-slate-300); }
 
 /* ── 채팅 영역 ───────────────────────────────────── */
 .chat-area {
   flex: 1;
   min-width: 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   display: flex;
   flex-direction: column;
@@ -504,13 +504,13 @@ async function scrollBottom() {
 
 .chat-welcome__icon {
   width: 60px; height: 60px;
-  background: linear-gradient(145deg, #eef2ff, #e0e7ff);
+  background: linear-gradient(145deg, var(--color-primary-bg), var(--color-primary-border));
   border-radius: 16px;
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 4px;
 }
-.chat-welcome__title { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0; }
-.chat-welcome__desc  { font-size: 13.5px; color: #64748b; line-height: 1.7; margin: 0; }
+.chat-welcome__title { font-size: 18px; font-weight: 700; color: var(--color-text); margin: 0; }
+.chat-welcome__desc  { font-size: 13.5px; color: var(--color-text-muted); line-height: 1.7; margin: 0; }
 
 .quick-start {
   display: grid;
@@ -524,12 +524,12 @@ async function scrollBottom() {
 .quick-start-card {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 14px;
-  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
-  cursor: pointer; font-size: 13px; color: #374151; font-weight: 500;
+  background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 10px;
+  cursor: pointer; font-size: 13px; color: var(--color-text-secondary); font-weight: 500;
   text-align: left;
   transition: background .13s, border-color .13s;
 }
-.quick-start-card:hover { background: #f1f5f9; border-color: #cbd5e1; }
+.quick-start-card:hover { background: var(--color-surface-muted); border-color: var(--c-slate-300); }
 .quick-start-card__emoji { font-size: 18px; flex-shrink: 0; }
 
 /* 메시지 목록 */
@@ -557,7 +557,7 @@ async function scrollBottom() {
 
 .message__avatar {
   width: 30px; height: 30px; flex-shrink: 0;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--c-violet-700));
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   margin-top: 2px;
@@ -572,7 +572,7 @@ async function scrollBottom() {
   padding: 6px 10px;
   background: rgba(255,255,255,.15);
   border-radius: 7px;
-  font-size: 12px; color: #fff; font-weight: 500;
+  font-size: 12px; color: var(--color-surface); font-weight: 500;
 }
 
 .message--user .message__bubble {
@@ -580,14 +580,14 @@ async function scrollBottom() {
 }
 
 .message--user .message__text {
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: var(--color-surface);
   border-radius: 14px 14px 4px 14px;
 }
 .message--assistant .message__text {
-  background: #f8fafc;
-  color: #0f172a;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
   border-radius: 14px 14px 14px 4px;
 }
 
@@ -599,20 +599,20 @@ async function scrollBottom() {
 }
 
 .message__time {
-  font-size: 10.5px; color: #94a3b8; margin: 0;
+  font-size: 10.5px; color: var(--color-text-subtle); margin: 0;
   padding: 0 4px;
 }
 
 /* 평가 결과 카드 */
 .eval-card {
-  background: linear-gradient(135deg, #fafbff, #f0f0ff);
-  border: 1px solid #e0e7ff;
+  background: linear-gradient(135deg, var(--color-surface-soft), var(--c-primary-50));
+  border: 1px solid var(--color-primary-border);
   border-radius: 12px;
   padding: 14px 16px;
   display: flex; flex-direction: column; gap: 12px;
 }
 .eval-card__title {
-  font-size: 12px; font-weight: 700; color: #6366f1;
+  font-size: 12px; font-weight: 700; color: var(--color-primary);
   text-transform: uppercase; letter-spacing: .06em; margin: 0;
 }
 
@@ -621,8 +621,8 @@ async function scrollBottom() {
 .eval-score {
   display: grid; grid-template-columns: 52px 1fr 50px; align-items: center; gap: 8px;
 }
-.eval-score__label { font-size: 12.5px; font-weight: 600; color: #374151; }
-.eval-score__bar-wrap { height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden; }
+.eval-score__label { font-size: 12.5px; font-weight: 600; color: var(--color-text-secondary); }
+.eval-score__bar-wrap { height: 6px; background: var(--color-surface-muted); border-radius: 3px; overflow: hidden; }
 .eval-score__bar {
   height: 100%; border-radius: 3px;
   transition: width .7s cubic-bezier(.4,0,.2,1);
@@ -633,11 +633,11 @@ async function scrollBottom() {
 .typing-indicator {
   display: flex; gap: 4px; align-items: center;
   padding: 14px 18px;
-  background: #f8fafc; border: 1px solid #e2e8f0;
+  background: var(--color-surface-hover); border: 1px solid var(--color-border);
   border-radius: 14px 14px 14px 4px;
 }
 .typing-indicator span {
-  width: 6px; height: 6px; border-radius: 50%; background: #94a3b8;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--color-text-subtle);
   animation: typingBounce 1.2s ease-in-out infinite;
 }
 .typing-indicator span:nth-child(2) { animation-delay: .2s; }
@@ -651,7 +651,7 @@ async function scrollBottom() {
 /* ── 입력 영역 ───────────────────────────────────── */
 .input-area {
   padding: 16px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--color-surface-muted);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -660,47 +660,47 @@ async function scrollBottom() {
 .attached-file {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 12px;
-  background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px;
-  font-size: 13px; color: #4338ca; font-weight: 500;
+  background: var(--color-primary-bg); border: 1px solid var(--c-primary-200); border-radius: 8px;
+  font-size: 13px; color: var(--color-primary-darker); font-weight: 500;
 }
 .attached-file button {
-  background: none; border: none; cursor: pointer; color: #6366f1;
+  background: none; border: none; cursor: pointer; color: var(--color-primary);
   display: flex; margin-left: auto;
 }
 
 .input-box {
   display: flex; align-items: flex-end; gap: 8px;
-  border: 1.5px solid #e2e8f0; border-radius: 12px;
+  border: 1.5px solid var(--color-border); border-radius: 12px;
   padding: 8px 8px 8px 12px;
-  background: #fafafa;
+  background: var(--color-surface-soft);
   transition: border-color .15s, box-shadow .15s;
 }
 .input-box--focused {
-  border-color: #6366f1; background: #fff;
+  border-color: var(--color-primary); background: var(--color-surface);
   box-shadow: 0 0 0 3px rgba(99,102,241,.1);
 }
 
 .input-attach {
   background: none; border: none; cursor: pointer;
-  color: #94a3b8; display: flex; padding: 6px;
+  color: var(--color-text-subtle); display: flex; padding: 6px;
   border-radius: 7px; flex-shrink: 0;
   transition: color .13s, background .13s;
 }
-.input-attach:hover { color: #6366f1; background: #eef2ff; }
+.input-attach:hover { color: var(--color-primary); background: var(--color-primary-bg); }
 
 .input-textarea {
   flex: 1; border: none; background: transparent;
-  font-size: 14px; font-family: inherit; color: #0f172a;
+  font-size: 14px; font-family: inherit; color: var(--color-text);
   resize: none; outline: none; line-height: 1.6;
   min-height: 24px; max-height: 140px;
   overflow-y: auto;
 }
-.input-textarea::placeholder { color: #cbd5e1; }
+.input-textarea::placeholder { color: var(--c-slate-300); }
 
 .input-send {
   width: 36px; height: 36px; flex-shrink: 0;
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-  color: #fff; border: none; border-radius: 9px;
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: var(--color-surface); border: none; border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; box-shadow: 0 3px 8px rgba(79,70,229,.3);
   transition: opacity .13s, transform .12s;
@@ -709,7 +709,7 @@ async function scrollBottom() {
 .input-send:disabled { opacity: .35; cursor: not-allowed; }
 
 .input-hint {
-  font-size: 11.5px; color: #cbd5e1; margin: 0; text-align: center;
+  font-size: 11.5px; color: var(--c-slate-300); margin: 0; text-align: center;
 }
 
 /* 전환 */

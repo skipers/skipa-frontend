@@ -223,16 +223,16 @@ async function handleSubmit() {
 /* ── 토큰 ────────────────────────────────────────────── */
 :root {
   --c-bg: #f5f4f0;
-  --c-surface: #ffffff;
-  --c-navy: #0f172a;
-  --c-navy-mid: #1e293b;
-  --c-indigo: #4f46e5;
-  --c-indigo-light: #6366f1;
-  --c-indigo-pale: #eef2ff;
-  --c-muted: #64748b;
-  --c-border: #e2e8f0;
-  --c-error: #dc2626;
-  --c-error-bg: #fef2f2;
+  --c-surface: var(--color-surface);
+  --c-navy: var(--color-text);
+  --c-navy-mid: var(--color-navy-hover);
+  --c-indigo: var(--color-primary-dark);
+  --c-indigo-light: var(--color-primary);
+  --c-indigo-pale: var(--color-primary-bg);
+  --c-muted: var(--color-text-muted);
+  --c-border: var(--color-border);
+  --c-error: var(--color-danger);
+  --c-error-bg: var(--color-danger-bg);
   --radius: 14px;
   --font-sans: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
   --font-display: 'Pretendard', sans-serif;
@@ -296,8 +296,8 @@ async function handleSubmit() {
 
 /* ── 브랜드 패널 (좌) ─────────────────────────────────── */
 .brand-panel {
-  background: linear-gradient(145deg, #0f172a 0%, #1e293b 60%, #1e1b4b 100%);
-  color: #fff;
+  background: linear-gradient(145deg, var(--color-text) 0%, var(--color-navy-hover) 60%, var(--c-primary-900) 100%);
+  color: var(--color-surface);
   display: flex;
   flex-direction: column;
   padding: 48px 44px;
@@ -345,21 +345,21 @@ async function handleSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a5b4fc;
+  color: var(--c-primary-300);
 }
 
 .brand-logo__text {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .brand-copy__headline {
   font-size: 28px;
   font-weight: 700;
   line-height: 1.3;
-  color: #fff;
+  color: var(--color-surface);
   margin: 0 0 16px;
   letter-spacing: -0.02em;
 }
@@ -391,7 +391,7 @@ async function handleSubmit() {
 .feature-item__dot {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: #6366f1;
+  background: var(--color-primary);
   flex-shrink: 0;
   box-shadow: 0 0 6px rgba(99, 102, 241, 0.8);
 }
@@ -416,7 +416,7 @@ async function handleSubmit() {
 .badge-ai__pulse {
   width: 7px; height: 7px;
   border-radius: 50%;
-  background: #4ade80;
+  background: var(--color-success);
   flex-shrink: 0;
   animation: pulse 2s ease-in-out infinite;
 }
@@ -428,7 +428,7 @@ async function handleSubmit() {
 
 /* ── 폼 패널 (우) ─────────────────────────────────────── */
 .form-panel {
-  background: #ffffff;
+  background: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -449,21 +449,21 @@ async function handleSubmit() {
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #6366f1;
+  color: var(--color-primary);
   margin: 0 0 8px;
 }
 
 .form-header__title {
   font-size: 26px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0 0 8px;
   letter-spacing: -0.02em;
 }
 
 .form-header__desc {
   font-size: 13.5px;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin: 0;
   line-height: 1.5;
 }
@@ -484,7 +484,7 @@ async function handleSubmit() {
 .field__label {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-text-secondary);
   letter-spacing: 0.01em;
 }
 
@@ -497,7 +497,7 @@ async function handleSubmit() {
 .field__icon {
   position: absolute;
   left: 14px;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   display: flex;
   pointer-events: none;
 }
@@ -505,30 +505,30 @@ async function handleSubmit() {
 .field__input {
   width: 100%;
   padding: 12px 14px 12px 42px;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--color-border);
   border-radius: 10px;
   font-size: 14px;
   font-family: var(--font-sans);
-  color: #0f172a;
-  background: #fafafa;
+  color: var(--color-text);
+  background: var(--color-surface-soft);
   outline: none;
   transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
   box-sizing: border-box;
 }
 
 .field__input::placeholder {
-  color: #cbd5e1;
+  color: var(--c-slate-300);
 }
 
 .field__input:focus {
-  border-color: #6366f1;
-  background: #fff;
+  border-color: var(--color-primary);
+  background: var(--color-surface);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .field--error .field__input {
-  border-color: #dc2626;
-  background: #fff;
+  border-color: var(--color-danger);
+  background: var(--color-surface);
 }
 
 .field--error .field__input:focus {
@@ -541,16 +541,16 @@ async function handleSubmit() {
   background: none;
   border: none;
   cursor: pointer;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   display: flex;
   padding: 0;
   transition: color 0.15s;
 }
-.field__toggle:hover { color: #475569; }
+.field__toggle:hover { color: var(--c-slate-600); }
 
 .field__error {
   font-size: 12px;
-  color: #dc2626;
+  color: var(--color-danger);
   margin: 0;
 }
 
@@ -560,11 +560,11 @@ async function handleSubmit() {
   align-items: center;
   gap: 8px;
   padding: 12px 14px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
   border-radius: 10px;
   font-size: 13.5px;
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 .shake-enter-active {
@@ -582,8 +582,8 @@ async function handleSubmit() {
 .btn-submit {
   width: 100%;
   padding: 13px;
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: var(--color-surface);
   border: none;
   border-radius: 10px;
   font-size: 15px;
@@ -627,7 +627,7 @@ async function handleSubmit() {
 .spinner {
   width: 16px; height: 16px;
   border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
+  border-top-color: var(--color-surface);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -641,7 +641,7 @@ async function handleSubmit() {
   margin-top: 32px;
   text-align: center;
   font-size: 11.5px;
-  color: #cbd5e1;
+  color: var(--c-slate-300);
 }
 
 /* ── 반응형 ───────────────────────────────────────────── */

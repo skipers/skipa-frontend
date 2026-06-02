@@ -34,17 +34,17 @@ function goHome() {
 .error-page__code {
   font-size: 88px;
   font-weight: 800;
-  color: #e2e8f0;
+  color: var(--color-border);
   line-height: 1;
   margin-bottom: 16px;
   letter-spacing: -0.04em;
 }
-.error-page__title { font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 12px; }
-.error-page__desc { font-size: 14px; color: #64748b; line-height: 1.7; margin: 0 0 32px; }
+.error-page__title { font-size: 22px; font-weight: 700; color: var(--color-text); margin: 0 0 12px; }
+.error-page__desc { font-size: 14px; color: var(--color-text-muted); line-height: 1.7; margin: 0 0 32px; }
 .error-page__btn {
   padding: 11px 28px;
-  background: #0f172a;
-  color: #fff;
+  background: var(--color-text);
+  color: var(--color-surface);
   border: none;
   border-radius: 10px;
   font-size: 14px;
@@ -53,5 +53,5 @@ function goHome() {
   cursor: pointer;
   transition: background 0.15s;
 }
-.error-page__btn:hover { background: #1e293b; }
+.error-page__btn:hover { background: var(--color-navy-hover); }
 </style>

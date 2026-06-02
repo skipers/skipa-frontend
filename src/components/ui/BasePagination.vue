@@ -81,10 +81,10 @@ const visiblePages = computed(() => {
   min-width: 32px;
   height: 32px;
   padding: 0 6px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 7px;
-  background: #fff;
-  color: #374151;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 500;
   font-family: inherit;
@@ -96,8 +96,8 @@ const visiblePages = computed(() => {
 }
 
 .pg-btn:hover:not(:disabled):not(.pg-btn--active) {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: var(--color-surface-hover);
+  border-color: var(--c-slate-300);
 }
 
 .pg-btn:disabled {
@@ -106,9 +106,9 @@ const visiblePages = computed(() => {
 }
 
 .pg-btn--active {
-  background: #0f172a;
-  border-color: #0f172a;
-  color: #fff;
+  background: var(--color-text);
+  border-color: var(--color-text);
+  color: var(--color-surface);
   cursor: default;
 }
 
@@ -116,13 +116,13 @@ const visiblePages = computed(() => {
   border-color: transparent;
   background: transparent;
   cursor: default;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
 }
 
 .pg-total {
   margin-left: 8px;
   font-size: 12.5px;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   white-space: nowrap;
 }
 </style>

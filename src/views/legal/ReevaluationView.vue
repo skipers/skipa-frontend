@@ -395,16 +395,29 @@ function formatDate(d?: string) {
   return d.slice(0, 10).replace(/-/g, '.')
 }
 
+// ── Mock 특허 목록 ───────────────────────────────────
+const mockPatents: ReevalItem[] = [
+  { id: 1,  title: 'NF3 가스 이물질 제거 시스템',         applicationNumber: '10-2026-0012345', techField: '반도체', expiryDate: '2026-08-15', departmentId: 2, decision: 'KEEP',    reviewStatus: 'done',       isOverdue: false },
+  { id: 2,  title: '플라즈마 식각 장치 제어 방법',          applicationNumber: '10-2025-0098732', techField: '반도체', expiryDate: '2026-09-22', departmentId: 2, decision: null,      reviewStatus: 'reviewing',  isOverdue: false },
+  { id: 3,  title: '배터리 전극 코팅 균일도 향상',          applicationNumber: '10-2025-0041200', techField: '배터리', expiryDate: '2026-10-05', departmentId: 3, decision: 'KEEP',    reviewStatus: 'done',       isOverdue: false },
+  { id: 4,  title: '신소재 열 전도성 향상 방법',            applicationNumber: '10-2024-0081900', techField: '소재',   expiryDate: '2027-01-20', departmentId: 5, decision: 'DISPOSE', reviewStatus: 'done',       isOverdue: false },
+  { id: 5,  title: 'AI 기반 품질 검사 자동화 시스템',       applicationNumber: '10-2026-0031891', techField: 'AI/SW',  expiryDate: '2027-03-01', departmentId: 4, decision: null,      reviewStatus: 'requested',  isOverdue: false },
+  { id: 6,  title: '반도체 세정 공정 최적화 방법',          applicationNumber: '10-2023-0055100', techField: '반도체', expiryDate: '2026-07-10', departmentId: undefined, decision: null, reviewStatus: 'unassigned', isOverdue: false },
+  { id: 7,  title: '리튬이온 배터리 수명 예측 알고리즘',    applicationNumber: '10-2025-0067432', techField: '배터리', expiryDate: '2027-05-14', departmentId: 3, decision: null,      reviewStatus: 'overdue',    isOverdue: true  },
+  { id: 8,  title: '고온 내열 소재 합성 공정',              applicationNumber: '10-2024-0012980', techField: '소재',   expiryDate: '2026-11-30', departmentId: 5, decision: null,      reviewStatus: 'requested',  isOverdue: false },
+  { id: 9,  title: '반도체 패키징 방열 구조',               applicationNumber: '10-2026-0044211', techField: '반도체', expiryDate: '2027-02-08', departmentId: 2, decision: null,      reviewStatus: 'requested',  isOverdue: false },
+  { id: 10, title: '신경망 기반 결함 검출 시스템',          applicationNumber: '10-2025-0029004', techField: 'AI/SW',  expiryDate: '2027-07-22', departmentId: 4, decision: null,      reviewStatus: 'reviewing',  isOverdue: false },
+  { id: 11, title: '전고체 배터리 전해질 조성물',           applicationNumber: '10-2024-0093100', techField: '배터리', expiryDate: '2026-12-19', departmentId: undefined, decision: null, reviewStatus: 'unassigned', isOverdue: false },
+  { id: 12, title: '산화막 성장 제어 방법',                 applicationNumber: '10-2023-0077650', techField: '반도체', expiryDate: '2027-04-03', departmentId: 2, decision: 'DISPOSE', reviewStatus: 'done',       isOverdue: false },
+]
+
 // ── 데이터 로드 ──────────────────────────────────────
-// 실제로는 /patents?status=REVIEW_QUARTER&reviewStatus=... 같은 API 연동
-// 지금은 /patents 목록으로 임시 구성
 async function fetchList(p = 1) {
   loading.value = true
   setPage(p)
   selectedIds.clear()
   try {
     const res = await patentsApi.list({ ...pageQuery.value })
-    // mock reviewStatus 부여
     items.value = res.items.map((patent, i) => ({
       id: patent.id,
       title: patent.title,
@@ -424,8 +437,22 @@ async function fetchList(p = 1) {
       overdue:    Math.round(res.totalItems * 0.08),
       done:       Math.round(res.totalItems * 0.35),
     }
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+  } catch {
+    const filtered = activeStatus.value === 'all'
+      ? mockPatents
+      : mockPatents.filter(i => i.reviewStatus === activeStatus.value)
+    items.value = filtered
+    setTotal(filtered.length, 1)
+    statusCounts.value = {
+      all:        mockPatents.length,
+      unassigned: mockPatents.filter(i => i.reviewStatus === 'unassigned').length,
+      requested:  mockPatents.filter(i => i.reviewStatus === 'requested').length,
+      overdue:    mockPatents.filter(i => i.reviewStatus === 'overdue').length,
+      done:       mockPatents.filter(i => i.reviewStatus === 'done').length,
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
 // ── 배정 ────────────────────────────────────────────
@@ -505,21 +532,21 @@ onMounted(() => fetchList(1))
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: #6366f1;
+  color: var(--color-primary);
   margin: 0 0 5px;
 }
 
 .page-header__title {
   font-size: 22px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0 0 4px;
   letter-spacing: -0.02em;
 }
 
 .page-header__desc {
   font-size: 13.5px;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -528,8 +555,8 @@ onMounted(() => fetchList(1))
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: var(--color-surface);
   border: none;
   border-radius: 10px;
   font-size: 13.5px;
@@ -545,8 +572,8 @@ onMounted(() => fetchList(1))
 
 /* ── 진행률 바 카드 ──────────────────────────────── */
 .progress-bar-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 18px 20px;
   display: flex;
@@ -560,19 +587,19 @@ onMounted(() => fetchList(1))
   align-items: center;
 }
 
-.progress-bar-card__label { font-size: 13px; font-weight: 600; color: #374151; }
-.progress-bar-card__pct   { font-size: 15px; font-weight: 800; color: #6366f1; }
+.progress-bar-card__label { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); }
+.progress-bar-card__pct   { font-size: 15px; font-weight: 800; color: var(--color-primary); }
 
 .progress-track {
   height: 8px;
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4f46e5, #818cf8);
+  background: linear-gradient(90deg, var(--color-primary-dark), var(--c-primary-400));
   border-radius: 4px;
   transition: width .6s cubic-bezier(.4,0,.2,1);
 }
@@ -588,7 +615,7 @@ onMounted(() => fetchList(1))
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .legend-dot {
@@ -601,7 +628,7 @@ onMounted(() => fetchList(1))
 .filter-tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 1.5px solid #e2e8f0;
+  border-bottom: 1.5px solid var(--color-border);
   overflow-x: auto;
 }
 
@@ -616,14 +643,14 @@ onMounted(() => fetchList(1))
   font-size: 13.5px;
   font-weight: 500;
   font-family: inherit;
-  color: #64748b;
+  color: var(--color-text-muted);
   white-space: nowrap;
   position: relative;
   transition: color .13s;
 }
-.filter-tab:hover { color: #0f172a; }
+.filter-tab:hover { color: var(--color-text); }
 .filter-tab--active {
-  color: #4f46e5;
+  color: var(--color-primary-dark);
   font-weight: 700;
 }
 .filter-tab--active::after {
@@ -631,7 +658,7 @@ onMounted(() => fetchList(1))
   position: absolute;
   bottom: -1.5px; left: 0; right: 0;
   height: 2px;
-  background: #4f46e5;
+  background: var(--color-primary-dark);
   border-radius: 2px 2px 0 0;
 }
 
@@ -642,15 +669,15 @@ onMounted(() => fetchList(1))
   min-width: 20px;
   height: 18px;
   padding: 0 6px;
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
   border-radius: 10px;
   font-size: 11px;
   font-weight: 700;
 }
 .filter-tab__badge--red {
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 /* ── 액션 바 ─────────────────────────────────────── */
@@ -660,8 +687,8 @@ onMounted(() => fetchList(1))
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
-  background: #eef2ff;
-  border: 1px solid #c7d2fe;
+  background: var(--color-primary-bg);
+  border: 1px solid var(--c-primary-200);
   border-radius: 10px;
   flex-wrap: wrap;
 }
@@ -669,7 +696,7 @@ onMounted(() => fetchList(1))
 .action-bar__count {
   font-size: 13.5px;
   font-weight: 700;
-  color: #4338ca;
+  color: var(--color-primary-darker);
 }
 
 .action-bar__btns {
@@ -683,34 +710,34 @@ onMounted(() => fetchList(1))
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  background: #fff;
-  border: 1px solid #c7d2fe;
+  background: var(--color-surface);
+  border: 1px solid var(--c-primary-200);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
-  color: #4338ca;
+  color: var(--color-primary-darker);
   cursor: pointer;
   transition: background .13s;
 }
-.action-btn:hover { background: #f5f3ff; }
+.action-btn:hover { background: var(--c-primary-50); }
 .action-btn--primary {
-  background: #4f46e5;
-  color: #fff;
-  border-color: #4f46e5;
+  background: var(--color-primary-dark);
+  color: var(--color-surface);
+  border-color: var(--color-primary-dark);
 }
-.action-btn--primary:hover { background: #4338ca; }
+.action-btn--primary:hover { background: var(--color-primary-darker); }
 .action-btn--ghost {
   background: transparent;
   border-color: transparent;
-  color: #6366f1;
+  color: var(--color-primary);
 }
-.action-btn--ghost:hover { background: #f0edff; }
+.action-btn--ghost:hover { background: var(--c-primary-50); }
 
 /* ── 테이블 카드 ─────────────────────────────────── */
 .table-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   overflow: hidden;
 }
@@ -720,7 +747,7 @@ onMounted(() => fetchList(1))
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-surface-muted);
 }
 
 .checkbox-all {
@@ -733,21 +760,21 @@ onMounted(() => fetchList(1))
 .checkbox-all input {
   width: 15px; height: 15px;
   cursor: pointer;
-  accent-color: #6366f1;
+  accent-color: var(--color-primary);
 }
 
 .checkbox-all__label {
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-secondary);
 }
 
 .table-toolbar__total {
   font-size: 13px;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin: 0;
 }
-.table-toolbar__total strong { color: #0f172a; }
+.table-toolbar__total strong { color: var(--color-text); }
 
 /* ── 재평가 목록 아이템 ───────────────────────────── */
 .reeval-list { display: flex; flex-direction: column; }
@@ -758,12 +785,12 @@ onMounted(() => fetchList(1))
   align-items: center;
   gap: 12px;
   padding: 14px 20px;
-  border-bottom: 1px solid #f8fafc;
+  border-bottom: 1px solid var(--color-surface-hover);
   transition: background .12s;
 }
 .reeval-item:last-child { border-bottom: none; }
-.reeval-item:hover { background: #f8fafc; }
-.reeval-item--selected { background: #fafbff; }
+.reeval-item:hover { background: var(--color-surface-hover); }
+.reeval-item--selected { background: var(--color-surface-soft); }
 
 .item-check {
   display: flex;
@@ -774,7 +801,7 @@ onMounted(() => fetchList(1))
 .item-check input {
   width: 15px; height: 15px;
   cursor: pointer;
-  accent-color: #6366f1;
+  accent-color: var(--color-primary);
 }
 
 .item-main {
@@ -809,18 +836,18 @@ onMounted(() => fetchList(1))
   background: currentColor;
   flex-shrink: 0;
 }
-.item-status--unassigned { background: #f1f5f9; color: #64748b; }
-.item-status--requested  { background: #eef2ff; color: #4338ca; }
-.item-status--reviewing  { background: #fffbeb; color: #b45309; }
-.item-status--overdue    { background: #fef2f2; color: #dc2626; }
-.item-status--done       { background: #f0fdf4; color: #15803d; }
+.item-status--unassigned { background: var(--color-surface-muted); color: var(--color-text-muted); }
+.item-status--requested  { background: var(--color-primary-bg); color: var(--color-primary-darker); }
+.item-status--reviewing  { background: var(--color-warn-bg); color: var(--color-warn-dark); }
+.item-status--overdue    { background: var(--color-danger-bg); color: var(--color-danger); }
+.item-status--done       { background: var(--color-success-bg); color: var(--color-success-dark); }
 
 .overdue-badge {
   display: inline-flex;
   padding: 2px 7px;
-  background: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger-border);
   border-radius: 5px;
   font-size: 11px;
   font-weight: 700;
@@ -829,7 +856,7 @@ onMounted(() => fetchList(1))
 .item-title {
   font-size: 13.5px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -846,14 +873,14 @@ onMounted(() => fetchList(1))
 .meta-tag {
   display: inline-block;
   padding: 2px 7px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
   border-radius: 5px;
   font-size: 11.5px;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-family: 'JetBrains Mono', monospace;
 }
-.meta-tag--expiry { color: #b45309; background: #fffbeb; border-color: #fde68a; font-family: inherit; }
+.meta-tag--expiry { color: var(--color-warn-dark); background: var(--color-warn-bg); border-color: var(--c-amber-200); font-family: inherit; }
 
 /* 담당 사업부 셀 */
 .item-dept {
@@ -866,18 +893,18 @@ onMounted(() => fetchList(1))
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   font-size: 12.5px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-secondary);
 }
 
 .dept-chip__dot {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: #6366f1;
+  background: var(--color-primary);
   flex-shrink: 0;
 }
 
@@ -885,30 +912,30 @@ onMounted(() => fetchList(1))
   background: none;
   border: none;
   cursor: pointer;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   display: flex;
   padding: 0;
   margin-left: 2px;
   transition: color .13s;
 }
-.dept-chip__change:hover { color: #6366f1; }
+.dept-chip__change:hover { color: var(--color-primary); }
 
 .btn-assign-sm {
   display: flex;
   align-items: center;
   gap: 5px;
   padding: 5px 10px;
-  background: #eef2ff;
-  border: 1px dashed #c7d2fe;
+  background: var(--color-primary-bg);
+  border: 1px dashed var(--c-primary-200);
   border-radius: 8px;
   font-size: 12.5px;
   font-weight: 600;
   font-family: inherit;
-  color: #6366f1;
+  color: var(--color-primary);
   cursor: pointer;
   transition: background .13s;
 }
-.btn-assign-sm:hover { background: #e0e7ff; }
+.btn-assign-sm:hover { background: var(--color-primary-border); }
 
 /* 결정 배지 */
 .item-decision { display: flex; align-items: center; justify-content: center; }
@@ -919,31 +946,31 @@ onMounted(() => fetchList(1))
   font-size: 12.5px;
   font-weight: 700;
 }
-.decision-badge--keep    { background: #f0fdf4; color: #15803d; }
-.decision-badge--sell    { background: #eef2ff; color: #4338ca; }
-.decision-badge--dispose { background: #fef2f2; color: #dc2626; }
+.decision-badge--keep    { background: var(--color-success-bg); color: var(--color-success-dark); }
+.decision-badge--sell    { background: var(--color-primary-bg); color: var(--color-primary-darker); }
+.decision-badge--dispose { background: var(--color-danger-bg); color: var(--color-danger); }
 
-.decision-pending { font-size: 12.5px; color: #cbd5e1; }
+.decision-pending { font-size: 12.5px; color: var(--c-slate-300); }
 
 .item-arrow {
   background: none;
   border: none;
   cursor: pointer;
-  color: #cbd5e1;
+  color: var(--c-slate-300);
   display: flex;
   align-items: center;
   padding: 4px;
   border-radius: 6px;
   transition: color .12s, background .12s;
 }
-.item-arrow:hover { color: #6366f1; background: #f0f0ff; }
+.item-arrow:hover { color: var(--color-primary); background: var(--c-primary-50); }
 
 /* ── 스켈레톤 ────────────────────────────────────── */
 .skel-rows { display: flex; flex-direction: column; }
 .skel-row {
   height: 60px;
-  border-bottom: 1px solid #f8fafc;
-  background: linear-gradient(90deg, #f8fafc 25%, #f1f5f9 50%, #f8fafc 75%);
+  border-bottom: 1px solid var(--color-surface-hover);
+  background: linear-gradient(90deg, var(--color-surface-hover) 25%, var(--color-surface-muted) 50%, var(--color-surface-hover) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -957,11 +984,11 @@ onMounted(() => fetchList(1))
   align-items: center;
   gap: 10px;
   text-align: center;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
 }
 .empty-state__icon {
   width: 52px; height: 52px;
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -975,7 +1002,7 @@ onMounted(() => fetchList(1))
   display: flex;
   justify-content: center;
   padding: 16px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--color-surface-muted);
 }
 
 /* ── 모달 ────────────────────────────────────────── */
@@ -986,64 +1013,64 @@ onMounted(() => fetchList(1))
   z-index: 200; backdrop-filter: blur(2px);
 }
 .modal {
-  background: #fff; border-radius: 18px;
+  background: var(--color-surface); border-radius: 18px;
   width: min(480px, 94vw);
   box-shadow: 0 24px 64px rgba(15,23,42,.18);
   overflow: hidden;
 }
 .modal__header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 24px 16px; border-bottom: 1px solid #f1f5f9;
+  padding: 20px 24px 16px; border-bottom: 1px solid var(--color-surface-muted);
 }
-.modal__title { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; }
+.modal__title { font-size: 17px; font-weight: 700; color: var(--color-text); margin: 0; }
 .modal__close {
   width: 32px; height: 32px;
-  background: #f1f5f9; border: none; border-radius: 8px;
-  cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b;
+  background: var(--color-surface-muted); border: none; border-radius: 8px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted);
 }
 .modal__body { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
-.modal__patent-name { font-size: 14px; font-weight: 600; color: #374151; margin: 0; line-height: 1.4; }
+.modal__patent-name { font-size: 14px; font-weight: 600; color: var(--color-text-secondary); margin: 0; line-height: 1.4; }
 .modal__footer {
   display: flex; justify-content: flex-end; gap: 10px;
-  padding: 14px 24px 20px; border-top: 1px solid #f1f5f9;
+  padding: 14px 24px 20px; border-top: 1px solid var(--color-surface-muted);
 }
 
 .dept-select-list { display: flex; flex-direction: column; gap: 6px; }
 .dept-option {
   display: flex; align-items: center; gap: 10px;
   padding: 11px 14px;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--color-border);
   border-radius: 10px;
   cursor: pointer;
   transition: border-color .13s, background .13s;
 }
 .dept-option input { display: none; }
-.dept-option--selected { border-color: #6366f1; background: #fafbff; }
+.dept-option--selected { border-color: var(--color-primary); background: var(--color-surface-soft); }
 .dept-option__dot {
   width: 8px; height: 8px; border-radius: 50%;
-  border: 2px solid #cbd5e1;
+  border: 2px solid var(--c-slate-300);
   flex-shrink: 0;
   transition: border-color .13s, background .13s;
 }
-.dept-option--selected .dept-option__dot { background: #6366f1; border-color: #6366f1; }
-.dept-option__name { font-size: 14px; font-weight: 500; color: #0f172a; }
+.dept-option--selected .dept-option__dot { background: var(--color-primary); border-color: var(--color-primary); }
+.dept-option__name { font-size: 14px; font-weight: 500; color: var(--color-text); }
 
-.send-summary { background: #f8fafc; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.send-summary { background: var(--color-surface-hover); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .send-summary__row {
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 13.5px; color: #374151;
+  font-size: 13.5px; color: var(--color-text-secondary);
 }
-.send-summary__row--warn strong { color: #dc2626; }
-.send-note { font-size: 12.5px; color: #94a3b8; margin: 0; line-height: 1.6; }
+.send-summary__row--warn strong { color: var(--color-danger); }
+.send-note { font-size: 12.5px; color: var(--color-text-subtle); margin: 0; line-height: 1.6; }
 
 .btn-cancel {
-  padding: 9px 20px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 9px;
-  font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer; color: #475569;
+  padding: 9px 20px; background: var(--color-surface-muted); border: 1px solid var(--color-border); border-radius: 9px;
+  font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer; color: var(--c-slate-600);
 }
 .btn-confirm {
   display: flex; align-items: center; gap: 8px;
-  padding: 9px 22px; background: linear-gradient(135deg, #4f46e5, #6366f1);
-  color: #fff; border: none; border-radius: 9px;
+  padding: 9px 22px; background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: var(--color-surface); border: none; border-radius: 9px;
   font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer;
   box-shadow: 0 4px 12px rgba(79,70,229,.3);
 }
@@ -1051,7 +1078,7 @@ onMounted(() => fetchList(1))
 
 .spinner {
   width: 14px; height: 14px;
-  border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+  border: 2px solid rgba(255,255,255,.3); border-top-color: var(--color-surface);
   border-radius: 50%; animation: spin .7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }

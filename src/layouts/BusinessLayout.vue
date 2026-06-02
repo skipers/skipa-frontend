@@ -187,7 +187,7 @@ async function handleLogout() {
 .sidebar {
   width: 240px;
   min-height: 100vh;
-  background: #0f172a;
+  background: var(--color-text);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -225,7 +225,7 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a5b4fc;
+  color: var(--c-primary-300);
   flex-shrink: 0;
 }
 
@@ -233,7 +233,7 @@ async function handleLogout() {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .sidebar__role-badge {
@@ -253,14 +253,14 @@ async function handleLogout() {
 
 .sidebar__role-dot {
   width: 6px; height: 6px;
-  background: #6366f1;
+  background: var(--color-primary);
   border-radius: 50%;
   flex-shrink: 0;
   box-shadow: 0 0 5px rgba(99, 102, 241, 0.8);
 }
 /* 사업부 액센트 — 초록 */
 .sidebar__role-dot--biz {
-  background: #34d399;
+  background: var(--c-green-300);
   box-shadow: 0 0 5px rgba(52, 211, 153, 0.8);
 }
 
@@ -300,13 +300,13 @@ async function handleLogout() {
   position: relative;
 }
 .nav-item:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.85); }
-.nav-item--active { background: rgba(52, 211, 153, 0.12); color: #6ee7b7; }
+.nav-item--active { background: rgba(52, 211, 153, 0.12); color: var(--c-green-200); }
 .nav-item--active::before {
   content: '';
   position: absolute;
   left: 0; top: 25%; bottom: 25%;
   width: 3px;
-  background: #34d399;
+  background: var(--c-green-300);
   border-radius: 0 3px 3px 0;
 }
 
@@ -334,18 +334,18 @@ async function handleLogout() {
 
 .sidebar__avatar {
   width: 32px; height: 32px;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--c-violet-700));
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 13px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-surface);
   flex-shrink: 0;
 }
 .sidebar__avatar--biz {
-  background: linear-gradient(135deg, #059669, #34d399);
+  background: linear-gradient(135deg, var(--c-green-500), var(--c-green-300));
 }
 
 .sidebar__user-info { overflow: hidden; }
@@ -370,7 +370,7 @@ async function handleLogout() {
   width: 100%;
   text-align: left;
 }
-.sidebar__logout:hover { background: rgba(239, 68, 68, 0.12); color: #f87171; }
+.sidebar__logout:hover { background: rgba(239, 68, 68, 0.12); color: var(--c-red-400); }
 
 .sidebar__toggle {
   position: absolute;
@@ -378,7 +378,7 @@ async function handleLogout() {
   top: 50%;
   transform: translateY(-50%);
   width: 24px; height: 24px;
-  background: #1e293b;
+  background: var(--color-navy-hover);
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 50%;
   display: flex;
@@ -389,14 +389,14 @@ async function handleLogout() {
   z-index: 10;
   transition: background 0.15s, color 0.15s;
 }
-.sidebar__toggle:hover { background: #334155; color: #fff; }
+.sidebar__toggle:hover { background: var(--c-slate-750); color: var(--color-surface); }
 
 .main-area { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 .topbar {
   height: 60px;
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -406,7 +406,7 @@ async function handleLogout() {
   z-index: 10;
 }
 
-.topbar__title { font-size: 16px; font-weight: 600; color: #0f172a; margin: 0; letter-spacing: -0.01em; }
+.topbar__title { font-size: 16px; font-weight: 600; color: var(--color-text); margin: 0; letter-spacing: -0.01em; }
 .topbar__right { display: flex; align-items: center; gap: 8px; }
 
 .topbar__search-btn {
@@ -414,31 +414,31 @@ async function handleLogout() {
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   font-size: 13px;
-  color: #475569;
+  color: var(--c-slate-600);
   text-decoration: none;
   font-family: inherit;
   font-weight: 500;
   transition: background 0.15s, color 0.15s;
 }
-.topbar__search-btn:hover { background: #e8edf5; color: #0f172a; }
+.topbar__search-btn:hover { background: var(--c-slate-150); color: var(--color-text); }
 
 .topbar__icon-btn {
   width: 36px; height: 36px;
   background: none;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #64748b;
+  color: var(--color-text-muted);
   transition: background 0.15s, color 0.15s;
 }
-.topbar__icon-btn:hover { background: #f1f5f9; color: #0f172a; }
+.topbar__icon-btn:hover { background: var(--color-surface-muted); color: var(--color-text); }
 
 .page-content { flex: 1; padding: 32px; overflow-y: auto; }
 

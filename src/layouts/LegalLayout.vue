@@ -207,7 +207,7 @@ async function handleLogout() {
 .sidebar {
   width: 240px;
   min-height: 100vh;
-  background: #0f172a;
+  background: var(--color-text);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -249,7 +249,7 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a5b4fc;
+  color: var(--c-primary-300);
   flex-shrink: 0;
 }
 
@@ -257,7 +257,7 @@ async function handleLogout() {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: #fff;
+  color: var(--color-surface);
 }
 
 /* 역할 배지 */
@@ -278,7 +278,7 @@ async function handleLogout() {
 
 .sidebar__role-dot {
   width: 6px; height: 6px;
-  background: #6366f1;
+  background: var(--color-primary);
   border-radius: 50%;
   flex-shrink: 0;
   box-shadow: 0 0 5px rgba(99, 102, 241, 0.8);
@@ -329,7 +329,7 @@ async function handleLogout() {
 
 .nav-item--active {
   background: rgba(99, 102, 241, 0.18);
-  color: #a5b4fc;
+  color: var(--c-primary-300);
 }
 
 .nav-item--active::before {
@@ -337,7 +337,7 @@ async function handleLogout() {
   position: absolute;
   left: 0; top: 25%; bottom: 25%;
   width: 3px;
-  background: #6366f1;
+  background: var(--color-primary);
   border-radius: 0 3px 3px 0;
 }
 
@@ -354,8 +354,8 @@ async function handleLogout() {
 }
 
 .nav-item__badge {
-  background: #6366f1;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-surface);
   font-size: 10px;
   font-weight: 700;
   padding: 1px 6px;
@@ -389,14 +389,14 @@ async function handleLogout() {
 
 .sidebar__avatar {
   width: 32px; height: 32px;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--c-violet-700));
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 13px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-surface);
   flex-shrink: 0;
 }
 
@@ -442,7 +442,7 @@ async function handleLogout() {
 
 .sidebar__logout:hover {
   background: rgba(239, 68, 68, 0.12);
-  color: #f87171;
+  color: var(--c-red-400);
 }
 
 /* 접기 버튼 */
@@ -452,7 +452,7 @@ async function handleLogout() {
   top: 50%;
   transform: translateY(-50%);
   width: 24px; height: 24px;
-  background: #1e293b;
+  background: var(--color-navy-hover);
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 50%;
   display: flex;
@@ -465,8 +465,8 @@ async function handleLogout() {
 }
 
 .sidebar__toggle:hover {
-  background: #334155;
-  color: #fff;
+  background: var(--c-slate-750);
+  color: var(--color-surface);
 }
 
 /* ── 메인 영역 ───────────────────────────────────────── */
@@ -480,8 +480,8 @@ async function handleLogout() {
 /* 탑바 */
 .topbar {
   height: 60px;
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -494,7 +494,7 @@ async function handleLogout() {
 .topbar__title {
   font-size: 16px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0;
   letter-spacing: -0.01em;
 }
@@ -510,36 +510,36 @@ async function handleLogout() {
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   font-size: 13px;
-  color: #475569;
+  color: var(--c-slate-600);
   text-decoration: none;
   font-family: inherit;
   font-weight: 500;
   transition: background 0.15s, color 0.15s;
 }
 .topbar__search-btn:hover {
-  background: #e8edf5;
-  color: #0f172a;
+  background: var(--c-slate-150);
+  color: var(--color-text);
 }
 
 .topbar__icon-btn {
   width: 36px; height: 36px;
   background: none;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #64748b;
+  color: var(--color-text-muted);
   transition: background 0.15s, color 0.15s;
 }
 .topbar__icon-btn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
 }
 
 /* 페이지 콘텐츠 */

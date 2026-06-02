@@ -353,13 +353,63 @@ function decisionLabel(d: string) {
   return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
 }
 
+// ── Mock fallback 데이터 ──────────────────────────────
+const mockSummary: DashboardSummary = {
+  progressRate: 62,
+  kpi: { requested: 124, reviewing: 18, decided: 77 },
+}
+
+const mockAssignment: DashboardAssignment = {
+  unassigned: 23,
+  assigned:   78,
+  completed:  48,
+}
+
+const mockDistribution: DashboardDistribution = {
+  byTechField: [
+    { name: '반도체', count: 82 },
+    { name: '배터리', count: 58 },
+    { name: '소재',   count: 42 },
+    { name: 'AI/SW',  count: 35 },
+    { name: '바이오', count: 18 },
+  ],
+  byExpiryQuarter: [
+    { quarter: '2026Q2', count: 12 },
+    { quarter: '2026Q3', count: 28 },
+    { quarter: '2026Q4', count: 38 },
+    { quarter: '2027Q1', count: 22 },
+    { quarter: '2027Q2', count: 15 },
+  ],
+}
+
+const mockDepartments: DashboardDepartments = {
+  items: [
+    { departmentId: 2, assigned: 42, reviewing: 8,  decided: 31 },
+    { departmentId: 3, assigned: 35, reviewing: 5,  decided: 24 },
+    { departmentId: 4, assigned: 28, reviewing: 4,  decided: 16 },
+    { departmentId: 5, assigned: 19, reviewing: 1,  decided: 6  },
+  ],
+}
+
 // ── 데이터 로드 ──────────────────────────────────────
 async function loadAll() {
   await Promise.allSettled([
-    dashboardApi.getSummary().then(d => { summary.value = d }).finally(() => { loadingSummary.value = false }),
-    dashboardApi.getAssignment().then(d => { assignment.value = d }).finally(() => { loadingAssign.value = false }),
-    dashboardApi.getDistribution().then(d => { distribution.value = d }).finally(() => { loadingDist.value = false }),
-    dashboardApi.getDepartments().then(d => { departments.value = d }).finally(() => { loadingDepts.value = false }),
+    dashboardApi.getSummary()
+      .then(d => { summary.value = d })
+      .catch(() => { summary.value = mockSummary })
+      .finally(() => { loadingSummary.value = false }),
+    dashboardApi.getAssignment()
+      .then(d => { assignment.value = d })
+      .catch(() => { assignment.value = mockAssignment })
+      .finally(() => { loadingAssign.value = false }),
+    dashboardApi.getDistribution()
+      .then(d => { distribution.value = d })
+      .catch(() => { distribution.value = mockDistribution })
+      .finally(() => { loadingDist.value = false }),
+    dashboardApi.getDepartments()
+      .then(d => { departments.value = d })
+      .catch(() => { departments.value = mockDepartments })
+      .finally(() => { loadingDepts.value = false }),
   ])
 }
 
@@ -388,26 +438,26 @@ onMounted(loadAll)
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #6366f1;
+  color: var(--color-primary);
   margin: 0 0 5px;
 }
 
 .greeting__title {
   font-size: 24px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0;
   letter-spacing: -0.02em;
 }
-.greeting__title span { color: #4f46e5; }
+.greeting__title span { color: var(--color-primary-dark); }
 
 .btn-goto {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #0f172a;
-  color: #fff;
+  background: var(--color-text);
+  color: var(--color-surface);
   border-radius: 10px;
   text-decoration: none;
   font-size: 13.5px;
@@ -415,7 +465,7 @@ onMounted(loadAll)
   transition: background 0.15s, transform 0.12s;
   white-space: nowrap;
 }
-.btn-goto:hover { background: #1e293b; transform: translateY(-1px); }
+.btn-goto:hover { background: var(--color-navy-hover); transform: translateY(-1px); }
 
 /* ── KPI 카드 ────────────────────────────────────── */
 .kpi-row {
@@ -428,8 +478,8 @@ onMounted(loadAll)
 @media (max-width: 720px)  { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
 
 .kpi-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 18px 16px 14px;
   display: flex;
@@ -438,7 +488,7 @@ onMounted(loadAll)
   transition: box-shadow 0.15s;
 }
 .kpi-card:hover { box-shadow: 0 4px 16px rgba(15,23,42,0.06); }
-.kpi-card--alert { border-color: #fecaca; background: #fffafa; }
+.kpi-card--alert { border-color: var(--color-danger-border); background: var(--c-red-50); }
 
 .kpi-card__header {
   display: flex;
@@ -449,7 +499,7 @@ onMounted(loadAll)
 .kpi-card__label {
   font-size: 11.5px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -466,7 +516,7 @@ onMounted(loadAll)
 .kpi-card__value {
   font-size: 26px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 2px 0 0;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -474,15 +524,15 @@ onMounted(loadAll)
 
 .kpi-card__sub {
   font-size: 11.5px;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   margin: 0;
 }
 
 .kpi-card__alert-badge {
   display: inline-block;
   padding: 2px 7px;
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
   border-radius: 5px;
   font-size: 11.5px;
   font-weight: 700;
@@ -490,7 +540,7 @@ onMounted(loadAll)
 
 .kpi-progress {
   height: 4px;
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   border-radius: 2px;
   overflow: hidden;
   margin-top: 4px;
@@ -503,8 +553,8 @@ onMounted(loadAll)
 
 /* ── 공통 카드 ───────────────────────────────────── */
 .card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 20px;
   display: flex;
@@ -523,7 +573,7 @@ onMounted(loadAll)
 .card__title {
   font-size: 14px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0;
   letter-spacing: -0.01em;
 }
@@ -531,23 +581,23 @@ onMounted(loadAll)
 .card__link {
   font-size: 12.5px;
   font-weight: 500;
-  color: #6366f1;
+  color: var(--color-primary);
   text-decoration: none;
   transition: color 0.13s;
 }
-.card__link:hover { color: #4338ca; }
+.card__link:hover { color: var(--color-primary-darker); }
 
 .card__empty {
   padding: 32px;
   text-align: center;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
 }
 
 .card__skeleton { display: flex; flex-direction: column; gap: 10px; }
 
 .skel {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e8edf5 50%, #f1f5f9 75%);
+  background: linear-gradient(90deg, var(--color-surface-muted) 25%, var(--c-slate-150) 50%, var(--color-surface-muted) 75%);
   background-size: 200% 100%;
   border-radius: 6px;
   animation: shimmer 1.5s infinite;
@@ -571,7 +621,7 @@ onMounted(loadAll)
 
 .funnel-step__bar-wrap {
   height: 8px;
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -588,7 +638,7 @@ onMounted(loadAll)
   align-items: center;
 }
 
-.funnel-step__label { font-size: 12.5px; color: #64748b; font-weight: 500; }
+.funnel-step__label { font-size: 12.5px; color: var(--color-text-muted); font-weight: 500; }
 .funnel-step__value { font-size: 13.5px; font-weight: 700; }
 
 /* ── 사업부 테이블 ────────────────────────────────── */
@@ -600,10 +650,10 @@ onMounted(loadAll)
   padding: 8px 10px;
   font-size: 11px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-surface-muted);
   gap: 8px;
 }
 
@@ -611,13 +661,13 @@ onMounted(loadAll)
   display: grid;
   grid-template-columns: 1.8fr repeat(2, 0.7fr) 1.2fr;
   padding: 11px 10px;
-  border-bottom: 1px solid #f8fafc;
+  border-bottom: 1px solid var(--color-surface-hover);
   align-items: center;
   gap: 8px;
   transition: background 0.12s;
 }
 .dept-row:last-child { border-bottom: none; }
-.dept-row:hover { background: #f8fafc; }
+.dept-row:hover { background: var(--color-surface-hover); }
 
 .dept-row__name {
   display: flex;
@@ -625,23 +675,23 @@ onMounted(loadAll)
   gap: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .dept-dot {
   width: 7px; height: 7px;
   border-radius: 50%;
-  background: #6366f1;
+  background: var(--color-primary);
   flex-shrink: 0;
 }
 
 .dept-row__num {
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-secondary);
   text-align: center;
 }
-.dept-row__num--done { color: #22c55e; font-weight: 700; }
+.dept-row__num--done { color: var(--color-success); font-weight: 700; }
 
 .dept-mini-bar {
   display: flex;
@@ -652,7 +702,7 @@ onMounted(loadAll)
 .dept-mini-bar {
   position: relative;
   height: 6px;
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   border-radius: 3px;
   flex: 1;
   overflow: hidden;
@@ -660,7 +710,7 @@ onMounted(loadAll)
 
 .dept-mini-bar__fill {
   height: 100%;
-  background: linear-gradient(90deg, #4f46e5, #818cf8);
+  background: linear-gradient(90deg, var(--color-primary-dark), var(--c-primary-400));
   border-radius: 3px;
   transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
 }
@@ -668,7 +718,7 @@ onMounted(loadAll)
 .dept-mini-bar span {
   position: absolute;
   right: 0; top: -18px;
-  font-size: 11px; font-weight: 600; color: #64748b;
+  font-size: 11px; font-weight: 600; color: var(--color-text-muted);
   white-space: nowrap;
 }
 
@@ -689,7 +739,7 @@ onMounted(loadAll)
 
 .tech-dist__bar-wrap {
   height: 7px;
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -705,8 +755,8 @@ onMounted(loadAll)
   justify-content: space-between;
   align-items: center;
 }
-.tech-dist__name  { font-size: 12.5px; font-weight: 500; color: #374151; }
-.tech-dist__count { font-size: 12.5px; font-weight: 700; color: #0f172a; }
+.tech-dist__name  { font-size: 12.5px; font-weight: 500; color: var(--color-text-secondary); }
+.tech-dist__count { font-size: 12.5px; font-weight: 700; color: var(--color-text); }
 
 /* ── 만료 차트 ───────────────────────────────────── */
 .expiry-chart {
@@ -741,7 +791,7 @@ onMounted(loadAll)
 
 .expiry-bar-label {
   font-size: 10.5px;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   font-weight: 500;
   text-align: center;
 }
@@ -760,7 +810,7 @@ onMounted(loadAll)
   justify-content: space-between;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid #f8fafc;
+  border-bottom: 1px solid var(--color-surface-hover);
 }
 .reply-item:last-child { border-bottom: none; }
 
@@ -773,21 +823,21 @@ onMounted(loadAll)
 
 .reply-item__avatar {
   width: 30px; height: 30px;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--c-violet-700));
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-surface);
   flex-shrink: 0;
 }
 
 .reply-item__title {
   font-size: 12.5px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0 0 2px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -795,7 +845,7 @@ onMounted(loadAll)
 }
 .reply-item__dept {
   font-size: 11.5px;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   margin: 0;
 }
 
@@ -806,7 +856,7 @@ onMounted(loadAll)
   font-weight: 700;
   flex-shrink: 0;
 }
-.reply-badge--keep    { background: #f0fdf4; color: #15803d; }
-.reply-badge--sell    { background: #eef2ff; color: #4338ca; }
-.reply-badge--dispose { background: #fef2f2; color: #dc2626; }
+.reply-badge--keep    { background: var(--color-success-bg); color: var(--color-success-dark); }
+.reply-badge--sell    { background: var(--color-primary-bg); color: var(--color-primary-darker); }
+.reply-badge--dispose { background: var(--color-danger-bg); color: var(--color-danger); }
 </style>

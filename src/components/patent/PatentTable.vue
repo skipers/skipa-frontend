@@ -197,11 +197,11 @@ function expiryClass(d?: string) {
   width: 100%;
   border-collapse: collapse;
   font-size: 13.5px;
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .patent-table thead tr {
-  border-bottom: 1.5px solid #e2e8f0;
+  border-bottom: 1.5px solid var(--color-border);
 }
 
 .patent-table th {
@@ -209,7 +209,7 @@ function expiryClass(d?: string) {
   text-align: left;
   font-size: 11.5px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--color-text-muted);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -223,7 +223,7 @@ function expiryClass(d?: string) {
 
 .patent-table th.sortable:hover,
 .patent-table th.sort-active {
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .sort-icon {
@@ -235,13 +235,13 @@ function expiryClass(d?: string) {
 
 /* ── 행 ─────────────────────────────────────────────── */
 .patent-row {
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-surface-muted);
   cursor: pointer;
   transition: background 0.12s;
 }
 
 .patent-row:hover {
-  background: #f8fafc;
+  background: var(--color-surface-hover);
 }
 
 .patent-row:hover .row-arrow {
@@ -271,7 +271,7 @@ function expiryClass(d?: string) {
 
 .patent-title {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--color-text);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -281,7 +281,7 @@ function expiryClass(d?: string) {
 
 .patent-manage-num {
   font-size: 11.5px;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   font-family: 'JetBrains Mono', 'Consolas', monospace;
 }
 
@@ -289,28 +289,28 @@ function expiryClass(d?: string) {
 .mono {
   font-family: 'JetBrains Mono', 'Consolas', monospace;
   font-size: 12.5px;
-  color: #475569;
+  color: var(--c-slate-600);
 }
 
-.expiry--soon    { color: #b45309; font-weight: 600; }
-.expiry--expired { color: #dc2626; font-weight: 600; }
+.expiry--soon    { color: var(--color-warn-dark); font-weight: 600; }
+.expiry--expired { color: var(--color-danger); font-weight: 600; }
 
 .field-tag {
   display: inline-block;
   padding: 2px 8px;
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   border-radius: 5px;
   font-size: 12px;
-  color: #475569;
+  color: var(--c-slate-600);
   font-weight: 500;
 }
 
-.text-muted { color: #cbd5e1; }
+.text-muted { color: var(--c-slate-300); }
 
 .row-arrow {
   display: flex;
   justify-content: flex-end;
-  color: #cbd5e1;
+  color: var(--c-slate-300);
   opacity: 0;
   transition: opacity 0.12s, transform 0.12s;
 }
@@ -321,12 +321,12 @@ function expiryClass(d?: string) {
   align-items: center;
   gap: 16px;
   padding: 16px 14px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-surface-muted);
 }
 
 .skeleton-cell {
   height: 14px;
-  background: linear-gradient(90deg, #f1f5f9 25%, #e8edf5 50%, #f1f5f9 75%);
+  background: linear-gradient(90deg, var(--color-surface-muted) 25%, var(--c-slate-150) 50%, var(--color-surface-muted) 75%);
   background-size: 200% 100%;
   border-radius: 4px;
   animation: shimmer 1.5s infinite;
@@ -355,25 +355,25 @@ function expiryClass(d?: string) {
 
 .empty-state__icon {
   width: 56px; height: 56px;
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   margin-bottom: 4px;
 }
 
 .empty-state__title {
   font-size: 15px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
 .empty-state__desc {
   font-size: 13.5px;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   margin: 0;
 }
 </style>

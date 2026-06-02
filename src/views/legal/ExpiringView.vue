@@ -353,19 +353,19 @@ const selectedDateStr   = ref('')
 }
 .page-header__eyebrow {
   font-size: 12px; font-weight: 600; letter-spacing: .06em;
-  text-transform: uppercase; color: #6366f1; margin: 0 0 5px;
+  text-transform: uppercase; color: var(--color-primary); margin: 0 0 5px;
 }
 .page-header__title {
-  font-size: 22px; font-weight: 700; color: #0f172a;
+  font-size: 22px; font-weight: 700; color: var(--color-text);
   margin: 0 0 4px; letter-spacing: -0.02em;
 }
-.page-header__desc { font-size: 13.5px; color: #64748b; margin: 0; }
+.page-header__desc { font-size: 13.5px; color: var(--color-text-muted); margin: 0; }
 
 /* 뷰 토글 */
 .view-toggle {
   display: flex;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -373,10 +373,10 @@ const selectedDateStr   = ref('')
   display: flex; align-items: center; gap: 6px;
   padding: 8px 16px;
   background: none; border: none; cursor: pointer;
-  font-size: 13px; font-weight: 500; font-family: inherit; color: #64748b;
+  font-size: 13px; font-weight: 500; font-family: inherit; color: var(--color-text-muted);
   transition: background .13s, color .13s;
 }
-.view-toggle button.active { background: #0f172a; color: #fff; }
+.view-toggle button.active { background: var(--color-text); color: var(--color-surface); }
 
 /* ── 기간 필터 ───────────────────────────────────── */
 .period-filter { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -384,12 +384,12 @@ const selectedDateStr   = ref('')
 .period-btn {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 16px;
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 20px;
-  font-size: 13px; font-weight: 500; font-family: inherit; color: #475569;
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 20px;
+  font-size: 13px; font-weight: 500; font-family: inherit; color: var(--c-slate-600);
   cursor: pointer; transition: background .13s, border-color .13s, color .13s;
 }
-.period-btn:hover { background: #f8fafc; }
-.period-btn--active { background: #0f172a; border-color: #0f172a; color: #fff; }
+.period-btn:hover { background: var(--color-surface-hover); }
+.period-btn--active { background: var(--color-text); border-color: var(--color-text); color: var(--color-surface); }
 
 .period-btn__count {
   display: inline-flex; align-items: center; justify-content: center;
@@ -398,13 +398,13 @@ const selectedDateStr   = ref('')
   border-radius: 9px; font-size: 11px; font-weight: 700;
 }
 .period-btn:not(.period-btn--active) .period-btn__count {
-  background: #f1f5f9; color: #64748b;
+  background: var(--color-surface-muted); color: var(--color-text-muted);
 }
 
 /* ── 차트 카드 ────────────────────────────────────── */
 .chart-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 20px;
   display: flex;
@@ -414,8 +414,8 @@ const selectedDateStr   = ref('')
 .chart-card__header {
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
 }
-.chart-card__title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
-.chart-card__sub   { font-size: 12.5px; color: #94a3b8; }
+.chart-card__title { font-size: 14px; font-weight: 700; color: var(--color-text); margin: 0; }
+.chart-card__sub   { font-size: 12.5px; color: var(--color-text-subtle); }
 
 /* 기간별 바 차트 */
 .period-bars {
@@ -437,31 +437,31 @@ const selectedDateStr   = ref('')
 }
 .period-bar:hover { filter: brightness(1.08); }
 
-.period-bar-label { font-size: 12px; color: #64748b; font-weight: 500; }
+.period-bar-label { font-size: 12px; color: var(--color-text-muted); font-weight: 500; }
 .period-bar-count { font-size: 14px; font-weight: 800; }
 
 /* 분야별 분포 */
 .field-dist { display: flex; flex-direction: column; gap: 12px; }
 .field-dist-item { display: flex; flex-direction: column; gap: 5px; }
 .field-dist-item__info { display: flex; justify-content: space-between; align-items: center; }
-.field-dist-item__name  { font-size: 13px; font-weight: 600; color: #374151; }
-.field-dist-item__count { font-size: 13px; font-weight: 700; color: #0f172a; }
-.field-dist-bar-wrap { height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+.field-dist-item__name  { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); }
+.field-dist-item__count { font-size: 13px; font-weight: 700; color: var(--color-text); }
+.field-dist-bar-wrap { height: 8px; background: var(--color-surface-muted); border-radius: 4px; overflow: hidden; }
 .field-dist-bar { height: 100%; border-radius: 4px; transition: width .7s cubic-bezier(.4,0,.2,1); }
 
 /* 만료 목록 */
 .table-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   overflow: hidden;
 }
 .table-card__header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid #f1f5f9;
+  padding: 16px 20px; border-bottom: 1px solid var(--color-surface-muted);
 }
-.table-card__title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
-.table-card__count { font-size: 13px; color: #64748b; }
+.table-card__title { font-size: 14px; font-weight: 700; color: var(--color-text); margin: 0; }
+.table-card__count { font-size: 13px; color: var(--color-text-muted); }
 
 .expiry-list { display: flex; flex-direction: column; }
 .expiry-item {
@@ -470,55 +470,55 @@ const selectedDateStr   = ref('')
   align-items: center;
   gap: 12px;
   padding: 14px 20px;
-  border-bottom: 1px solid #f8fafc;
+  border-bottom: 1px solid var(--color-surface-hover);
   cursor: pointer;
   transition: background .12s;
 }
 .expiry-item:last-child { border-bottom: none; }
-.expiry-item:hover { background: #f8fafc; }
+.expiry-item:hover { background: var(--color-surface-hover); }
 
 .expiry-item__urgency { display: flex; align-items: center; justify-content: center; }
 .urgency-dot {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
 }
 .urgency--critical .urgency-dot,
-.urgency-dot--critical { background: #ef4444; box-shadow: 0 0 5px rgba(239,68,68,.6); }
+.urgency-dot--critical { background: var(--color-danger-light); box-shadow: 0 0 5px rgba(239,68,68,.6); }
 .urgency--warn    .urgency-dot,
-.urgency-dot--warn    { background: #f59e0b; }
+.urgency-dot--warn    { background: var(--color-warn); }
 .urgency--normal  .urgency-dot,
-.urgency-dot--normal  { background: #94a3b8; }
+.urgency-dot--normal  { background: var(--color-text-subtle); }
 
 .expiry-item__info { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .expiry-item__title {
-  font-size: 13.5px; font-weight: 600; color: #0f172a;
+  font-size: 13.5px; font-weight: 600; color: var(--color-text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0;
 }
 .expiry-item__meta { display: flex; gap: 6px; flex-wrap: wrap; }
 .meta-pill {
   display: inline-block; padding: 2px 7px;
-  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px;
-  font-size: 11.5px; color: #64748b;
+  background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 5px;
+  font-size: 11.5px; color: var(--color-text-muted);
 }
 
 .expiry-item__date { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .expiry-item__dday { font-size: 14px; font-weight: 800; margin: 0; }
-.dday--critical { color: #dc2626; }
-.dday--warn     { color: #b45309; }
-.dday--normal   { color: #6366f1; }
-.expiry-item__expiry-date { font-size: 11.5px; color: #94a3b8; margin: 0; }
+.dday--critical { color: var(--color-danger); }
+.dday--warn     { color: var(--color-warn-dark); }
+.dday--normal   { color: var(--color-primary); }
+.expiry-item__expiry-date { font-size: 11.5px; color: var(--color-text-subtle); margin: 0; }
 
-.expiry-item__arrow { color: #cbd5e1; transition: color .12s; }
-.expiry-item:hover .expiry-item__arrow { color: #6366f1; }
+.expiry-item__arrow { color: var(--c-slate-300); transition: color .12s; }
+.expiry-item:hover .expiry-item__arrow { color: var(--color-primary); }
 
 /* ── 범례 ────────────────────────────────────────── */
 .chart-legend { display: flex; gap: 12px; flex-wrap: wrap; }
-.legend-item  { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b; }
+.legend-item  { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-muted); }
 .legend-dot   { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
 /* ── 캘린더 ──────────────────────────────────────── */
 .calendar-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 24px;
   display: flex;
@@ -529,14 +529,14 @@ const selectedDateStr   = ref('')
 .calendar-header {
   display: flex; align-items: center; justify-content: space-between;
 }
-.calendar-title { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; }
+.calendar-title { font-size: 17px; font-weight: 700; color: var(--color-text); margin: 0; }
 .cal-nav {
   width: 34px; height: 34px;
-  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+  background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: #374151; transition: background .13s;
+  cursor: pointer; color: var(--color-text-secondary); transition: background .13s;
 }
-.cal-nav:hover { background: #f1f5f9; }
+.cal-nav:hover { background: var(--color-surface-muted); }
 
 .cal-weekdays {
   display: grid; grid-template-columns: repeat(7, 1fr);
@@ -544,7 +544,7 @@ const selectedDateStr   = ref('')
 }
 .cal-weekdays span {
   padding: 8px 4px;
-  font-size: 12px; font-weight: 700; color: #94a3b8;
+  font-size: 12px; font-weight: 700; color: var(--color-text-subtle);
   text-transform: uppercase; letter-spacing: .04em;
 }
 
@@ -562,18 +562,18 @@ const selectedDateStr   = ref('')
   transition: border-color .12s;
 }
 .cal-cell--other-month { opacity: 0.35; }
-.cal-cell--today { background: #eef2ff; border-color: #c7d2fe; }
+.cal-cell--today { background: var(--color-primary-bg); border-color: var(--c-primary-200); }
 .cal-cell--has-events { cursor: pointer; }
-.cal-cell--has-events:hover { border-color: #e2e8f0; background: #f8fafc; }
+.cal-cell--has-events:hover { border-color: var(--color-border); background: var(--color-surface-hover); }
 
 .cal-cell__day {
   display: flex; align-items: center; justify-content: center;
   width: 24px; height: 24px;
-  font-size: 12.5px; font-weight: 600; color: #374151;
+  font-size: 12.5px; font-weight: 600; color: var(--color-text-secondary);
   margin-bottom: 4px;
 }
 .cal-cell--today .cal-cell__day {
-  background: #6366f1; color: #fff; border-radius: 50%;
+  background: var(--color-primary); color: var(--color-surface); border-radius: 50%;
 }
 
 .cal-cell__events { display: flex; flex-direction: column; gap: 2px; }
@@ -585,25 +585,25 @@ const selectedDateStr   = ref('')
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   cursor: pointer;
 }
-.cal-event--critical { background: #fef2f2; color: #dc2626; }
-.cal-event--warn     { background: #fffbeb; color: #b45309; }
-.cal-event--normal   { background: #eef2ff; color: #4338ca; }
+.cal-event--critical { background: var(--color-danger-bg); color: var(--color-danger); }
+.cal-event--warn     { background: var(--color-warn-bg); color: var(--color-warn-dark); }
+.cal-event--normal   { background: var(--color-primary-bg); color: var(--color-primary-darker); }
 
-.cal-cell__more { font-size: 10px; color: #94a3b8; margin: 0; padding: 0 5px; }
+.cal-cell__more { font-size: 10px; color: var(--color-text-subtle); margin: 0; padding: 0 5px; }
 
 /* 선택된 날 상세 */
 .cal-detail {
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--color-surface-muted);
   padding-top: 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.cal-detail__title { font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0; }
+.cal-detail__title { font-size: 13.5px; font-weight: 700; color: var(--color-text); margin: 0; }
 .cal-detail-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 12px; background: #f8fafc; border-radius: 8px;
+  padding: 8px 12px; background: var(--color-surface-hover); border-radius: 8px;
   font-size: 13px; cursor: pointer; transition: background .12s;
 }
-.cal-detail-item:hover { background: #f1f5f9; }
+.cal-detail-item:hover { background: var(--color-surface-muted); }
 </style>

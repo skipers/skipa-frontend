@@ -299,6 +299,30 @@ const hasActiveFilters = computed(() =>
   !!filters.q || !!filters.status || (filters.country && filters.country !== '전체') || !!filters.departmentId
 )
 
+// ── Mock 특허 목록 ──────────────────────────────────
+const mockPatentRows: PatentRow[] = [
+  { id: 1,  title: 'NF3 가스 이물질 제거 시스템',           applicationNumber: '10-2026-0012345', registrationNumber: '10-2450231', manageNumber: 'SKP-2026-001', applicationDate: '2024-03-15', expiryDate: '2026-08-15', status: 'EXPIRING_SOON', techField: '반도체' },
+  { id: 2,  title: '플라즈마 식각 장치 및 제어 방법',         applicationNumber: '10-2025-0098732', registrationNumber: '10-2318740', manageNumber: 'SKP-2025-042', applicationDate: '2023-09-08', expiryDate: '2026-09-22', status: 'EXPIRING_SOON', techField: '반도체' },
+  { id: 3,  title: '배터리 전극 코팅 균일도 향상 장치',       applicationNumber: '10-2025-0041200', registrationNumber: '10-2298100', manageNumber: 'SKP-2025-018', applicationDate: '2023-05-20', expiryDate: '2026-10-05', status: 'EXPIRING_SOON', techField: '배터리' },
+  { id: 4,  title: '신소재 열 전도성 향상 방법',              applicationNumber: '10-2024-0081900', registrationNumber: '10-2201540', manageNumber: 'SKP-2024-033', applicationDate: '2022-11-12', expiryDate: '2027-01-20', status: 'REGISTERED',    techField: '소재'   },
+  { id: 5,  title: 'AI 기반 품질 검사 자동화 시스템',         applicationNumber: '10-2026-0031891', registrationNumber: '10-2490010', manageNumber: 'SKP-2026-009', applicationDate: '2024-07-03', expiryDate: '2027-03-01', status: 'REGISTERED',    techField: 'AI/SW'  },
+  { id: 6,  title: '반도체 세정 공정 최적화 방법',            applicationNumber: '10-2023-0055100', registrationNumber: '10-2102390', manageNumber: 'SKP-2023-021', applicationDate: '2021-08-17', expiryDate: '2026-07-10', status: 'EXPIRING_SOON', techField: '반도체' },
+  { id: 7,  title: '리튬이온 배터리 수명 예측 알고리즘',      applicationNumber: '10-2025-0067432', registrationNumber: '10-2355820', manageNumber: 'SKP-2025-027', applicationDate: '2023-12-01', expiryDate: '2027-05-14', status: 'REGISTERED',    techField: '배터리' },
+  { id: 8,  title: '고온 내열 소재 합성 공정',               applicationNumber: '10-2024-0012980', registrationNumber: '10-2188500', manageNumber: 'SKP-2024-005', applicationDate: '2022-04-29', expiryDate: '2026-11-30', status: 'REGISTERED',    techField: '소재'   },
+  { id: 9,  title: '반도체 패키징 방열 구조 및 제조 방법',    applicationNumber: '10-2026-0044211', registrationNumber: '10-2502100', manageNumber: 'SKP-2026-015', applicationDate: '2024-09-10', expiryDate: '2027-02-08', status: 'REGISTERED',    techField: '반도체' },
+  { id: 10, title: '신경망 기반 결함 검출 시스템',            applicationNumber: '10-2025-0029004', registrationNumber: '10-2277340', manageNumber: 'SKP-2025-011', applicationDate: '2023-04-14', expiryDate: '2027-07-22', status: 'REGISTERED',    techField: 'AI/SW'  },
+  { id: 11, title: '전고체 배터리 전해질 조성물',             applicationNumber: '10-2024-0093100', registrationNumber: '10-2222870', manageNumber: 'SKP-2024-038', applicationDate: '2022-12-05', expiryDate: '2026-12-19', status: 'REGISTERED',    techField: '배터리' },
+  { id: 12, title: '산화막 성장 제어 방법',                  applicationNumber: '10-2023-0077650', registrationNumber: '10-2133010', manageNumber: 'SKP-2023-031', applicationDate: '2021-11-22', expiryDate: '2027-04-03', status: 'REGISTERED',    techField: '반도체' },
+  { id: 13, title: '나노 구조 촉매 제조 공정',               applicationNumber: '10-2022-0048300', registrationNumber: '10-2055980', manageNumber: 'SKP-2022-019', applicationDate: '2020-07-08', expiryDate: '2025-12-31', status: 'EXPIRED',       techField: '소재'   },
+  { id: 14, title: '딥러닝 기반 공정 이상 감지 시스템',       applicationNumber: '10-2026-0020011', registrationNumber: '10-2465300', manageNumber: 'SKP-2026-004', applicationDate: '2024-05-16', expiryDate: '2028-01-10', status: 'REGISTERED',    techField: 'AI/SW'  },
+  { id: 15, title: '차세대 배터리 전극 소재 합성법',          applicationNumber: '10-2025-0082100', registrationNumber: '10-2388200', manageNumber: 'SKP-2025-033', applicationDate: '2024-01-25', expiryDate: '2028-03-30', status: 'REGISTERED',    techField: '배터리' },
+  { id: 16, title: '플렉서블 기판 반도체 제조 방법',          applicationNumber: '10-2023-0104500', registrationNumber: '10-2155640', manageNumber: 'SKP-2023-041', applicationDate: '2022-02-18', expiryDate: '2027-09-15', status: 'REGISTERED',    techField: '반도체' },
+  { id: 17, title: '하이브리드 전력 제어 알고리즘',           applicationNumber: '10-2024-0061700', registrationNumber: '10-2210890', manageNumber: 'SKP-2024-025', applicationDate: '2022-09-30', expiryDate: '2027-06-08', status: 'REGISTERED',    techField: 'AI/SW'  },
+  { id: 18, title: '탄소 나노튜브 복합 소재 제조',            applicationNumber: '10-2022-0031200', registrationNumber: '10-2044120', manageNumber: 'SKP-2022-013', applicationDate: '2020-05-12', expiryDate: '2025-09-20', status: 'EXPIRED',       techField: '소재'   },
+  { id: 19, title: '식각 공정 부산물 회수 장치',              applicationNumber: '10-2026-0058900', registrationNumber: '10-2520770', manageNumber: 'SKP-2026-022', applicationDate: '2024-11-07', expiryDate: '2028-07-14', status: 'REGISTERED',    techField: '반도체' },
+  { id: 20, title: '초고속 충전 배터리 관리 시스템',          applicationNumber: '10-2025-0011500', registrationNumber: '10-2260430', manageNumber: 'SKP-2025-005', applicationDate: '2023-02-28', expiryDate: '2028-05-03', status: 'REGISTERED',    techField: '배터리' },
+]
+
 // ── 특허 목록 로드 ───────────────────────────────────
 async function fetchPatents(p = page.value) {
   loading.value = true
@@ -315,8 +339,21 @@ async function fetchPatents(p = page.value) {
     const res = await patentsApi.list(params as any)
     tableItems.value = res.items as PatentRow[]
     setTotal(res.totalItems, res.totalPages)
-  } catch (e) {
-    console.error(e)
+  } catch {
+    let filtered = [...mockPatentRows]
+    if (filters.q) {
+      const q = filters.q.toLowerCase()
+      filtered = filtered.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.applicationNumber.includes(q) ||
+        p.manageNumber?.toLowerCase().includes(q)
+      )
+    }
+    if (filters.status) {
+      filtered = filtered.filter(p => p.status === filters.status)
+    }
+    tableItems.value = filtered
+    setTotal(filtered.length, 1)
   } finally {
     loading.value = false
   }
@@ -410,14 +447,14 @@ onMounted(() => fetchPatents(1))
 .page-header__title {
   font-size: 22px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0 0 4px;
   letter-spacing: -0.02em;
 }
 
 .page-header__desc {
   font-size: 13.5px;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -426,8 +463,8 @@ onMounted(() => fetchPatents(1))
   align-items: center;
   gap: 7px;
   padding: 9px 18px;
-  background: #0f172a;
-  color: #fff;
+  background: var(--color-text);
+  color: var(--color-surface);
   border: none;
   border-radius: 9px;
   font-size: 13.5px;
@@ -437,13 +474,13 @@ onMounted(() => fetchPatents(1))
   transition: background 0.15s, transform 0.12s;
   white-space: nowrap;
 }
-.btn-register:hover { background: #1e293b; }
+.btn-register:hover { background: var(--color-navy-hover); }
 .btn-register:active { transform: scale(0.98); }
 
 /* ── 필터 카드 ────────────────────────────────────── */
 .filter-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 18px 20px;
   display: flex;
@@ -456,21 +493,21 @@ onMounted(() => fetchPatents(1))
   display: flex;
   align-items: center;
   gap: 0;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--color-border);
   border-radius: 10px;
   overflow: hidden;
-  background: #fafafa;
+  background: var(--color-surface-soft);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .search-bar:focus-within {
-  border-color: #6366f1;
-  background: #fff;
+  border-color: var(--color-primary);
+  background: var(--color-surface);
   box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
 }
 
 .search-bar__icon {
   padding: 0 14px;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   display: flex;
   flex-shrink: 0;
 }
@@ -482,28 +519,28 @@ onMounted(() => fetchPatents(1))
   background: transparent;
   font-size: 14px;
   font-family: inherit;
-  color: #0f172a;
+  color: var(--color-text);
   outline: none;
 }
-.search-bar__input::placeholder { color: #cbd5e1; }
+.search-bar__input::placeholder { color: var(--c-slate-300); }
 
 .search-bar__clear {
   padding: 0 10px;
   background: none;
   border: none;
   cursor: pointer;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   display: flex;
   transition: color 0.13s;
 }
-.search-bar__clear:hover { color: #475569; }
+.search-bar__clear:hover { color: var(--c-slate-600); }
 
 .search-bar__btn {
   padding: 0 20px;
   height: 100%;
   min-height: 44px;
-  background: #0f172a;
-  color: #fff;
+  background: var(--color-text);
+  color: var(--color-surface);
   border: none;
   font-size: 13.5px;
   font-weight: 600;
@@ -512,7 +549,7 @@ onMounted(() => fetchPatents(1))
   transition: background 0.13s;
   white-space: nowrap;
 }
-.search-bar__btn:hover { background: #1e293b; }
+.search-bar__btn:hover { background: var(--color-navy-hover); }
 
 /* 필터 행 */
 .filter-row {
@@ -531,14 +568,14 @@ onMounted(() => fetchPatents(1))
 .filter-label {
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .filter-divider {
   width: 1px;
   height: 18px;
-  background: #e2e8f0;
+  background: var(--color-border);
   flex-shrink: 0;
 }
 
@@ -550,10 +587,10 @@ onMounted(() => fetchPatents(1))
 
 .chip {
   padding: 5px 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 20px;
-  background: #f8fafc;
-  color: #475569;
+  background: var(--color-surface-hover);
+  color: var(--c-slate-600);
   font-size: 12.5px;
   font-weight: 500;
   font-family: inherit;
@@ -561,11 +598,11 @@ onMounted(() => fetchPatents(1))
   transition: background 0.12s, border-color 0.12s, color 0.12s;
   white-space: nowrap;
 }
-.chip:hover { background: #f1f5f9; border-color: #cbd5e1; }
+.chip:hover { background: var(--color-surface-muted); border-color: var(--c-slate-300); }
 .chip--active {
-  background: #0f172a;
-  border-color: #0f172a;
-  color: #fff;
+  background: var(--color-text);
+  border-color: var(--color-text);
+  color: var(--color-surface);
 }
 
 .filter-reset {
@@ -575,16 +612,16 @@ onMounted(() => fetchPatents(1))
   gap: 5px;
   padding: 5px 12px;
   background: none;
-  border: 1px solid #fca5a5;
+  border: 1px solid var(--c-red-300);
   border-radius: 7px;
-  color: #dc2626;
+  color: var(--color-danger);
   font-size: 12.5px;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   transition: background 0.12s;
 }
-.filter-reset:hover { background: #fef2f2; }
+.filter-reset:hover { background: var(--color-danger-bg); }
 
 /* ── 결과 바 ──────────────────────────────────────── */
 .result-bar {
@@ -596,16 +633,16 @@ onMounted(() => fetchPatents(1))
 
 .result-count {
   font-size: 13.5px;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin: 0;
 }
 .result-count__num {
   font-size: 15px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin-right: 2px;
 }
-.result-count__loading { color: #94a3b8; font-style: italic; }
+.result-count__loading { color: var(--color-text-subtle); font-style: italic; }
 
 .dept-filter {
   display: flex;
@@ -615,22 +652,22 @@ onMounted(() => fetchPatents(1))
 
 .select-sm {
   padding: 6px 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   font-size: 13px;
   font-family: inherit;
-  color: #374151;
-  background: #fff;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
   outline: none;
   cursor: pointer;
   transition: border-color 0.13s;
 }
-.select-sm:focus { border-color: #6366f1; }
+.select-sm:focus { border-color: var(--color-primary); }
 
 /* ── 테이블 카드 ──────────────────────────────────── */
 .table-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   overflow: hidden;
 }
@@ -655,7 +692,7 @@ onMounted(() => fetchPatents(1))
 }
 
 .modal {
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 18px;
   width: min(580px, 94vw);
   box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
@@ -667,29 +704,29 @@ onMounted(() => fetchPatents(1))
   align-items: center;
   justify-content: space-between;
   padding: 22px 26px 18px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-surface-muted);
 }
 
 .modal__title {
   font-size: 17px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0;
 }
 
 .modal__close {
   width: 32px; height: 32px;
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   border: none;
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #64748b;
+  color: var(--color-text-muted);
   transition: background 0.13s;
 }
-.modal__close:hover { background: #e2e8f0; }
+.modal__close:hover { background: var(--color-border); }
 
 .modal__body {
   padding: 22px 26px;
@@ -700,18 +737,18 @@ onMounted(() => fetchPatents(1))
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 26px 22px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--color-surface-muted);
 }
 
 /* 탭 */
 .register-tabs {
   display: flex;
   gap: 0;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 9px;
   overflow: hidden;
   margin-bottom: 20px;
-  background: #f8fafc;
+  background: var(--color-surface-hover);
 }
 
 .register-tab {
@@ -723,19 +760,19 @@ onMounted(() => fetchPatents(1))
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  color: #64748b;
+  color: var(--color-text-muted);
   transition: background 0.13s, color 0.13s;
 }
 .register-tab--active {
-  background: #fff;
-  color: #0f172a;
+  background: var(--color-surface);
+  color: var(--color-text);
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 /* 업로드 존 */
 .upload-zone {
-  border: 2px dashed #e2e8f0;
+  border: 2px dashed var(--color-border);
   border-radius: 12px;
   min-height: 160px;
   display: flex;
@@ -743,9 +780,9 @@ onMounted(() => fetchPatents(1))
   justify-content: center;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
-  background: #fafafa;
+  background: var(--color-surface-soft);
 }
-.upload-zone:hover { border-color: #6366f1; background: #f8f8ff; }
+.upload-zone:hover { border-color: var(--color-primary); background: var(--color-surface-soft); }
 
 .upload-zone__content {
   display: flex;
@@ -758,26 +795,26 @@ onMounted(() => fetchPatents(1))
 
 .upload-zone__icon {
   width: 52px; height: 52px;
-  background: #eef2ff;
+  background: var(--color-primary-bg);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6366f1;
+  color: var(--color-primary);
   margin-bottom: 4px;
 }
 
 .upload-zone__title {
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-text-secondary);
   margin: 0;
   text-align: center;
 }
 
 .upload-zone__sub {
   font-size: 12.5px;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   margin: 0;
   text-align: center;
 }
@@ -788,14 +825,14 @@ onMounted(() => fetchPatents(1))
   gap: 10px;
   font-size: 13.5px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-secondary);
   padding: 0 20px;
 }
 .upload-zone__file button {
   background: none;
   border: none;
   cursor: pointer;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   display: flex;
   margin-left: 4px;
 }
@@ -805,46 +842,46 @@ onMounted(() => fetchPatents(1))
 .form-row { display: flex; gap: 12px; }
 .form-row--2 > * { flex: 1; }
 .field { display: flex; flex-direction: column; gap: 5px; }
-.field__label { font-size: 12.5px; font-weight: 600; color: #374151; }
+.field__label { font-size: 12.5px; font-weight: 600; color: var(--color-text-secondary); }
 .field__input {
   padding: 9px 12px;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--color-border);
   border-radius: 8px;
   font-size: 13.5px;
   font-family: inherit;
-  color: #0f172a;
-  background: #fafafa;
+  color: var(--color-text);
+  background: var(--color-surface-soft);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .field__input:focus {
-  border-color: #6366f1;
-  background: #fff;
+  border-color: var(--color-primary);
+  background: var(--color-surface);
   box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
 }
 
 /* 버튼 */
 .btn-cancel {
   padding: 9px 20px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   border-radius: 9px;
   font-size: 13.5px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  color: #475569;
+  color: var(--c-slate-600);
   transition: background 0.13s;
 }
-.btn-cancel:hover { background: #e2e8f0; }
+.btn-cancel:hover { background: var(--color-border); }
 
 .btn-confirm {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 9px 22px;
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: var(--color-surface);
   border: none;
   border-radius: 9px;
   font-size: 13.5px;
@@ -859,7 +896,7 @@ onMounted(() => fetchPatents(1))
 .spinner {
   width: 14px; height: 14px;
   border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
+  border-top-color: var(--color-surface);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
