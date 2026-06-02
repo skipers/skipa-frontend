@@ -19,11 +19,13 @@
 
     <!-- KPI 카드 행 -->
     <div class="kpi-row">
-      <div
+      <component
+        :is="kpi.tab ? 'RouterLink' : 'div'"
         v-for="kpi in kpiCards"
         :key="kpi.label"
+        :to="kpi.tab ? `/legal/reevaluation?tab=${kpi.tab}` : undefined"
         class="kpi-card"
-        :class="{ 'kpi-card--alert': kpi.alert }"
+        :class="{ 'kpi-card--alert': kpi.alert, 'kpi-card--link': !!kpi.tab }"
       >
         <div class="kpi-card__header">
           <span class="kpi-card__label">{{ kpi.label }}</span>
@@ -42,34 +44,37 @@
         <div v-if="kpi.progress != null" class="kpi-progress">
           <div class="kpi-progress__fill" :style="{ width: kpi.progress + '%', background: kpi.progressColor }" />
         </div>
-      </div>
+      </component>
     </div>
 
-    <!-- 중간 행: 배정 현황 + 사업부별 처리 현황 -->
+    <!-- 중간 행: 미확인 회신 + 사업부별 처리 현황 + 배정 현황 -->
     <div class="mid-row">
 
-      <!-- 배정 현황 퍼널 -->
+      <!-- 미확인 회신 -->
       <div class="card">
         <div class="card__header">
-          <h3 class="card__title">배정 현황</h3>
-          <RouterLink to="/legal/reevaluation" class="card__link">전체 보기</RouterLink>
+          <h3 class="card__title">미확인 회신</h3>
+          <RouterLink to="/legal/reevaluation?tab=unread" class="card__link">전체 보기</RouterLink>
         </div>
-        <div v-if="loadingAssign" class="card__skeleton">
-          <div class="skel skel--bar" v-for="n in 3" :key="n" />
+        <div v-if="loadingSummary" class="card__skeleton">
+          <div class="skel skel--row" v-for="n in 4" :key="n" />
         </div>
-        <div v-else class="funnel">
-          <div v-for="(step, i) in funnelSteps" :key="step.label" class="funnel-step">
-            <div class="funnel-step__bar-wrap">
-              <div
-                class="funnel-step__bar"
-                :style="{ width: funnelPct(step.value) + '%', background: step.color }"
-              />
-            </div>
-            <div class="funnel-step__info">
-              <span class="funnel-step__label">{{ step.label }}</span>
-              <span class="funnel-step__value" :style="{ color: step.color }">{{ step.value }}건</span>
+        <div v-else class="reply-list">
+          <div v-if="recentReplies.length" class="reply-items">
+            <div v-for="r in recentReplies" :key="r.id" class="reply-item">
+              <div class="reply-item__left">
+                <div class="reply-item__avatar">{{ r.dept.charAt(0) }}</div>
+                <div>
+                  <p class="reply-item__title">{{ r.patent }}</p>
+                  <p class="reply-item__dept">{{ r.dept }}</p>
+                </div>
+              </div>
+              <span class="reply-item__badge" :class="`reply-badge--${r.decision.toLowerCase()}`">
+                {{ decisionLabel(r.decision) }}
+              </span>
             </div>
           </div>
+          <div v-else class="card__empty">도착한 회신이 없습니다.</div>
         </div>
       </div>
 
@@ -77,6 +82,7 @@
       <div class="card card--wide">
         <div class="card__header">
           <h3 class="card__title">사업부별 처리 현황</h3>
+          <RouterLink to="/legal/reevaluation" class="card__link">전체 보기</RouterLink>
         </div>
         <div v-if="loadingDepts" class="card__skeleton">
           <div class="skel skel--row" v-for="n in 4" :key="n" />
@@ -88,26 +94,32 @@
             <span>결정 완료</span>
             <span>진행률</span>
           </div>
-          <div v-for="d in deptItems" :key="d.departmentId" class="dept-row">
+          <RouterLink
+            v-for="d in deptItems"
+            :key="d.departmentId"
+            :to="`/legal/reevaluation?dept=${d.departmentId}`"
+            class="dept-row dept-row--link"
+          >
             <span class="dept-row__name">
               <span class="dept-dot" />
               {{ deptName(d.departmentId) }}
             </span>
             <span class="dept-row__num">{{ d.assigned }}</span>
             <span class="dept-row__num dept-row__num--done">{{ d.decided }}</span>
-            <div class="dept-mini-bar">
-              <div
-                class="dept-mini-bar__fill"
-                :style="{ width: deptPct(d) + '%' }"
-              />
-              <span>{{ deptPct(d) }}%</span>
+            <div class="dept-progress">
+              <div class="dept-progress__bar">
+                <div class="dept-progress__fill" :style="{ width: deptPct(d) + '%' }" />
+              </div>
+              <span class="dept-progress__pct">{{ deptPct(d) }}%</span>
             </div>
-          </div>
+          </RouterLink>
         </div>
         <div v-else class="card__empty">데이터가 없습니다.</div>
       </div>
 
     </div>
+
+    <hr class="section-divider" />
 
     <!-- 하단 행: 기술 분야 분포 + 분기별 만료 현황 -->
     <div class="bottom-row">
@@ -145,7 +157,7 @@
       <div class="card">
         <div class="card__header">
           <h3 class="card__title">분기별 만료 예정</h3>
-          <RouterLink to="/legal/expiring" class="card__link">만료 관리</RouterLink>
+          <RouterLink to="/legal/expiring" class="card__link">만료 예정 관리</RouterLink>
         </div>
         <div v-if="loadingDist" class="card__skeleton">
           <div class="skel skel--chart" />
@@ -166,34 +178,6 @@
             <p class="expiry-bar-label">{{ item.quarter.replace('Q', ' Q') }}</p>
             <p class="expiry-bar-count" :style="{ color: expiryColor(item.quarter) }">{{ item.count }}</p>
           </div>
-        </div>
-      </div>
-
-      <!-- 최근 사업부 회신 -->
-      <div class="card">
-        <div class="card__header">
-          <h3 class="card__title">최근 회신</h3>
-          <RouterLink to="/legal/reevaluation" class="card__link">전체 보기</RouterLink>
-        </div>
-        <div v-if="loadingSummary" class="card__skeleton">
-          <div class="skel skel--row" v-for="n in 4" :key="n" />
-        </div>
-        <div v-else class="reply-list">
-          <div v-if="recentReplies.length" class="reply-items">
-            <div v-for="r in recentReplies" :key="r.id" class="reply-item">
-              <div class="reply-item__left">
-                <div class="reply-item__avatar">{{ r.dept.charAt(0) }}</div>
-                <div>
-                  <p class="reply-item__title">{{ r.patent }}</p>
-                  <p class="reply-item__dept">{{ r.dept }}</p>
-                </div>
-              </div>
-              <span class="reply-item__badge" :class="`reply-badge--${r.decision.toLowerCase()}`">
-                {{ decisionLabel(r.decision) }}
-              </span>
-            </div>
-          </div>
-          <div v-else class="card__empty">최근 회신이 없습니다.</div>
         </div>
       </div>
 
@@ -247,7 +231,7 @@ const kpiCards = computed(() => {
       value: s ? `${s.progressRate}%` : null,
       progress: s?.progressRate ?? 0,
       progressColor: '#6366f1',
-      sub: `요청 ${s?.kpi.requested ?? 0}건 중 결정 ${s?.kpi.decided ?? 0}건`,
+      sub: `요청 ${s?.kpi.requested ?? 0}건 중 ${s?.kpi.decided ?? 0}건 회신`,
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
       iconBg: '#eef2ff', iconColor: '#6366f1',
       alert: false, alertCount: 0, valueColor: '#0f172a',
@@ -259,6 +243,7 @@ const kpiCards = computed(() => {
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>`,
       iconBg: '#f0fdf4', iconColor: '#22c55e',
       alert: false, alertCount: 0, valueColor: '#0f172a', progress: null, progressColor: '',
+      tab: 'requested',
     },
     {
       label: '지연',
@@ -268,22 +253,25 @@ const kpiCards = computed(() => {
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
       iconBg: '#fef2f2', iconColor: '#dc2626',
       alert: true, valueColor: '#dc2626', progress: null, progressColor: '',
+      tab: 'overdue',
     },
     {
       label: '결정 완료',
       value: s?.kpi.decided ?? null,
-      sub: '회신 수신 완료',
+      sub: '회신 완료',
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
       iconBg: '#f0fdf4', iconColor: '#22c55e',
       alert: false, alertCount: 0, valueColor: '#0f172a', progress: null, progressColor: '',
+      tab: 'done',
     },
     {
-      label: '미배정',
+      label: '요청 전',
       value: a?.unassigned ?? null,
       sub: '부서 배정 필요',
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>`,
       iconBg: '#f8fafc', iconColor: '#64748b',
       alert: false, alertCount: 0, valueColor: '#0f172a', progress: null, progressColor: '',
+      tab: 'unassigned',
     },
   ]
 })
@@ -329,7 +317,7 @@ function techPct(count: number) {
 const expiryItems = computed(() => distribution.value?.byExpiryQuarter ?? [])
 function expiryBarH(count: number) {
   const max = Math.max(...expiryItems.value.map(i => i.count), 1)
-  return Math.round((count / max) * 80) + 20
+  return Math.round((count / max) * 36) + 4  // max 40px
 }
 function expiryColor(quarter: string) {
   // 현재 분기 이후 가까울수록 주황
@@ -449,7 +437,7 @@ onMounted(loadAll)
   margin: 0;
   letter-spacing: -0.02em;
 }
-.greeting__title span { color: var(--color-primary-dark); }
+.greeting__title span { color: var(--color-primary-dark); font-weight: 700; }
 
 .btn-goto {
   display: flex;
@@ -489,6 +477,8 @@ onMounted(loadAll)
 }
 .kpi-card:hover { box-shadow: 0 4px 16px rgba(15,23,42,0.06); }
 .kpi-card--alert { border-color: var(--color-danger-border); background: var(--c-red-50); }
+.kpi-card--link { cursor: pointer; text-decoration: none; color: inherit; }
+.kpi-card--link:hover { box-shadow: 0 4px 16px rgba(99,102,241,0.12); border-color: var(--color-primary-border); }
 
 .kpi-card__header {
   display: flex;
@@ -497,11 +487,10 @@ onMounted(loadAll)
 }
 
 .kpi-card__label {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
 }
 
 .kpi-card__icon {
@@ -523,8 +512,9 @@ onMounted(loadAll)
 }
 
 .kpi-card__sub {
-  font-size: 11.5px;
-  color: var(--color-text-subtle);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
@@ -562,7 +552,6 @@ onMounted(loadAll)
   gap: 16px;
 }
 
-.card--wide { flex: 1.6; }
 
 .card__header {
   display: flex;
@@ -613,6 +602,8 @@ onMounted(loadAll)
   display: flex;
   gap: 16px;
 }
+.mid-row > .card { flex: 1; }
+.mid-row > .card--wide { flex: 2; }
 
 /* ── 퍼널 ────────────────────────────────────────── */
 .funnel { display: flex; flex-direction: column; gap: 10px; }
@@ -646,21 +637,26 @@ onMounted(loadAll)
 
 .dept-table__head {
   display: grid;
-  grid-template-columns: 1.8fr repeat(2, 0.7fr) 1.2fr;
-  padding: 8px 10px;
-  font-size: 11px;
+  grid-template-columns: 1.1fr 0.5fr 0.6fr 1.8fr;
+  padding: 10px 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--color-surface-muted);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
   gap: 8px;
+}
+.dept-table__head span:nth-child(2),
+.dept-table__head span:nth-child(3) {
+  text-align: center;
+}
+.dept-table__head span:nth-child(4) {
+  padding-left: 2px;
 }
 
 .dept-row {
   display: grid;
-  grid-template-columns: 1.8fr repeat(2, 0.7fr) 1.2fr;
-  padding: 11px 10px;
+  grid-template-columns: 1.1fr 0.5fr 0.6fr 1.8fr;
+  padding: 11px 12px;
   border-bottom: 1px solid var(--color-surface-hover);
   align-items: center;
   gap: 8px;
@@ -668,6 +664,8 @@ onMounted(loadAll)
 }
 .dept-row:last-child { border-bottom: none; }
 .dept-row:hover { background: var(--color-surface-hover); }
+.dept-row--link { text-decoration: none; color: inherit; cursor: pointer; }
+.dept-row--link:hover { background: var(--color-primary-bg); }
 
 .dept-row__name {
   display: flex;
@@ -693,43 +691,50 @@ onMounted(loadAll)
 }
 .dept-row__num--done { color: var(--color-success); font-weight: 700; }
 
-.dept-mini-bar {
+.dept-progress {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.dept-mini-bar {
-  position: relative;
+.dept-progress__bar {
+  flex: 1;
   height: 6px;
   background: var(--color-surface-muted);
   border-radius: 3px;
-  flex: 1;
   overflow: hidden;
+  min-width: 0;
 }
 
-.dept-mini-bar__fill {
+.dept-progress__fill {
   height: 100%;
   background: linear-gradient(90deg, var(--color-primary-dark), var(--c-primary-400));
   border-radius: 3px;
   transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
 }
 
-.dept-mini-bar span {
-  position: absolute;
-  right: 0; top: -18px;
-  font-size: 11px; font-weight: 600; color: var(--color-text-muted);
+.dept-progress__pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
   white-space: nowrap;
+  min-width: 36px;
+  text-align: right;
 }
 
 /* ── 하단 행 ─────────────────────────────────────── */
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 4px 0;
+}
+
 .bottom-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
-@media (max-width: 1100px) { .bottom-row { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 720px)  { .bottom-row { grid-template-columns: 1fr; } }
 
 /* ── 기술 분야 분포 ───────────────────────────────── */
@@ -764,8 +769,7 @@ onMounted(loadAll)
   align-items: flex-end;
   justify-content: space-around;
   gap: 6px;
-  height: 130px;
-  padding-top: 20px;
+  height: 180px;
 }
 
 .expiry-bar-group {
@@ -779,7 +783,7 @@ onMounted(loadAll)
 .expiry-bar-wrap {
   display: flex;
   align-items: flex-end;
-  height: 80px;
+  height: 48px;
 }
 
 .expiry-bar {
@@ -844,8 +848,9 @@ onMounted(loadAll)
   white-space: nowrap;
 }
 .reply-item__dept {
-  font-size: 11.5px;
-  color: var(--color-text-subtle);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 

@@ -32,7 +32,7 @@
       <div class="progress-bar-card__legend">
         <span v-for="seg in progressSegments" :key="seg.label" class="legend-item">
           <span class="legend-dot" :style="{ background: seg.color }" />
-          {{ seg.label }} {{ seg.count }}건
+          {{ seg.label }}
         </span>
       </div>
     </div>
@@ -51,6 +51,33 @@
           {{ tab.count }}
         </span>
       </button>
+    </div>
+
+    <!-- 세부 필터 바 (사업부 + 결정) -->
+    <div class="sub-filter-bar">
+      <div class="sub-filter-group">
+        <span class="sub-filter-group__label">사업부</span>
+        <select
+          class="sub-filter-select"
+          :value="activeDept ?? ''"
+          @change="activeDept = ($event.target as HTMLSelectElement).value !== '' ? Number(($event.target as HTMLSelectElement).value) : null; fetchList(1)"
+        >
+          <option value="">전체</option>
+          <option value="-1">미배정</option>
+          <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+        </select>
+      </div>
+      <div class="sub-filter-divider" />
+      <div class="sub-filter-group">
+        <span class="sub-filter-group__label">결정</span>
+        <button
+          v-for="opt in decisionOpts"
+          :key="opt.value ?? 'null'"
+          class="sub-filter-btn"
+          :class="{ 'sub-filter-btn--active': activeDecision === opt.value }"
+          @click="activeDecision = opt.value; fetchList(1)"
+        >{{ opt.label }}</button>
+      </div>
     </div>
 
     <!-- 선택된 항목 액션 바 -->
@@ -281,7 +308,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { patentsApi } from '@/api/patents'
 import { reviewRequestsApi } from '@/api/misc'
 import { usePagination } from '@/composables/usePagination'
@@ -289,6 +316,7 @@ import BasePagination from '@/components/ui/BasePagination.vue'
 import type { Department } from '@/types'
 
 const router = useRouter()
+const route  = useRoute()
 const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination()
 
 // ── 상태 ────────────────────────────────────────────
@@ -296,7 +324,15 @@ const loading  = ref(false)
 const sending  = ref(false)
 const items    = ref<ReevalItem[]>([])
 const selectedIds = reactive(new Set<number>())
-const activeStatus = ref('all')
+const activeStatus   = ref('all')
+const activeDept     = ref<number | null>(null)
+const activeDecision = ref<string | null>(null)
+
+const decisionOpts = [
+  { label: '전체', value: null },
+  { label: '유지', value: 'KEEP' },
+  { label: '포기', value: 'DISPOSE' },
+]
 const showAssignModal = ref(false)
 const showSendModal   = ref(false)
 const assignTarget    = ref<ReevalItem | null>(null)
@@ -332,14 +368,15 @@ const quarterLabel = computed(() => {
 })
 
 // ── 상태 탭 ──────────────────────────────────────────
-const statusCounts = ref({ all: 0, unassigned: 0, requested: 0, overdue: 0, done: 0 })
+const statusCounts = ref({ all: 0, unassigned: 0, requested: 0, overdue: 0, done: 0, unread: 0 })
 
 const statusTabs = computed(() => [
-  { value: 'all',        label: '전체',     count: statusCounts.value.all,        alert: false },
-  { value: 'unassigned', label: '요청 전',  count: statusCounts.value.unassigned, alert: false },
-  { value: 'requested',  label: '요청 완료',count: statusCounts.value.requested,  alert: false },
-  { value: 'overdue',    label: '지연',     count: statusCounts.value.overdue,    alert: statusCounts.value.overdue > 0 },
-  { value: 'done',       label: '회신 완료',count: statusCounts.value.done,       alert: false },
+  { value: 'all',        label: '전체',       count: statusCounts.value.all,        alert: false },
+  { value: 'unread',     label: '미확인 회신', count: statusCounts.value.unread,     alert: statusCounts.value.unread > 0 },
+  { value: 'unassigned', label: '요청 전',      count: statusCounts.value.unassigned, alert: false },
+  { value: 'requested',  label: '요청 완료',  count: statusCounts.value.requested,  alert: false },
+  { value: 'overdue',    label: '지연',       count: statusCounts.value.overdue,    alert: statusCounts.value.overdue > 0 },
+  { value: 'done',       label: '회신 완료',  count: statusCounts.value.done,       alert: false },
 ])
 
 // ── 진행률 ───────────────────────────────────────────
@@ -350,10 +387,11 @@ const progressPct = computed(() => {
 })
 
 const progressSegments = [
-  { label: '요청 전',   color: '#e2e8f0' },
-  { label: '요청 완료', color: '#6366f1' },
-  { label: '지연',      color: '#ef4444' },
-  { label: '회신 완료', color: '#22c55e' },
+  { label: '요청 전',    color: '#e2e8f0' },
+  { label: '요청 완료',  color: '#6366f1' },
+  { label: '지연',       color: '#ef4444' },
+  { label: '회신 완료',  color: '#22c55e' },
+  { label: '미확인 회신', color: '#f59e0b' },
 ]
 
 // ── 전체/일부 체크 ───────────────────────────────────
@@ -438,17 +476,28 @@ async function fetchList(p = 1) {
       done:       Math.round(res.totalItems * 0.35),
     }
   } catch {
-    const filtered = activeStatus.value === 'all'
+    let pool = activeDept.value === null
       ? mockPatents
-      : mockPatents.filter(i => i.reviewStatus === activeStatus.value)
+      : activeDept.value === -1
+        ? mockPatents.filter(i => !i.departmentId)
+        : mockPatents.filter(i => i.departmentId === activeDept.value)
+    if (activeDecision.value === 'KEEP')         pool = pool.filter(i => i.decision === 'KEEP')
+    else if (activeDecision.value === 'DISPOSE') pool = pool.filter(i => i.decision === 'DISPOSE')
+    const byDept = pool
+    const unreadItems = byDept.filter(i => i.reviewStatus === 'done' && i.decision)
+    const filtered =
+      activeStatus.value === 'all'    ? byDept :
+      activeStatus.value === 'unread' ? unreadItems :
+      byDept.filter(i => i.reviewStatus === activeStatus.value)
     items.value = filtered
     setTotal(filtered.length, 1)
     statusCounts.value = {
-      all:        mockPatents.length,
-      unassigned: mockPatents.filter(i => i.reviewStatus === 'unassigned').length,
-      requested:  mockPatents.filter(i => i.reviewStatus === 'requested').length,
-      overdue:    mockPatents.filter(i => i.reviewStatus === 'overdue').length,
-      done:       mockPatents.filter(i => i.reviewStatus === 'done').length,
+      all:        byDept.length,
+      unread:     unreadItems.length,
+      unassigned: byDept.filter(i => i.reviewStatus === 'unassigned').length,
+      requested:  byDept.filter(i => i.reviewStatus === 'requested').length,
+      overdue:    byDept.filter(i => i.reviewStatus === 'overdue').length,
+      done:       byDept.filter(i => i.reviewStatus === 'done').length,
     }
   } finally {
     loading.value = false
@@ -507,7 +556,15 @@ async function handleSend() {
 
 function goDetail(id: number) { router.push(`/patents/${id}`) }
 
-onMounted(() => fetchList(1))
+onMounted(() => {
+  const tab      = route.query.tab      as string | undefined
+  const dept     = route.query.dept     as string | undefined
+  const decision = route.query.decision as string | undefined
+  if (tab)      activeStatus.value   = tab
+  if (dept)     activeDept.value     = Number(dept)
+  if (decision) activeDecision.value = decision
+  fetchList(1)
+})
 </script>
 
 <style scoped>
@@ -625,6 +682,68 @@ onMounted(() => fetchList(1))
 }
 
 /* ── 필터 탭 ─────────────────────────────────────── */
+.sub-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+.sub-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sub-filter-group__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-right: 2px;
+  white-space: nowrap;
+}
+.sub-filter-select {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 4px 28px 4px 10px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.12s;
+  min-width: 120px;
+}
+.sub-filter-select:focus { border-color: var(--color-primary); }
+
+.sub-filter-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 3px 12px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.sub-filter-btn:hover { background: var(--color-surface-muted); }
+.sub-filter-btn--active {
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary-border);
+  color: var(--color-primary-dark);
+  font-weight: 600;
+}
+.sub-filter-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
 .filter-tabs {
   display: flex;
   gap: 4px;
