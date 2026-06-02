@@ -4,7 +4,7 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">만료 예정 관리</p>
+        <p class="page-header__eyebrow">{{ deptId ? '내 사업부 만료 예정' : '만료 예정 관리' }}</p>
         <h2 class="page-header__title">만료 예정 특허</h2>
         <p class="page-header__desc">기간별 만료 예정 특허를 확인하고 유지/포기를 결정하세요</p>
       </div>
@@ -18,20 +18,6 @@
           캘린더
         </button>
       </div>
-    </div>
-
-    <!-- 기간 필터 -->
-    <div class="period-filter">
-      <button
-        v-for="p in periods"
-        :key="p.value"
-        class="period-btn"
-        :class="{ 'period-btn--active': activePeriod === p.value }"
-        @click="activePeriod = p.value"
-      >
-        {{ p.label }}
-        <span class="period-btn__count">{{ expiringByPeriod[p.value] ?? 0 }}</span>
-      </button>
     </div>
 
     <!-- ── 타임라인 뷰 ── -->
@@ -49,45 +35,62 @@
           </div>
         </div>
         <div class="period-bars">
-          <div v-for="p in periodBarData" :key="p.label" class="period-bar-col">
+          <div
+            v-for="p in periodBarData" :key="p.label"
+            class="period-bar-col"
+            :class="{ 'period-bar-col--selected': selectedBarPeriod === p.value }"
+            @click="selectedBarPeriod = p.value"
+          >
             <div class="period-bar-wrap">
               <div
                 class="period-bar"
-                :style="{ height: periodBarH(p.count) + 'px', background: p.color }"
+                :style="{ height: periodBarH(p.count) + 'px', background: p.color, opacity: selectedBarPeriod === p.value ? 1 : 0.55 }"
               />
             </div>
             <p class="period-bar-label">{{ p.label }}</p>
             <p class="period-bar-count" :style="{ color: p.color }">{{ p.count }}건</p>
           </div>
         </div>
-      </div>
 
-      <!-- 분야별 만료 분포 (Legal만) -->
-      <div class="chart-card">
-        <div class="chart-card__header">
-          <h3 class="chart-card__title">분야별 만료 예정 분포</h3>
-          <p class="chart-card__sub">{{ activePeriodLabel }} 기준</p>
-        </div>
-        <div class="field-dist">
-          <div v-for="(f, i) in fieldDistItems" :key="f.name" class="field-dist-item">
-            <div class="field-dist-item__info">
-              <span class="field-dist-item__name">{{ f.name }}</span>
-              <span class="field-dist-item__count">{{ f.count }}건</span>
-            </div>
-            <div class="field-dist-bar-wrap">
-              <div
-                class="field-dist-bar"
-                :style="{ width: Math.round(f.count / maxField * 100) + '%', background: techColors[i % techColors.length] }"
-              />
+        <!-- 기술분야별 비율 스택 바 (Legal만) -->
+        <template v-if="!deptId">
+          <div class="field-stack-header">
+            <span class="field-stack-title">기술분야별 구성 — {{ selectedBarLabel }}</span>
+            <div class="field-stack-legend">
+              <span v-for="(f, i) in heatmapFields" :key="f" class="field-stack-legend-item">
+                <span class="field-legend-dot" :style="{ background: fieldColors[i] }" />{{ f }}
+              </span>
             </div>
           </div>
-        </div>
+          <div class="field-stack-bar">
+            <div
+              v-for="(f, i) in heatmapFields"
+              :key="f"
+              class="field-stack-seg"
+              :style="{ width: fieldStackPct(f) + '%', background: fieldColors[i] }"
+              :title="`${f}: ${heatmapData[f]?.[selectedBarPeriod] ?? 0}건 (${fieldStackPct(f)}%)`"
+            >
+              <span v-if="fieldStackPct(f) >= 8" class="field-stack-seg__label">{{ fieldStackPct(f) }}%</span>
+            </div>
+          </div>
+        </template>
       </div>
 
       <!-- 만료 예정 특허 목록 -->
       <div class="table-card">
         <div class="table-card__header">
-          <h3 class="table-card__title">{{ activePeriodLabel }} 만료 예정 목록</h3>
+          <h3 class="table-card__title">만료 예정 목록</h3>
+          <div class="period-filter">
+            <button
+              v-for="p in periods" :key="p.value"
+              class="period-btn"
+              :class="{ 'period-btn--active': activePeriod === p.value }"
+              @click="activePeriod = p.value"
+            >
+              {{ p.label }}
+              <span class="period-btn__count">{{ expiringByPeriod[p.value] ?? 0 }}</span>
+            </button>
+          </div>
           <p class="table-card__count">{{ filteredItems.length }}건</p>
         </div>
         <div class="expiry-list">
@@ -105,7 +108,7 @@
               <div class="expiry-item__meta">
                 <span class="meta-pill">{{ item.applicationNumber }}</span>
                 <span class="meta-pill">{{ item.techField }}</span>
-                <span v-if="auth.isLegal" class="meta-pill">{{ item.dept }}</span>
+                <span v-if="!deptId" class="meta-pill">{{ item.dept }}</span>
               </div>
             </div>
             <div class="expiry-item__date">
@@ -123,61 +126,71 @@
 
     </template>
 
-    <!-- ── 캘린더 뷰 ── -->
+    <!-- ── 연도별 캘린더 뷰 ── -->
     <template v-else>
-      <div class="calendar-card">
-        <div class="calendar-header">
-          <button class="cal-nav" @click="prevMonth">
+      <div class="ycal-card">
+        <!-- 연도 네비게이션 -->
+        <div class="ycal-header">
+          <button class="cal-nav" @click="calYear--">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <h3 class="calendar-title">{{ calendarTitle }}</h3>
-          <button class="cal-nav" @click="nextMonth">
+          <h3 class="ycal-title">{{ calYear }}년 만료 예정</h3>
+          <button class="cal-nav" @click="calYear++">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
         </div>
 
-        <!-- 요일 헤더 -->
-        <div class="cal-weekdays">
-          <span v-for="d in weekdays" :key="d">{{ d }}</span>
+        <!-- 12달 그리드 -->
+        <div class="ycal-grid">
+          <div
+            v-for="m in yearMonths"
+            :key="m.month"
+            class="ycal-month"
+            :class="{
+              'ycal-month--active': selectedMonth === m.month,
+              'ycal-month--today': m.isCurrentMonth,
+              'ycal-month--empty': m.items.length === 0,
+            }"
+            @click="selectedMonth = selectedMonth === m.month ? null : m.month"
+          >
+            <div class="ycal-month__top">
+              <span class="ycal-month__name">{{ m.monthLabel }}</span>
+              <span v-if="m.items.length" class="ycal-month__badge" :class="`ycal-badge--${m.topUrgency}`">
+                {{ m.items.length }}건
+              </span>
+            </div>
+            <div v-if="m.items.length" class="ycal-month__dots">
+              <span
+                v-for="(item, i) in m.items.slice(0, 5)"
+                :key="i"
+                class="ycal-dot"
+                :class="`ycal-dot--${item.urgency}`"
+              />
+              <span v-if="m.items.length > 5" class="ycal-dot-more">+{{ m.items.length - 5 }}</span>
+            </div>
+            <p v-else class="ycal-month__empty-text">없음</p>
+          </div>
         </div>
 
-        <!-- 날짜 그리드 -->
-        <div class="cal-grid">
-          <div
-            v-for="cell in calendarCells"
-            :key="cell.key"
-            class="cal-cell"
-            :class="{
-              'cal-cell--other-month': !cell.isCurrentMonth,
-              'cal-cell--today': cell.isToday,
-              'cal-cell--has-events': cell.events.length > 0,
-            }"
-          >
-            <span class="cal-cell__day">{{ cell.day }}</span>
-            <div v-if="cell.events.length" class="cal-cell__events">
-              <div
-                v-for="(ev, ei) in cell.events.slice(0, 2)"
-                :key="ei"
-                class="cal-event"
-                :class="`cal-event--${ev.urgency}`"
-                :title="ev.title"
-                @click="router.push(`/patents/${ev.id}`)"
-              >
-                {{ ev.title.slice(0, 10) }}{{ ev.title.length > 10 ? '…' : '' }}
+        <!-- 선택한 달 상세 목록 -->
+        <Transition name="slide-down">
+          <div v-if="selectedMonth !== null && selectedMonthItems.length" class="ycal-detail">
+            <h4 class="ycal-detail__title">{{ calYear }}년 {{ selectedMonth + 1 }}월 만료 예정 특허</h4>
+            <div
+              v-for="item in selectedMonthItems"
+              :key="item.id"
+              class="ycal-detail-item"
+              @click="router.push(`/patents/${item.id}`)"
+            >
+              <span class="urgency-dot" :class="`urgency--${item.urgency}`" />
+              <div class="ycal-detail-item__info">
+                <p class="ycal-detail-item__title">{{ item.title }}</p>
+                <span class="ycal-detail-item__meta">{{ item.applicationNumber }} · {{ item.techField }}<template v-if="!deptId"> · {{ item.dept }}</template></span>
               </div>
-              <p v-if="cell.events.length > 2" class="cal-cell__more">+{{ cell.events.length - 2 }}건</p>
+              <span class="ycal-detail-item__dday" :class="`dday--${item.urgency}`">{{ formatDate(item.expiryDate) }}</span>
             </div>
           </div>
-        </div>
-
-        <!-- 선택한 날 이벤트 -->
-        <div v-if="selectedDayEvents.length" class="cal-detail">
-          <h4 class="cal-detail__title">{{ selectedDateStr }} 만료 특허</h4>
-          <div v-for="ev in selectedDayEvents" :key="ev.id" class="cal-detail-item" @click="router.push(`/patents/${ev.id}`)">
-            <div class="urgency-dot" :class="`urgency-dot--${ev.urgency}`" />
-            <span>{{ ev.title }}</span>
-          </div>
-        </div>
+        </Transition>
       </div>
     </template>
 
@@ -187,14 +200,16 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+
+const props = defineProps<{ deptId?: number }>()
+const { deptId } = props
 
 const router = useRouter()
-const auth   = useAuthStore()
 
 // ── 뷰 모드 ─────────────────────────────────────────
-const view         = ref<'timeline' | 'calendar'>('timeline')
-const activePeriod = ref('1y')
+const view             = ref<'timeline' | 'calendar'>('timeline')
+const activePeriod     = ref('1y')
+const selectedBarPeriod = ref('1y')
 
 // ── 색상 ────────────────────────────────────────────
 const techColors = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6']
@@ -216,123 +231,115 @@ const periods = [
   { value: '5y', label: '5년' },
 ]
 
-const expiringByPeriod: Record<string, number> = { '3m': 8, '6m': 15, '1y': 38, '3y': 92, '5y': 147 }
+const periodDays: Record<string, number> = { '3m': 90, '6m': 180, '1y': 365, '3y': 1095, '5y': 1825 }
 
-const activePeriodLabel = computed(() => periods.find(p => p.value === activePeriod.value)?.label + ' 이내' ?? '')
+const activePeriodLabel  = computed(() => periods.find(p => p.value === activePeriod.value)?.label + ' 이내' ?? '')
+const selectedBarLabel   = computed(() => periods.find(p => p.value === selectedBarPeriod.value)?.label + ' 이내' ?? '')
 
 // ── 기간별 막대 차트 ─────────────────────────────────
 const periodBarData = [
-  { label: '3개월', count: 8,   color: '#ef4444' },
-  { label: '6개월', count: 15,  color: '#f59e0b' },
-  { label: '1년',   count: 38,  color: '#6366f1' },
-  { label: '3년',   count: 92,  color: '#0ea5e9' },
-  { label: '5년',   count: 147, color: '#10b981' },
+  { value: '3m', label: '3개월', count: 8,   color: '#ef4444' },
+  { value: '6m', label: '6개월', count: 15,  color: '#f59e0b' },
+  { value: '1y', label: '1년',   count: 38,  color: '#6366f1' },
+  { value: '3y', label: '3년',   count: 92,  color: '#0ea5e9' },
+  { value: '5y', label: '5년',   count: 147, color: '#10b981' },
 ]
 const maxPeriod = Math.max(...periodBarData.map(p => p.count))
 function periodBarH(count: number) {
   return Math.round((count / maxPeriod) * 100) + 20
 }
 
-// ── 분야별 분포 ──────────────────────────────────────
-const fieldDistAll: Record<string, { name: string; count: number }[]> = {
-  '3m': [{ name: '반도체', count: 5 }, { name: '배터리', count: 2 }, { name: '소재', count: 1 }],
-  '6m': [{ name: '반도체', count: 9 }, { name: '배터리', count: 4 }, { name: 'AI/SW', count: 2 }],
-  '1y': [{ name: '반도체', count: 18 }, { name: '배터리', count: 10 }, { name: '소재', count: 6 }, { name: 'AI/SW', count: 4 }],
-  '3y': [{ name: '반도체', count: 38 }, { name: '배터리', count: 26 }, { name: '소재', count: 18 }, { name: 'AI/SW', count: 10 }],
-  '5y': [{ name: '반도체', count: 58 }, { name: '배터리', count: 42 }, { name: '소재', count: 28 }, { name: 'AI/SW', count: 19 }],
-}
-
-const fieldDistItems = computed(() => fieldDistAll[activePeriod.value] ?? [])
-const maxField       = computed(() => Math.max(...fieldDistItems.value.map(f => f.count), 1))
-
 // ── 만료 목록 (mock) ─────────────────────────────────
 interface ExpiryItem {
   id: number; title: string; applicationNumber: string
-  techField: string; dept: string; expiryDate: string
+  techField: string; dept: string; deptId?: number; expiryDate: string
   dday: number; urgency: 'critical' | 'warn' | 'normal'
 }
 
 const allItems: ExpiryItem[] = [
-  { id: 1, title: 'NF3 가스 이물질 제거 시스템',     applicationNumber: '10-2026-0012345', techField: '반도체', dept: '반도체 사업부', expiryDate: '2026-08-15', dday: 75,  urgency: 'critical' },
-  { id: 2, title: '플라즈마 식각 장치 제어 방법',      applicationNumber: '10-2025-0098732', techField: '반도체', dept: '반도체 사업부', expiryDate: '2026-09-22', dday: 113, urgency: 'warn' },
-  { id: 3, title: '배터리 전극 코팅 균일도 향상',      applicationNumber: '10-2025-0041200', techField: '배터리', dept: '배터리 사업부', expiryDate: '2026-10-05', dday: 126, urgency: 'warn' },
-  { id: 4, title: '신소재 열 전도성 향상 방법',         applicationNumber: '10-2024-0081900', techField: '소재',   dept: '소재 사업부',  expiryDate: '2027-01-20', dday: 233, urgency: 'normal' },
-  { id: 5, title: 'AI 기반 품질 검사 자동화 시스템',   applicationNumber: '10-2026-0031891', techField: 'AI/SW',  dept: 'AI 사업부',    expiryDate: '2027-03-01', dday: 273, urgency: 'normal' },
-  { id: 6, title: '반도체 세정 공정 최적화 방법',      applicationNumber: '10-2023-0055100', techField: '반도체', dept: '반도체 사업부', expiryDate: '2026-07-10', dday: 39,  urgency: 'critical' },
+  { id: 1, title: 'NF3 가스 이물질 제거 시스템',     applicationNumber: '10-2026-0012345', techField: '반도체', dept: '반도체 사업부', deptId: 2, expiryDate: '2026-08-15', dday: 75,  urgency: 'critical' },
+  { id: 2, title: '플라즈마 식각 장치 제어 방법',      applicationNumber: '10-2025-0098732', techField: '반도체', dept: '반도체 사업부', deptId: 2, expiryDate: '2026-09-22', dday: 113, urgency: 'warn' },
+  { id: 3, title: '배터리 전극 코팅 균일도 향상',      applicationNumber: '10-2025-0041200', techField: '배터리', dept: '배터리 사업부', deptId: 3, expiryDate: '2026-10-05', dday: 126, urgency: 'warn' },
+  { id: 4, title: '신소재 열 전도성 향상 방법',         applicationNumber: '10-2024-0081900', techField: '소재',   dept: '소재 사업부',  deptId: 5, expiryDate: '2027-01-20', dday: 233, urgency: 'normal' },
+  { id: 5, title: 'AI 기반 품질 검사 자동화 시스템',   applicationNumber: '10-2026-0031891', techField: 'AI/SW',  dept: 'AI 사업부',    deptId: 4, expiryDate: '2027-03-01', dday: 273, urgency: 'normal' },
+  { id: 6, title: '반도체 세정 공정 최적화 방법',      applicationNumber: '10-2023-0055100', techField: '반도체', dept: '반도체 사업부', deptId: 2, expiryDate: '2026-07-10', dday: 39,  urgency: 'critical' },
 ]
 
-const periodDays: Record<string, number> = { '3m': 90, '6m': 180, '1y': 365, '3y': 1095, '5y': 1825 }
+const scopedItems = computed(() =>
+  props.deptId ? allItems.filter(i => i.deptId === props.deptId) : allItems
+)
+
+const expiringByPeriod = computed(() => {
+  const base = props.deptId ? scopedItems.value : allItems
+  return Object.fromEntries(
+    Object.entries(periodDays).map(([k, days]) => [k, base.filter(i => i.dday <= days).length])
+  )
+})
 
 const filteredItems = computed(() =>
-  allItems.filter(i => i.dday <= (periodDays[activePeriod.value] ?? 365))
+  scopedItems.value.filter(i => i.dday <= (periodDays[activePeriod.value] ?? 365))
     .sort((a, b) => a.dday - b.dday)
 )
 
-function formatDate(d: string) { return d.replace(/-/g, '.') }
+// ── 기술분야별 스택 바 ───────────────────────────────
+const heatmapFields = ['반도체', '배터리', 'AI/SW', '소재']
+const fieldColors   = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b']
 
-// ── 캘린더 ───────────────────────────────────────────
-const today       = new Date()
-const calYear     = ref(today.getFullYear())
-const calMonth    = ref(today.getMonth()) // 0-indexed
-
-const calendarTitle = computed(() => {
-  return new Date(calYear.value, calMonth.value).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' })
-})
-
-function prevMonth() { if (calMonth.value === 0) { calYear.value--; calMonth.value = 11 } else calMonth.value-- }
-function nextMonth() { if (calMonth.value === 11) { calYear.value++; calMonth.value = 0  } else calMonth.value++ }
-
-const weekdays = ['일', '월', '화', '수', '목', '금', '토']
-
-interface CalEvent { id: number; title: string; urgency: string }
-
-interface CalCell {
-  key: string; day: number; date: Date
-  isCurrentMonth: boolean; isToday: boolean
-  events: CalEvent[]
+const heatmapData: Record<string, Record<string, number>> = {
+  '반도체': { '3m': 5,  '6m': 9,  '1y': 18, '3y': 38, '5y': 58 },
+  '배터리': { '3m': 2,  '6m': 4,  '1y': 10, '3y': 26, '5y': 42 },
+  'AI/SW':  { '3m': 0,  '6m': 2,  '1y': 4,  '3y': 10, '5y': 19 },
+  '소재':   { '3m': 1,  '6m': 0,  '1y': 6,  '3y': 18, '5y': 28 },
 }
 
-const calendarCells = computed<CalCell[]>(() => {
-  const firstDay = new Date(calYear.value, calMonth.value, 1)
-  const lastDay  = new Date(calYear.value, calMonth.value + 1, 0)
-  const cells: CalCell[] = []
+const fieldStackTotal = computed(() =>
+  heatmapFields.reduce((sum, f) => sum + (heatmapData[f]?.[selectedBarPeriod.value] ?? 0), 0)
+)
+function fieldStackPct(field: string) {
+  const total = fieldStackTotal.value
+  if (!total) return 0
+  return Math.round((heatmapData[field]?.[selectedBarPeriod.value] ?? 0) / total * 100)
+}
 
-  // 앞 패딩
-  for (let i = firstDay.getDay(); i > 0; i--) {
-    const d = new Date(firstDay)
-    d.setDate(d.getDate() - i)
-    cells.push({ key: d.toISOString(), day: d.getDate(), date: d, isCurrentMonth: false, isToday: false, events: [] })
-  }
+function formatDate(d: string) { return d.replace(/-/g, '.') }
 
-  // 현재 달
-  for (let d = 1; d <= lastDay.getDate(); d++) {
-    const date = new Date(calYear.value, calMonth.value, d)
-    const dateStr = date.toISOString().slice(0, 10)
-    const events: CalEvent[] = allItems
-      .filter(i => i.expiryDate === dateStr)
-      .map(i => ({ id: i.id, title: i.title, urgency: i.urgency }))
+// ── 연도별 캘린더 ────────────────────────────────────
+const today       = new Date()
+const calYear     = ref(today.getFullYear())
+const selectedMonth = ref<number | null>(null)
 
-    cells.push({
-      key: dateStr, day: d, date,
-      isCurrentMonth: true,
-      isToday: dateStr === today.toISOString().slice(0, 10),
-      events,
+const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월']
+
+const yearMonths = computed(() =>
+  monthNames.map((monthLabel, month) => {
+    const items = scopedItems.value.filter(i => {
+      const d = new Date(i.expiryDate)
+      return d.getFullYear() === calYear.value && d.getMonth() === month
     })
-  }
+    const urgencyOrder = { critical: 0, warn: 1, normal: 2 }
+    const topUrgency = items.length
+      ? items.reduce((a, b) => urgencyOrder[a.urgency] <= urgencyOrder[b.urgency] ? a : b).urgency
+      : 'normal'
+    return {
+      month,
+      monthLabel,
+      items,
+      topUrgency,
+      isCurrentMonth: today.getFullYear() === calYear.value && today.getMonth() === month,
+    }
+  })
+)
 
-  // 뒤 패딩
-  const remain = 42 - cells.length
-  for (let i = 1; i <= remain; i++) {
-    const d = new Date(lastDay)
-    d.setDate(d.getDate() + i)
-    cells.push({ key: d.toISOString() + i, day: d.getDate(), date: d, isCurrentMonth: false, isToday: false, events: [] })
-  }
-
-  return cells
-})
-
-const selectedDayEvents = ref<CalEvent[]>([])
-const selectedDateStr   = ref('')
+const selectedMonthItems = computed(() =>
+  selectedMonth.value !== null
+    ? scopedItems.value
+        .filter(i => {
+          const d = new Date(i.expiryDate)
+          return d.getFullYear() === calYear.value && d.getMonth() === selectedMonth.value
+        })
+        .sort((a, b) => a.dday - b.dday)
+    : []
+)
 </script>
 
 <style scoped>
@@ -427,7 +434,9 @@ const selectedDateStr   = ref('')
   padding-top: 20px;
 }
 
-.period-bar-col { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; }
+.period-bar-col { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; cursor: pointer; transition: transform 0.1s; }
+.period-bar-col:hover { transform: translateY(-2px); }
+.period-bar-col--selected .period-bar-label { color: var(--color-text); font-weight: 700; }
 
 .period-bar-wrap { display: flex; align-items: flex-end; height: 100px; }
 .period-bar {
@@ -441,13 +450,42 @@ const selectedDateStr   = ref('')
 .period-bar-count { font-size: 14px; font-weight: 800; }
 
 /* 분야별 분포 */
-.field-dist { display: flex; flex-direction: column; gap: 12px; }
-.field-dist-item { display: flex; flex-direction: column; gap: 5px; }
-.field-dist-item__info { display: flex; justify-content: space-between; align-items: center; }
-.field-dist-item__name  { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); }
-.field-dist-item__count { font-size: 13px; font-weight: 700; color: var(--color-text); }
-.field-dist-bar-wrap { height: 8px; background: var(--color-surface-muted); border-radius: 4px; overflow: hidden; }
-.field-dist-bar { height: 100%; border-radius: 4px; transition: width .7s cubic-bezier(.4,0,.2,1); }
+/* ── 기술분야별 스택 바 ──────────────────────────── */
+.field-stack-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border-light);
+}
+.field-stack-title { font-size: 12.5px; font-weight: 600; color: var(--color-text-secondary); }
+.field-stack-legend { display: flex; gap: 10px; flex-wrap: wrap; }
+.field-stack-legend-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-secondary); }
+.field-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+.field-stack-bar {
+  display: flex;
+  height: 32px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.field-stack-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.4s cubic-bezier(.4,0,.2,1);
+  min-width: 0;
+}
+.field-stack-seg__label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
 
 /* 만료 목록 */
 .table-card {
@@ -457,8 +495,8 @@ const selectedDateStr   = ref('')
   overflow: hidden;
 }
 .table-card__header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid var(--color-surface-muted);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 14px 20px; border-bottom: 1px solid var(--color-surface-muted);
 }
 .table-card__title { font-size: 14px; font-weight: 700; color: var(--color-text); margin: 0; }
 .table-card__count { font-size: 13px; color: var(--color-text-muted); }
@@ -606,4 +644,92 @@ const selectedDateStr   = ref('')
   font-size: 13px; cursor: pointer; transition: background .12s;
 }
 .cal-detail-item:hover { background: var(--color-surface-muted); }
+
+/* ── 연도별 캘린더 ─────────────────────────────────── */
+.ycal-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ycal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ycal-title { font-size: 15px; font-weight: 700; color: var(--color-text); }
+
+.ycal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+@media (max-width: 700px) { .ycal-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.ycal-month {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ycal-month:hover { background: var(--color-surface-hover); border-color: var(--color-primary-border); }
+.ycal-month--today { border-color: var(--color-primary); background: var(--color-primary-bg); }
+.ycal-month--active { border-color: var(--color-primary-dark); background: var(--color-primary-bg); box-shadow: 0 0 0 2px var(--color-primary-ring); }
+.ycal-month--empty { opacity: 0.5; cursor: default; }
+.ycal-month--empty:hover { background: none; border-color: var(--color-border); }
+
+.ycal-month__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ycal-month__name { font-size: 13px; font-weight: 700; color: var(--color-text); }
+.ycal-month__badge {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+.ycal-badge--critical { background: var(--color-danger-bg); color: var(--color-danger); }
+.ycal-badge--warn     { background: var(--color-warn-bg); color: var(--color-warn-dark); }
+.ycal-badge--normal   { background: var(--color-primary-bg); color: var(--color-primary-dark); }
+
+.ycal-month__dots { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.ycal-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.ycal-dot--critical { background: var(--color-danger); }
+.ycal-dot--warn     { background: var(--color-warn); }
+.ycal-dot--normal   { background: var(--color-primary); }
+.ycal-dot-more { font-size: 10px; color: var(--color-text-muted); }
+.ycal-month__empty-text { font-size: 11px; color: var(--color-text-subtle); }
+
+.ycal-detail {
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ycal-detail__title { font-size: 13.5px; font-weight: 700; color: var(--color-text); }
+.ycal-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.ycal-detail-item:hover { background: var(--color-surface-muted); }
+.ycal-detail-item__info { flex: 1; min-width: 0; }
+.ycal-detail-item__title { font-size: 13px; font-weight: 600; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ycal-detail-item__meta { font-size: 12px; color: var(--color-text-muted); }
+.ycal-detail-item__dday { font-size: 12.5px; font-weight: 700; flex-shrink: 0; }
 </style>

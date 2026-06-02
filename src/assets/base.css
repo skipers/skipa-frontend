@@ -120,6 +120,16 @@
   --color-warn:      var(--c-amber-500);   /* #f59e0b */
   --color-warn-dark: var(--c-amber-700);   /* #b45309 */
   --color-warn-bg:   var(--c-amber-100);   /* #fffbeb */
+
+  /* 재평가 결정 */
+  --color-keep:    var(--color-success);   /* #22c55e — 유지 */
+  --color-dispose: var(--c-red-400);       /* #f87171 — 포기 */
+
+  /* tooltip */
+  --color-tooltip-bg:      var(--c-slate-900);   /* #0f172a */
+  --color-tooltip-text:    var(--c-white);
+  --color-tooltip-muted:   var(--c-slate-300);   /* #cbd5e1 */
+  --color-tooltip-accent:  var(--c-primary-300); /* #a5b4fc */
 }
 
 /* ── Reset / Base ─────────────────────────────────────── */

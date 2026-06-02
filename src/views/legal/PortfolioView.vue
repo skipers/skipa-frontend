@@ -1,5 +1,14 @@
 <template>
-  <div class="portfolio-page">
+  <div class="portfolio-page" @mousemove="trackMouse">
+    <!-- 도넛 호버 툴팁 -->
+    <Teleport to="body">
+      <div v-if="donutTooltip.visible" class="donut-tooltip" :style="{ left: donutTooltip.x + 'px', top: donutTooltip.y + 'px' }">
+        <span class="donut-tooltip__dot" :style="{ background: donutTooltip.color }" />
+        <span class="donut-tooltip__name">{{ donutTooltip.name }}</span>
+        <span class="donut-tooltip__count">{{ donutTooltip.count }}건</span>
+        <span class="donut-tooltip__pct">{{ donutTooltip.pct }}%</span>
+      </div>
+    </Teleport>
 
     <!-- 페이지 헤더 -->
     <div class="page-header">
@@ -16,162 +25,7 @@
       </div>
     </div>
 
-    <!-- 상단: 도넛 차트 3개 -->
-    <div class="donut-row">
-
-      <!-- 기술 분야별 분포 -->
-      <div class="chart-card">
-        <div class="chart-card__header">
-          <h3 class="chart-card__title">기술 분야별 분포</h3>
-          <p class="chart-card__sub">전체 {{ totalPatents }}건</p>
-        </div>
-        <div class="donut-wrap">
-          <svg class="donut-svg" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
-            <circle
-              v-for="(seg, i) in techDonutSegments"
-              :key="i"
-              cx="60" cy="60" r="50"
-              fill="none"
-              :stroke="techColors[i % techColors.length]"
-              stroke-width="20"
-              :stroke-dasharray="`${seg.dash} ${314 - seg.dash}`"
-              :stroke-dashoffset="seg.offset"
-              stroke-linecap="butt"
-            />
-            <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="800" fill="#0f172a">{{ totalPatents }}</text>
-            <text x="60" y="70" text-anchor="middle" font-size="7" fill="#94a3b8">총 특허</text>
-          </svg>
-          <div class="donut-legend">
-            <div v-for="(item, i) in treemapItems" :key="item.name" class="donut-legend-item">
-              <span class="legend-dot" :style="{ background: techColors[i % techColors.length] }" />
-              <span class="donut-legend-item__name">{{ item.name }}</span>
-              <span class="donut-legend-item__count">{{ item.count }}건</span>
-              <span class="donut-legend-item__pct">{{ Math.round(item.count / totalPatents * 100) }}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 국가별 보유 현황 -->
-      <div class="chart-card">
-        <div class="chart-card__header">
-          <h3 class="chart-card__title">국가별 보유 현황</h3>
-          <p class="chart-card__sub">전체 {{ totalCountry }}건</p>
-        </div>
-        <div class="donut-wrap">
-          <svg class="donut-svg" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
-            <circle
-              v-for="(seg, i) in countryDonutSegments"
-              :key="i"
-              cx="60" cy="60" r="50"
-              fill="none"
-              :stroke="techColors[i % techColors.length]"
-              stroke-width="20"
-              :stroke-dasharray="`${seg.dash} ${314 - seg.dash}`"
-              :stroke-dashoffset="seg.offset"
-              stroke-linecap="butt"
-            />
-            <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="800" fill="#0f172a">{{ totalCountry }}</text>
-            <text x="60" y="70" text-anchor="middle" font-size="7" fill="#94a3b8">총 특허</text>
-          </svg>
-          <div class="donut-legend">
-            <div v-for="(item, i) in countryItems" :key="item.country" class="donut-legend-item">
-              <span class="legend-dot" :style="{ background: techColors[i % techColors.length] }" />
-              <span class="donut-legend-item__name">{{ item.flag }} {{ item.country }}</span>
-              <span class="donut-legend-item__count">{{ item.count }}건</span>
-              <span class="donut-legend-item__pct">{{ Math.round(item.count / totalCountry * 100) }}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 사업부별 보유 현황 -->
-      <div class="chart-card">
-        <div class="chart-card__header">
-          <h3 class="chart-card__title">사업부별 보유 현황</h3>
-          <p class="chart-card__sub">전체 {{ totalPatents }}건</p>
-        </div>
-        <div class="donut-wrap">
-          <svg class="donut-svg" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
-            <circle
-              v-for="(seg, i) in donutSegments"
-              :key="i"
-              cx="60" cy="60" r="50"
-              fill="none"
-              :stroke="techColors[i % techColors.length]"
-              stroke-width="20"
-              :stroke-dasharray="`${seg.dash} ${314 - seg.dash}`"
-              :stroke-dashoffset="seg.offset"
-              stroke-linecap="butt"
-            />
-            <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="800" fill="#0f172a">{{ totalPatents }}</text>
-            <text x="60" y="70" text-anchor="middle" font-size="7" fill="#94a3b8">총 특허</text>
-          </svg>
-          <div class="donut-legend">
-            <div v-for="(d, i) in deptItems" :key="d.name" class="donut-legend-item">
-              <span class="legend-dot" :style="{ background: techColors[i % techColors.length] }" />
-              <span class="donut-legend-item__name">{{ d.name }}</span>
-              <span class="donut-legend-item__count">{{ d.count }}건</span>
-              <span class="donut-legend-item__pct">{{ Math.round(d.count / totalPatents * 100) }}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- 연도별 출원·등록·만료 추이 (꺾은선) -->
-    <div class="chart-card">
-      <div class="chart-card__header">
-        <h3 class="chart-card__title">연도별 출원 · 등록 · 만료 추이</h3>
-        <div class="chart-legend chart-legend--inline">
-          <div v-for="(s, i) in trendSeries" :key="s.key" class="legend-item">
-            <span class="legend-dot" :style="{ background: trendColors[i] }" />{{ s.label }}
-          </div>
-        </div>
-      </div>
-      <svg class="trend-svg" :viewBox="`0 0 ${svgW} ${svgH}`">
-        <!-- 가로 그리드 -->
-        <line
-          v-for="n in 4" :key="n"
-          :x1="pad.l" :y1="pad.t + ((n - 1) / 3) * plotH"
-          :x2="svgW - pad.r" :y2="pad.t + ((n - 1) / 3) * plotH"
-          stroke="#f1f5f9" stroke-width="1"
-        />
-        <!-- 꺾은선 -->
-        <polyline
-          v-for="(line, i) in trendLines"
-          :key="i"
-          :points="line.points"
-          fill="none"
-          :stroke="line.color"
-          stroke-width="1.8"
-          stroke-linejoin="round"
-          stroke-linecap="round"
-        />
-        <!-- 데이터 포인트 -->
-        <circle
-          v-for="dot in trendDots"
-          :key="dot.id"
-          :cx="dot.x" :cy="dot.y" r="3"
-          :fill="dot.color"
-          stroke="#fff" stroke-width="1.5"
-        />
-        <!-- X축 레이블 -->
-        <text
-          v-for="(d, i) in trendData"
-          :key="d.year"
-          :x="trendX(i)" :y="svgH - 4"
-          text-anchor="middle"
-          font-size="8" fill="#94a3b8"
-        >{{ d.year }}</text>
-      </svg>
-    </div>
-
-    <!-- 하단: 가치 등급 분포 + AI 인사이트 -->
+    <!-- 상단: 가치 등급 분포 + AI 인사이트 -->
     <div class="bottom-row">
 
       <!-- 가치 평가 등급 분포 -->
@@ -226,11 +80,229 @@
 
     </div>
 
+    <!-- 도넛 차트 3개 -->
+    <div class="donut-row">
+
+      <!-- 기술 분야별 분포 -->
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">기술 분야별 분포</h3>
+          <p class="chart-card__sub">전체 {{ totalPatents }}건</p>
+        </div>
+        <div class="donut-wrap">
+          <svg class="donut-svg" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
+            <circle
+              v-for="(seg, i) in techDonutSegments"
+              :key="i"
+              cx="60" cy="60" r="50"
+              fill="none"
+              :stroke="techColors[i % techColors.length]"
+              stroke-width="20"
+              :stroke-dasharray="`${seg.dash} ${314 - seg.dash}`"
+              :stroke-dashoffset="seg.offset"
+              stroke-linecap="butt"
+              style="cursor:pointer"
+              @mouseenter="showDonutTooltip(treemapItems[i].name, treemapItems[i].count, totalPatents, techColors[i % techColors.length])"
+              @mouseleave="hideDonutTooltip"
+            />
+            <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="800" fill="#0f172a">{{ totalPatents }}</text>
+            <text x="60" y="70" text-anchor="middle" font-size="9" font-weight="600" fill="#475569">총 특허</text>
+          </svg>
+          <div class="donut-legend">
+            <div v-for="(item, i) in treemapItems" :key="item.name" class="donut-legend-item">
+              <span class="legend-dot" :style="{ background: techColors[i % techColors.length] }" />
+              <span class="donut-legend-item__name">{{ item.name }}</span>
+              <span class="donut-legend-item__count">{{ item.count }}건</span>
+              <span class="donut-legend-item__pct">{{ Math.round(item.count / totalPatents * 100) }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 국가별 보유 현황 -->
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">국가별 분포</h3>
+          <p class="chart-card__sub">전체 {{ totalCountry }}건</p>
+        </div>
+        <div class="donut-wrap">
+          <svg class="donut-svg" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
+            <circle
+              v-for="(seg, i) in countryDonutSegments"
+              :key="i"
+              cx="60" cy="60" r="50"
+              fill="none"
+              :stroke="techColors[i % techColors.length]"
+              stroke-width="20"
+              :stroke-dasharray="`${seg.dash} ${314 - seg.dash}`"
+              :stroke-dashoffset="seg.offset"
+              stroke-linecap="butt"
+              style="cursor:pointer"
+              @mouseenter="showDonutTooltip(`${countryItems[i].flag} ${countryItems[i].country}`, countryItems[i].count, totalCountry, techColors[i % techColors.length])"
+              @mouseleave="hideDonutTooltip"
+            />
+            <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="800" fill="#0f172a">{{ totalCountry }}</text>
+            <text x="60" y="70" text-anchor="middle" font-size="9" font-weight="600" fill="#475569">총 특허</text>
+          </svg>
+          <div class="donut-legend">
+            <div v-for="(item, i) in countryItems" :key="item.country" class="donut-legend-item">
+              <span class="legend-dot" :style="{ background: techColors[i % techColors.length] }" />
+              <span class="donut-legend-item__name">{{ item.flag }} {{ item.country }}</span>
+              <span class="donut-legend-item__count">{{ item.count }}건</span>
+              <span class="donut-legend-item__pct">{{ Math.round(item.count / totalCountry * 100) }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사업부별 보유 현황 -->
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">사업부별 분포</h3>
+          <p class="chart-card__sub">전체 {{ totalPatents }}건</p>
+        </div>
+        <div class="donut-wrap">
+          <svg class="donut-svg" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
+            <circle
+              v-for="(seg, i) in donutSegments"
+              :key="i"
+              cx="60" cy="60" r="50"
+              fill="none"
+              :stroke="techColors[i % techColors.length]"
+              stroke-width="20"
+              :stroke-dasharray="`${seg.dash} ${314 - seg.dash}`"
+              :stroke-dashoffset="seg.offset"
+              stroke-linecap="butt"
+              style="cursor:pointer"
+              @mouseenter="showDonutTooltip(deptItems[i].name, deptItems[i].count, totalPatents, techColors[i % techColors.length])"
+              @mouseleave="hideDonutTooltip"
+            />
+            <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="800" fill="#0f172a">{{ totalPatents }}</text>
+            <text x="60" y="70" text-anchor="middle" font-size="9" font-weight="600" fill="#475569">총 특허</text>
+          </svg>
+          <div class="donut-legend">
+            <div v-for="(d, i) in deptItems" :key="d.name" class="donut-legend-item">
+              <span class="legend-dot" :style="{ background: techColors[i % techColors.length] }" />
+              <span class="donut-legend-item__name">{{ d.name }}</span>
+              <span class="donut-legend-item__count">{{ d.count }}건</span>
+              <span class="donut-legend-item__pct">{{ Math.round(d.count / totalPatents * 100) }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 연도별 출원·등록·만료 추이 (풀 width) -->
+    <div class="chart-card">
+      <div class="chart-card__header">
+        <h3 class="chart-card__title">연도별 출원 · 등록 · 만료 추이</h3>
+        <div class="chart-legend chart-legend--inline">
+          <div v-for="(s, i) in trendSeries" :key="s.key" class="legend-item">
+            <span class="legend-dot" :style="{ background: trendColors[i] }" />{{ s.label }}
+          </div>
+        </div>
+      </div>
+      <svg class="trend-svg" :viewBox="`0 0 ${svgW} ${svgH}`">
+        <line
+          v-for="n in 4" :key="n"
+          :x1="pad.l" :y1="pad.t + ((n - 1) / 3) * plotH"
+          :x2="svgW - pad.r" :y2="pad.t + ((n - 1) / 3) * plotH"
+          stroke="#f1f5f9" stroke-width="1"
+        />
+        <polyline
+          v-for="(line, i) in trendLines"
+          :key="i"
+          :points="line.points"
+          fill="none"
+          :stroke="line.color"
+          stroke-width="1.8"
+          stroke-linejoin="round"
+          stroke-linecap="round"
+        />
+        <circle
+          v-for="dot in trendDots"
+          :key="dot.id"
+          :cx="dot.x" :cy="dot.y" r="3"
+          :fill="dot.color"
+          stroke="#fff" stroke-width="1.5"
+        />
+        <text
+          v-for="(d, i) in trendData"
+          :key="d.year"
+          :x="trendX(i)" :y="svgH - 4"
+          text-anchor="middle"
+          font-size="8" fill="#475569"
+        >{{ d.year }}</text>
+      </svg>
+    </div>
+
+    <!-- 재평가 결정 분석: 연도별 + 사업부/기술분야별 -->
+    <div class="decision-row">
+
+      <!-- 연도별 유지·포기 비율 (스택 바) -->
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">분기별 재평가 결정 비율</h3>
+          <div class="chart-legend chart-legend--inline">
+            <div class="legend-item"><span class="legend-dot" style="background: var(--color-keep)" />유지</div>
+            <div class="legend-item"><span class="legend-dot" style="background: var(--color-dispose)" />포기</div>
+          </div>
+        </div>
+        <div class="decision-chart" style="position: relative">
+          <div
+            v-for="d in decisionData"
+            :key="d.year"
+            class="decision-bar-group"
+            @mouseenter="showTooltip($event, d)"
+            @mouseleave="hideTooltip"
+          >
+            <div class="decision-bar-stack" :class="{ 'decision-bar-stack--inprogress': d.inProgress }">
+              <div class="decision-bar-seg decision-bar-seg--keep" :style="{ height: keepPct(d) + '%' }" />
+              <div class="decision-bar-seg decision-bar-seg--dispose" :style="{ height: disposePct(d) + '%' }" />
+            </div>
+            <p class="decision-bar-label">{{ d.inProgress ? `${d.year} (진행중)` : d.year }}</p>
+          </div>
+          <div v-if="tooltip.visible" class="decision-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
+            <p class="decision-tooltip__year">{{ tooltip.year }}</p>
+            <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-keep)" />유지 {{ tooltip.keep }}건 ({{ tooltip.keepPct }}%)</div>
+            <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-dispose)" />포기 {{ tooltip.dispose }}건 ({{ tooltip.disposePct }}%)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사업부별 / 기술분야별 유지·포기 비율 (탭 전환) -->
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">유지 · 포기 비율 분석</h3>
+          <div class="breakdown-tabs">
+            <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'dept' }" @click="breakdownTab = 'dept'">사업부별</button>
+            <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'tech' }" @click="breakdownTab = 'tech'">기술분야별</button>
+          </div>
+        </div>
+        <div class="hbar-list">
+          <div v-for="d in breakdownTab === 'dept' ? deptDecision : techDecision" :key="d.name" class="hbar-item">
+            <span class="hbar-item__label">{{ d.name }}</span>
+            <div class="hbar-track">
+              <div class="hbar-seg hbar-seg--keep"    :style="{ width: Math.round(d.keep/(d.keep+d.dispose)*100) + '%' }" :title="`유지 ${d.keep}건`" />
+              <div class="hbar-seg hbar-seg--dispose" :style="{ width: Math.round(d.dispose/(d.keep+d.dispose)*100) + '%' }" :title="`포기 ${d.dispose}건`" />
+            </div>
+            <span class="hbar-item__pct">{{ Math.round(d.keep/(d.keep+d.dispose)*100) }}%</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 // ── 색상 팔레트 ──────────────────────────────────────
 const techColors = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#ef4444','#06b6d4']
@@ -339,6 +411,80 @@ const trendDots = computed(() =>
     }))
   )
 )
+
+// ── 분기별 재평가 결정 데이터 ─────────────────────────
+const decisionData = [
+  { year: '2024Q3', keep: 22, dispose: 12, inProgress: false },
+  { year: '2024Q4', keep: 30, dispose: 10, inProgress: false },
+  { year: '2025Q1', keep: 20, dispose: 14, inProgress: false },
+  { year: '2025Q2', keep: 34, dispose: 9,  inProgress: false },
+  { year: '2025Q3', keep: 24, dispose: 13, inProgress: false },
+  { year: '2025Q4', keep: 32, dispose: 8,  inProgress: false },
+  { year: '2026Q1', keep: 19, dispose: 11, inProgress: true  },
+]
+function keepPct(d: typeof decisionData[0])    { return Math.round(d.keep    / (d.keep + d.dispose) * 100) }
+function disposePct(d: typeof decisionData[0]) { return Math.round(d.dispose / (d.keep + d.dispose) * 100) }
+
+// ── 툴팁 ─────────────────────────────────────────────
+const breakdownTab = ref<'dept' | 'tech'>('dept')
+
+// ── 도넛 툴팁 ────────────────────────────────────────
+const donutTooltip = ref({ visible: false, x: 0, y: 0, name: '', count: 0, pct: 0, color: '' })
+const mousePos = ref({ x: 0, y: 0 })
+
+function trackMouse(e: MouseEvent) {
+  mousePos.value = { x: e.clientX, y: e.clientY }
+  if (donutTooltip.value.visible) {
+    donutTooltip.value.x = e.clientX + 14
+    donutTooltip.value.y = e.clientY - 10
+  }
+}
+function showDonutTooltip(name: string, count: number, total: number, color: string) {
+  donutTooltip.value = {
+    visible: true,
+    x: mousePos.value.x + 14,
+    y: mousePos.value.y - 10,
+    name, count, color,
+    pct: Math.round(count / total * 100),
+  }
+}
+function hideDonutTooltip() { donutTooltip.value.visible = false }
+
+const tooltip = ref<{
+  visible: boolean; x: number; y: number;
+  year: string; keep: number; dispose: number; keepPct: number; disposePct: number
+}>({ visible: false, x: 0, y: 0, year: '', keep: 0, dispose: 0, keepPct: 0, disposePct: 0 })
+
+function showTooltip(e: MouseEvent, d: typeof decisionData[0]) {
+  const rect = (e.currentTarget as HTMLElement).closest('.decision-chart')!.getBoundingClientRect()
+  const el = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  tooltip.value = {
+    visible: true,
+    x: el.left - rect.left + el.width / 2,
+    y: el.top - rect.top - 8,
+    year: d.year,
+    keep: d.keep,
+    dispose: d.dispose,
+    keepPct: keepPct(d),
+    disposePct: disposePct(d),
+  }
+}
+function hideTooltip() { tooltip.value.visible = false }
+
+// ── 사업부별 / 기술분야별 유지·포기 데이터 ───────────
+const deptDecision = [
+  { name: '반도체 사업부', keep: 52, dispose: 18 },
+  { name: '배터리 사업부', keep: 38, dispose: 15 },
+  { name: 'AI 사업부',    keep: 29, dispose: 8  },
+  { name: '소재 사업부',  keep: 19, dispose: 9  },
+]
+const techDecision = [
+  { name: '반도체',  keep: 48, dispose: 14 },
+  { name: '배터리',  keep: 35, dispose: 12 },
+  { name: 'AI/SW',  keep: 26, dispose: 7  },
+  { name: '소재',   keep: 18, dispose: 8  },
+  { name: '기타',   keep: 11, dispose: 5  },
+]
 
 // ── 사업부 도넛 ──────────────────────────────────────
 const deptItems = [
@@ -458,7 +604,7 @@ const insights = [
   display: flex; align-items: center; gap: 8px;
   font-size: 14px; font-weight: 700; color: var(--color-text); margin: 0;
 }
-.chart-card__sub { font-size: 12.5px; color: var(--color-text-subtle); }
+.chart-card__sub { font-size: 12.5px; color: var(--color-text-secondary); font-weight: 600; }
 
 /* ── 레이아웃 행 ─────────────────────────────────── */
 .donut-row {
@@ -484,7 +630,59 @@ const insights = [
   flex-wrap: wrap;
 }
 
-/* ── 연도별 추이 (꺾은선) ────────────────────────── */
+/* ── 연도별 추이 2-컬럼 ─────────────────────────── */
+.decision-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 860px) { .decision-row { grid-template-columns: 1fr; } }
+
+/* ── 연도별 재평가 결정 스택 바 ──────────────────── */
+.decision-chart {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 6px;
+  min-height: 120px;
+}
+.decision-bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  height: 100%;
+}
+.decision-bar-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  width: 22px;
+  height: 100%;
+  max-height: 140px;
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+.decision-bar-seg {
+  width: 100%;
+  transition: opacity 0.15s;
+  min-height: 2px;
+}
+.decision-bar-seg:hover { opacity: 0.75; }
+.decision-bar-seg--keep    { background: var(--color-keep); }
+.decision-bar-seg--dispose { background: var(--color-dispose); }
+.decision-bar-label {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  margin-top: 6px;
+  white-space: nowrap;
+}
+
+/* ── 연도별 추이 (꺾은선) ─────────────────────── */
 .trend-svg {
   width: 100%;
   height: auto;
@@ -515,9 +713,9 @@ const insights = [
   gap: 8px;
   font-size: 12.5px;
 }
-.donut-legend-item__name { flex: 1; color: var(--color-text-secondary); font-weight: 500; }
+.donut-legend-item__name { flex: 1; color: var(--color-text); font-weight: 500; }
 .donut-legend-item__count { font-weight: 700; color: var(--color-text); }
-.donut-legend-item__pct { color: var(--color-text-subtle); min-width: 32px; text-align: right; }
+.donut-legend-item__pct { color: var(--color-text-secondary); font-weight: 600; min-width: 32px; text-align: right; }
 
 /* ── 가치 등급 ───────────────────────────────────── */
 .grade-dist { display: flex; flex-direction: column; gap: 10px; }
@@ -598,4 +796,67 @@ const insights = [
 .legend-dot {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
 }
+
+/* ── 탭 전환 버튼 ────────────────────────────────── */
+.breakdown-tabs { display: flex; gap: 2px; background: var(--color-surface-muted); border-radius: 8px; padding: 3px; }
+.breakdown-tab {
+  background: none; border: none; border-radius: 6px;
+  padding: 3px 12px; font-size: 12px; cursor: pointer;
+  color: var(--color-text-muted); transition: all 0.12s;
+}
+.breakdown-tab--active { background: var(--color-surface); color: var(--color-text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+/* ── 가로 스택 바 ─────────────────────────────────── */
+.hbar-list { display: flex; flex-direction: column; gap: 12px; max-height: 260px; overflow-y: auto; }
+.hbar-list::-webkit-scrollbar { width: 4px; }
+.hbar-list::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+.hbar-item { display: flex; align-items: center; gap: 10px; }
+.hbar-item__label { font-size: 12.5px; color: var(--color-text-secondary); width: 90px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hbar-track { flex: 1; height: 10px; border-radius: 5px; overflow: hidden; display: flex; background: var(--color-surface-muted); }
+.hbar-seg { height: 100%; transition: width 0.3s; }
+.hbar-seg--keep    { background: var(--color-keep); }
+.hbar-seg--dispose { background: var(--color-dispose); }
+.hbar-item__pct { font-size: 12px; font-weight: 700; color: var(--color-text-muted); min-width: 36px; text-align: right; }
+
+/* ── 진행중 바 ───────────────────────────────────── */
+.decision-bar-stack--inprogress { opacity: 0.65; outline: 2px dashed var(--color-text-subtle); outline-offset: 2px; border-radius: 4px; }
+
+/* ── 툴팁 ───────────────────────────────────────── */
+.decision-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: var(--color-tooltip-bg);
+  color: var(--color-tooltip-text);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.decision-tooltip__year { font-weight: 700; margin-bottom: 4px; font-size: 12.5px; }
+.decision-tooltip__row { display: flex; align-items: center; gap: 6px; line-height: 1.8; }
+.decision-tooltip__dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── 도넛 호버 툴팁 (body teleport) ──────────────── */
+.donut-tooltip {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--color-tooltip-bg);
+  color: var(--color-tooltip-text);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 9999;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+}
+.donut-tooltip__dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.donut-tooltip__name { font-weight: 600; }
+.donut-tooltip__count { color: var(--color-tooltip-muted); }
+.donut-tooltip__pct { font-weight: 700; color: var(--color-tooltip-accent); margin-left: 2px; }
 </style>

@@ -23,11 +23,13 @@ export const useAuthStore = defineStore('auth', () => {
       // 임시 mock — 백엔드 연결 후 아래 주석 해제하고 mock 코드 삭제
       tokenStorage.setAccess('mock-access-token')
       tokenStorage.setRefresh('mock-refresh-token')
+      const isBiz = credentials.id !== 'legal'
       user.value = {
         id: credentials.id,
-        name: credentials.id === 'legal' ? 'Legal AI팀' : '반도체 사업부',
+        name: isBiz ? '반도체 사업부' : 'Legal AI팀',
         email: credentials.id + '@skipa.com',
-        role: credentials.id === 'legal' ? 'LEGAL' : 'BUSINESS',
+        role: isBiz ? 'BUSINESS' : 'LEGAL',
+        departmentId: isBiz ? 2 : undefined,
       }
 
       // 실제 API 연결 시 아래 코드 사용

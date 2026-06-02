@@ -357,7 +357,7 @@ interface ReevalItem {
   expiryDate?: string
   departmentId?: number
   decision?: string | null
-  reviewStatus: 'unassigned' | 'requested' | 'reviewing' | 'overdue' | 'done'
+  reviewStatus: 'unassigned' | 'requested' | 'overdue' | 'done'
   isOverdue?: boolean
 }
 
@@ -421,7 +421,7 @@ function deptName(id?: number) {
 }
 
 function reviewStatusLabel(s: string) {
-  return { unassigned: '요청 전', requested: '요청 완료', reviewing: '검토 중', overdue: '지연', done: '회신 완료' }[s] ?? s
+  return { unassigned: '요청 전', requested: '요청 완료', overdue: '지연', done: '회신 완료' }[s] ?? s
 }
 
 function decisionLabel(d: string) {
@@ -436,7 +436,7 @@ function formatDate(d?: string) {
 // ── Mock 특허 목록 ───────────────────────────────────
 const mockPatents: ReevalItem[] = [
   { id: 1,  title: 'NF3 가스 이물질 제거 시스템',         applicationNumber: '10-2026-0012345', techField: '반도체', expiryDate: '2026-08-15', departmentId: 2, decision: 'KEEP',    reviewStatus: 'done',       isOverdue: false },
-  { id: 2,  title: '플라즈마 식각 장치 제어 방법',          applicationNumber: '10-2025-0098732', techField: '반도체', expiryDate: '2026-09-22', departmentId: 2, decision: null,      reviewStatus: 'reviewing',  isOverdue: false },
+  { id: 2,  title: '플라즈마 식각 장치 제어 방법',          applicationNumber: '10-2025-0098732', techField: '반도체', expiryDate: '2026-09-22', departmentId: 2, decision: null,      reviewStatus: 'requested',  isOverdue: false },
   { id: 3,  title: '배터리 전극 코팅 균일도 향상',          applicationNumber: '10-2025-0041200', techField: '배터리', expiryDate: '2026-10-05', departmentId: 3, decision: 'KEEP',    reviewStatus: 'done',       isOverdue: false },
   { id: 4,  title: '신소재 열 전도성 향상 방법',            applicationNumber: '10-2024-0081900', techField: '소재',   expiryDate: '2027-01-20', departmentId: 5, decision: 'DISPOSE', reviewStatus: 'done',       isOverdue: false },
   { id: 5,  title: 'AI 기반 품질 검사 자동화 시스템',       applicationNumber: '10-2026-0031891', techField: 'AI/SW',  expiryDate: '2027-03-01', departmentId: 4, decision: null,      reviewStatus: 'requested',  isOverdue: false },
@@ -444,7 +444,7 @@ const mockPatents: ReevalItem[] = [
   { id: 7,  title: '리튬이온 배터리 수명 예측 알고리즘',    applicationNumber: '10-2025-0067432', techField: '배터리', expiryDate: '2027-05-14', departmentId: 3, decision: null,      reviewStatus: 'overdue',    isOverdue: true  },
   { id: 8,  title: '고온 내열 소재 합성 공정',              applicationNumber: '10-2024-0012980', techField: '소재',   expiryDate: '2026-11-30', departmentId: 5, decision: null,      reviewStatus: 'requested',  isOverdue: false },
   { id: 9,  title: '반도체 패키징 방열 구조',               applicationNumber: '10-2026-0044211', techField: '반도체', expiryDate: '2027-02-08', departmentId: 2, decision: null,      reviewStatus: 'requested',  isOverdue: false },
-  { id: 10, title: '신경망 기반 결함 검출 시스템',          applicationNumber: '10-2025-0029004', techField: 'AI/SW',  expiryDate: '2027-07-22', departmentId: 4, decision: null,      reviewStatus: 'reviewing',  isOverdue: false },
+  { id: 10, title: '신경망 기반 결함 검출 시스템',          applicationNumber: '10-2025-0029004', techField: 'AI/SW',  expiryDate: '2027-07-22', departmentId: 4, decision: null,      reviewStatus: 'requested',  isOverdue: false },
   { id: 11, title: '전고체 배터리 전해질 조성물',           applicationNumber: '10-2024-0093100', techField: '배터리', expiryDate: '2026-12-19', departmentId: undefined, decision: null, reviewStatus: 'unassigned', isOverdue: false },
   { id: 12, title: '산화막 성장 제어 방법',                 applicationNumber: '10-2023-0077650', techField: '반도체', expiryDate: '2027-04-03', departmentId: 2, decision: 'DISPOSE', reviewStatus: 'done',       isOverdue: false },
 ]
@@ -464,7 +464,7 @@ async function fetchList(p = 1) {
       expiryDate: patent.expiryDate,
       departmentId: i % 3 === 0 ? undefined : [2, 3, 4][i % 3],
       decision: i % 5 === 4 ? 'KEEP' : i % 7 === 6 ? 'DISPOSE' : null,
-      reviewStatus: (['unassigned', 'requested', 'reviewing', 'overdue', 'done'] as const)[i % 5],
+      reviewStatus: (['unassigned', 'requested', 'overdue', 'done', 'requested'] as const)[i % 5],
       isOverdue: i % 7 === 3,
     }))
     setTotal(res.totalItems, res.totalPages)
@@ -957,7 +957,7 @@ onMounted(() => {
 }
 .item-status--unassigned { background: var(--color-surface-muted); color: var(--color-text-muted); }
 .item-status--requested  { background: var(--color-primary-bg); color: var(--color-primary-darker); }
-.item-status--reviewing  { background: var(--color-warn-bg); color: var(--color-warn-dark); }
+
 .item-status--overdue    { background: var(--color-danger-bg); color: var(--color-danger); }
 .item-status--done       { background: var(--color-success-bg); color: var(--color-success-dark); }
 

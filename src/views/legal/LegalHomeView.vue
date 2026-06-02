@@ -156,7 +156,7 @@
       <!-- 분기별 만료 예정 -->
       <div class="card">
         <div class="card__header">
-          <h3 class="card__title">분기별 만료 예정</h3>
+          <h3 class="card__title">분기별 만료 예정 특허</h3>
           <RouterLink to="/legal/expiring" class="card__link">만료 예정 관리</RouterLink>
         </div>
         <div v-if="loadingDist" class="card__skeleton">
@@ -795,8 +795,8 @@ onMounted(loadAll)
 
 .expiry-bar-label {
   font-size: 10.5px;
-  color: var(--color-text-subtle);
-  font-weight: 500;
+  color: var(--color-text-secondary);
+  font-weight: 600;
   text-align: center;
 }
 .expiry-bar-count {
