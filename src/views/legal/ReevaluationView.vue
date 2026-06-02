@@ -1,0 +1,1069 @@
+<template>
+  <div class="reeval-page">
+
+    <!-- 페이지 헤더 -->
+    <div class="page-header">
+      <div>
+        <p class="page-header__eyebrow">{{ quarterLabel }}</p>
+        <h2 class="page-header__title">재평가 관리</h2>
+        <p class="page-header__desc">이번 분기 처리할 특허 목록을 관리하고 사업부에 검토를 요청합니다</p>
+      </div>
+      <button
+        class="btn-send-all"
+        :disabled="selectedIds.size === 0 || sending"
+        @click="showSendModal = true"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/>
+        </svg>
+        {{ selectedIds.size > 0 ? `${selectedIds.size}건 요청 전송` : '검토 요청 전송' }}
+      </button>
+    </div>
+
+    <!-- 진행 요약 바 -->
+    <div class="progress-bar-card">
+      <div class="progress-bar-card__info">
+        <span class="progress-bar-card__label">분기 처리 현황</span>
+        <span class="progress-bar-card__pct">{{ progressPct }}%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" :style="{ width: progressPct + '%' }" />
+      </div>
+      <div class="progress-bar-card__legend">
+        <span v-for="seg in progressSegments" :key="seg.label" class="legend-item">
+          <span class="legend-dot" :style="{ background: seg.color }" />
+          {{ seg.label }} {{ seg.count }}건
+        </span>
+      </div>
+    </div>
+
+    <!-- 필터 탭 -->
+    <div class="filter-tabs">
+      <button
+        v-for="tab in statusTabs"
+        :key="tab.value"
+        class="filter-tab"
+        :class="{ 'filter-tab--active': activeStatus === tab.value }"
+        @click="activeStatus = tab.value; fetchList(1)"
+      >
+        {{ tab.label }}
+        <span v-if="tab.count != null" class="filter-tab__badge" :class="{ 'filter-tab__badge--red': tab.alert }">
+          {{ tab.count }}
+        </span>
+      </button>
+    </div>
+
+    <!-- 선택된 항목 액션 바 -->
+    <Transition name="slide-down">
+      <div v-if="selectedIds.size > 0" class="action-bar">
+        <span class="action-bar__count">{{ selectedIds.size }}건 선택됨</span>
+        <div class="action-bar__btns">
+          <button class="action-btn" @click="openBulkAssign">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            사업부 일괄 배정
+          </button>
+          <button class="action-btn action-btn--primary" @click="showSendModal = true">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/>
+            </svg>
+            검토 요청 전송
+          </button>
+          <button class="action-btn action-btn--ghost" @click="selectedIds.clear()">선택 해제</button>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- 특허 목록 테이블 -->
+    <div class="table-card">
+      <!-- 테이블 헤더 -->
+      <div class="table-toolbar">
+        <label class="checkbox-all">
+          <input
+            type="checkbox"
+            :checked="allChecked"
+            :indeterminate="someChecked"
+            @change="toggleAll"
+          />
+          <span class="checkbox-all__label">전체 선택</span>
+        </label>
+        <p class="table-toolbar__total">총 <strong>{{ totalItems }}</strong>건</p>
+      </div>
+
+      <!-- 로딩 스켈레톤 -->
+      <div v-if="loading" class="skel-rows">
+        <div class="skel-row" v-for="n in 8" :key="n" />
+      </div>
+
+      <!-- 빈 상태 -->
+      <div v-else-if="!items.length" class="empty-state">
+        <div class="empty-state__icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+        </div>
+        <p>해당 상태의 특허가 없습니다.</p>
+      </div>
+
+      <!-- 목록 -->
+      <div v-else class="reeval-list">
+        <div
+          v-for="item in items"
+          :key="item.id"
+          class="reeval-item"
+          :class="{ 'reeval-item--selected': selectedIds.has(item.id) }"
+        >
+          <!-- 체크박스 -->
+          <label class="item-check" @click.stop>
+            <input
+              type="checkbox"
+              :checked="selectedIds.has(item.id)"
+              @change="toggleItem(item.id)"
+            />
+          </label>
+
+          <!-- 특허 정보 (클릭 → 상세) -->
+          <div class="item-main" @click="goDetail(item.id)">
+            <div class="item-main__top">
+              <span class="item-status-badge" :class="`item-status--${item.reviewStatus}`">
+                <span class="item-status-dot" />
+                {{ reviewStatusLabel(item.reviewStatus) }}
+              </span>
+              <span v-if="item.isOverdue" class="overdue-badge">기한 초과</span>
+              <h4 class="item-title">{{ item.title }}</h4>
+            </div>
+            <div class="item-meta">
+              <span class="meta-tag">{{ item.applicationNumber }}</span>
+              <span v-if="item.techField" class="meta-tag">{{ item.techField }}</span>
+              <span v-if="item.expiryDate" class="meta-tag meta-tag--expiry">
+                만료 {{ formatDate(item.expiryDate) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- 담당 사업부 -->
+          <div class="item-dept" @click.stop>
+            <div v-if="item.departmentId" class="dept-chip">
+              <span class="dept-chip__dot" />
+              {{ deptName(item.departmentId) }}
+              <button class="dept-chip__change" @click="openAssign(item)" title="변경">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+            </div>
+            <button v-else class="btn-assign-sm" @click="openAssign(item)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              배정
+            </button>
+          </div>
+
+          <!-- 결정 결과 (회신 완료인 경우) -->
+          <div class="item-decision">
+            <span v-if="item.decision" class="decision-badge" :class="`decision-badge--${item.decision.toLowerCase()}`">
+              {{ decisionLabel(item.decision) }}
+            </span>
+            <span v-else class="decision-pending">미회신</span>
+          </div>
+
+          <!-- 화살표 -->
+          <button class="item-arrow" @click="goDetail(item.id)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 페이지네이션 -->
+      <div v-if="totalPages > 1" class="table-footer">
+        <BasePagination :page="page" :total-pages="totalPages" :total-items="totalItems" @update:page="fetchList" />
+      </div>
+    </div>
+
+    <!-- ── 사업부 배정 모달 ── -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showAssignModal" class="modal-overlay" @click.self="showAssignModal = false">
+          <div class="modal">
+            <div class="modal__header">
+              <h3 class="modal__title">
+                {{ bulkAssignMode ? `${selectedIds.size}건 일괄 배정` : '사업부 배정' }}
+              </h3>
+              <button class="modal__close" @click="showAssignModal = false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div class="modal__body">
+              <p v-if="!bulkAssignMode" class="modal__patent-name">{{ assignTarget?.title }}</p>
+              <div class="dept-select-list">
+                <label
+                  v-for="d in departments"
+                  :key="d.id"
+                  class="dept-option"
+                  :class="{ 'dept-option--selected': assignDeptId === d.id }"
+                >
+                  <input type="radio" :value="d.id" v-model="assignDeptId" />
+                  <span class="dept-option__dot" />
+                  <span class="dept-option__name">{{ d.name }}</span>
+                </label>
+              </div>
+            </div>
+            <div class="modal__footer">
+              <button class="btn-cancel" @click="showAssignModal = false">취소</button>
+              <button class="btn-confirm" :disabled="!assignDeptId || assignLoading" @click="handleAssign">
+                <span v-if="assignLoading" class="spinner" />
+                배정 완료
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- ── 검토 요청 전송 모달 ── -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showSendModal" class="modal-overlay" @click.self="showSendModal = false">
+          <div class="modal">
+            <div class="modal__header">
+              <h3 class="modal__title">검토 요청 전송</h3>
+              <button class="modal__close" @click="showSendModal = false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div class="modal__body">
+              <div class="send-summary">
+                <div class="send-summary__row">
+                  <span>선택 특허</span>
+                  <strong>{{ selectedIds.size }}건</strong>
+                </div>
+                <div class="send-summary__row">
+                  <span>분기</span>
+                  <strong>{{ quarterLabel }}</strong>
+                </div>
+                <div class="send-summary__row send-summary__row--warn" v-if="unassignedCount > 0">
+                  <span>⚠️ 미배정 특허</span>
+                  <strong>{{ unassignedCount }}건 (제외됨)</strong>
+                </div>
+              </div>
+              <p class="send-note">배정된 사업부에 검토 요청이 전달됩니다. 전송 후 취소할 수 없습니다.</p>
+            </div>
+            <div class="modal__footer">
+              <button class="btn-cancel" @click="showSendModal = false">취소</button>
+              <button class="btn-confirm" :disabled="sending" @click="handleSend">
+                <span v-if="sending" class="spinner" />
+                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/>
+                </svg>
+                전송
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { patentsApi } from '@/api/patents'
+import { reviewRequestsApi } from '@/api/misc'
+import { usePagination } from '@/composables/usePagination'
+import BasePagination from '@/components/ui/BasePagination.vue'
+import type { Department } from '@/types'
+
+const router = useRouter()
+const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination()
+
+// ── 상태 ────────────────────────────────────────────
+const loading  = ref(false)
+const sending  = ref(false)
+const items    = ref<ReevalItem[]>([])
+const selectedIds = reactive(new Set<number>())
+const activeStatus = ref('all')
+const showAssignModal = ref(false)
+const showSendModal   = ref(false)
+const assignTarget    = ref<ReevalItem | null>(null)
+const assignDeptId    = ref<number | null>(null)
+const assignLoading   = ref(false)
+const bulkAssignMode  = ref(false)
+
+// mock 부서 목록 (실제: GET /departments)
+const departments = ref<Department[]>([
+  { id: 2, name: '반도체 사업부' },
+  { id: 3, name: '배터리 사업부' },
+  { id: 4, name: 'AI 사업부' },
+  { id: 5, name: '소재 사업부' },
+])
+
+// ── 타입 ────────────────────────────────────────────
+interface ReevalItem {
+  id: number
+  title: string
+  applicationNumber: string
+  techField?: string
+  expiryDate?: string
+  departmentId?: number
+  decision?: string | null
+  reviewStatus: 'unassigned' | 'requested' | 'reviewing' | 'overdue' | 'done'
+  isOverdue?: boolean
+}
+
+// ── 분기 레이블 ──────────────────────────────────────
+const quarterLabel = computed(() => {
+  const d = new Date()
+  return `${d.getFullYear()}년 ${Math.ceil((d.getMonth() + 1) / 3)}분기`
+})
+
+// ── 상태 탭 ──────────────────────────────────────────
+const statusCounts = ref({ all: 0, unassigned: 0, requested: 0, overdue: 0, done: 0 })
+
+const statusTabs = computed(() => [
+  { value: 'all',        label: '전체',     count: statusCounts.value.all,        alert: false },
+  { value: 'unassigned', label: '요청 전',  count: statusCounts.value.unassigned, alert: false },
+  { value: 'requested',  label: '요청 완료',count: statusCounts.value.requested,  alert: false },
+  { value: 'overdue',    label: '지연',     count: statusCounts.value.overdue,    alert: statusCounts.value.overdue > 0 },
+  { value: 'done',       label: '회신 완료',count: statusCounts.value.done,       alert: false },
+])
+
+// ── 진행률 ───────────────────────────────────────────
+const progressPct = computed(() => {
+  const total = statusCounts.value.all
+  if (!total) return 0
+  return Math.round((statusCounts.value.done / total) * 100)
+})
+
+const progressSegments = [
+  { label: '요청 전',   color: '#e2e8f0' },
+  { label: '요청 완료', color: '#6366f1' },
+  { label: '지연',      color: '#ef4444' },
+  { label: '회신 완료', color: '#22c55e' },
+]
+
+// ── 전체/일부 체크 ───────────────────────────────────
+const allChecked  = computed(() => items.value.length > 0 && items.value.every(i => selectedIds.has(i.id)))
+const someChecked = computed(() => items.value.some(i => selectedIds.has(i.id)) && !allChecked.value)
+
+function toggleAll(e: Event) {
+  if ((e.target as HTMLInputElement).checked) items.value.forEach(i => selectedIds.add(i.id))
+  else items.value.forEach(i => selectedIds.delete(i.id))
+}
+function toggleItem(id: number) {
+  if (selectedIds.has(id)) selectedIds.delete(id)
+  else selectedIds.add(id)
+}
+
+// ── 미배정 카운트 ─────────────────────────────────────
+const unassignedCount = computed(() =>
+  [...selectedIds].filter(id => {
+    const item = items.value.find(i => i.id === id)
+    return !item?.departmentId
+  }).length
+)
+
+// ── 유틸 ────────────────────────────────────────────
+function deptName(id?: number) {
+  return departments.value.find(d => d.id === id)?.name ?? `사업부 #${id}`
+}
+
+function reviewStatusLabel(s: string) {
+  return { unassigned: '요청 전', requested: '요청 완료', reviewing: '검토 중', overdue: '지연', done: '회신 완료' }[s] ?? s
+}
+
+function decisionLabel(d: string) {
+  return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
+}
+
+function formatDate(d?: string) {
+  if (!d) return '—'
+  return d.slice(0, 10).replace(/-/g, '.')
+}
+
+// ── 데이터 로드 ──────────────────────────────────────
+// 실제로는 /patents?status=REVIEW_QUARTER&reviewStatus=... 같은 API 연동
+// 지금은 /patents 목록으로 임시 구성
+async function fetchList(p = 1) {
+  loading.value = true
+  setPage(p)
+  selectedIds.clear()
+  try {
+    const res = await patentsApi.list({ ...pageQuery.value })
+    // mock reviewStatus 부여
+    items.value = res.items.map((patent, i) => ({
+      id: patent.id,
+      title: patent.title,
+      applicationNumber: patent.applicationNumber,
+      techField: (patent as any).techField,
+      expiryDate: patent.expiryDate,
+      departmentId: i % 3 === 0 ? undefined : [2, 3, 4][i % 3],
+      decision: i % 5 === 4 ? 'KEEP' : i % 7 === 6 ? 'DISPOSE' : null,
+      reviewStatus: (['unassigned', 'requested', 'reviewing', 'overdue', 'done'] as const)[i % 5],
+      isOverdue: i % 7 === 3,
+    }))
+    setTotal(res.totalItems, res.totalPages)
+    statusCounts.value = {
+      all: res.totalItems,
+      unassigned: Math.round(res.totalItems * 0.12),
+      requested:  Math.round(res.totalItems * 0.45),
+      overdue:    Math.round(res.totalItems * 0.08),
+      done:       Math.round(res.totalItems * 0.35),
+    }
+  } catch (e) { console.error(e) }
+  finally { loading.value = false }
+}
+
+// ── 배정 ────────────────────────────────────────────
+function openAssign(item: ReevalItem) {
+  assignTarget.value = item
+  assignDeptId.value = item.departmentId ?? null
+  bulkAssignMode.value = false
+  showAssignModal.value = true
+}
+
+function openBulkAssign() {
+  assignTarget.value = null
+  assignDeptId.value = null
+  bulkAssignMode.value = true
+  showAssignModal.value = true
+}
+
+async function handleAssign() {
+  if (!assignDeptId.value) return
+  assignLoading.value = true
+  try {
+    if (bulkAssignMode.value) {
+      await Promise.all([...selectedIds].map(id => patentsApi.assignDepartment(id, assignDeptId.value!)))
+    } else if (assignTarget.value) {
+      await patentsApi.assignDepartment(assignTarget.value.id, assignDeptId.value)
+    }
+    showAssignModal.value = false
+    await fetchList(page.value)
+  } catch (e) { console.error(e) }
+  finally { assignLoading.value = false }
+}
+
+// ── 검토 요청 전송 ───────────────────────────────────
+async function handleSend() {
+  sending.value = true
+  try {
+    const assignedItems = [...selectedIds]
+      .map(id => items.value.find(i => i.id === id))
+      .filter(i => i?.departmentId) as ReevalItem[]
+
+    const d = new Date()
+    await reviewRequestsApi.create({
+      quarter: `${d.getFullYear()}Q${Math.ceil((d.getMonth() + 1) / 3)}`,
+      items: assignedItems.map(i => ({ patentId: i.id, departmentId: i.departmentId! })),
+    })
+    showSendModal.value = false
+    selectedIds.clear()
+    await fetchList(page.value)
+  } catch (e) { console.error(e) }
+  finally { sending.value = false }
+}
+
+function goDetail(id: number) { router.push(`/patents/${id}`) }
+
+onMounted(() => fetchList(1))
+</script>
+
+<style scoped>
+.reeval-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  font-family: 'Pretendard', sans-serif;
+}
+
+/* ── 페이지 헤더 ─────────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.page-header__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #6366f1;
+  margin: 0 0 5px;
+}
+
+.page-header__title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
+}
+
+.page-header__desc {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0;
+}
+
+.btn-send-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(79,70,229,.3);
+  transition: opacity .15s, transform .12s;
+  white-space: nowrap;
+}
+.btn-send-all:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+.btn-send-all:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── 진행률 바 카드 ──────────────────────────────── */
+.progress-bar-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.progress-bar-card__info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progress-bar-card__label { font-size: 13px; font-weight: 600; color: #374151; }
+.progress-bar-card__pct   { font-size: 15px; font-weight: 800; color: #6366f1; }
+
+.progress-track {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #818cf8);
+  border-radius: 4px;
+  transition: width .6s cubic-bezier(.4,0,.2,1);
+}
+
+.progress-bar-card__legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.legend-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── 필터 탭 ─────────────────────────────────────── */
+.filter-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1.5px solid #e2e8f0;
+  overflow-x: auto;
+}
+
+.filter-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #64748b;
+  white-space: nowrap;
+  position: relative;
+  transition: color .13s;
+}
+.filter-tab:hover { color: #0f172a; }
+.filter-tab--active {
+  color: #4f46e5;
+  font-weight: 700;
+}
+.filter-tab--active::after {
+  content: '';
+  position: absolute;
+  bottom: -1.5px; left: 0; right: 0;
+  height: 2px;
+  background: #4f46e5;
+  border-radius: 2px 2px 0 0;
+}
+
+.filter-tab__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  background: #f1f5f9;
+  color: #64748b;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.filter-tab__badge--red {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* ── 액션 바 ─────────────────────────────────────── */
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.action-bar__count {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #4338ca;
+}
+
+.action-bar__btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: #fff;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #4338ca;
+  cursor: pointer;
+  transition: background .13s;
+}
+.action-btn:hover { background: #f5f3ff; }
+.action-btn--primary {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4f46e5;
+}
+.action-btn--primary:hover { background: #4338ca; }
+.action-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: #6366f1;
+}
+.action-btn--ghost:hover { background: #f0edff; }
+
+/* ── 테이블 카드 ─────────────────────────────────── */
+.table-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.checkbox-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox-all input {
+  width: 15px; height: 15px;
+  cursor: pointer;
+  accent-color: #6366f1;
+}
+
+.checkbox-all__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.table-toolbar__total {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+.table-toolbar__total strong { color: #0f172a; }
+
+/* ── 재평가 목록 아이템 ───────────────────────────── */
+.reeval-list { display: flex; flex-direction: column; }
+
+.reeval-item {
+  display: grid;
+  grid-template-columns: 36px 1fr 180px 100px 36px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f8fafc;
+  transition: background .12s;
+}
+.reeval-item:last-child { border-bottom: none; }
+.reeval-item:hover { background: #f8fafc; }
+.reeval-item--selected { background: #fafbff; }
+
+.item-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.item-check input {
+  width: 15px; height: 15px;
+  cursor: pointer;
+  accent-color: #6366f1;
+}
+
+.item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.item-main__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 검토 상태 배지 */
+.item-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.item-status-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.item-status--unassigned { background: #f1f5f9; color: #64748b; }
+.item-status--requested  { background: #eef2ff; color: #4338ca; }
+.item-status--reviewing  { background: #fffbeb; color: #b45309; }
+.item-status--overdue    { background: #fef2f2; color: #dc2626; }
+.item-status--done       { background: #f0fdf4; color: #15803d; }
+
+.overdue-badge {
+  display: inline-flex;
+  padding: 2px 7px;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.item-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.meta-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  font-size: 11.5px;
+  color: #64748b;
+  font-family: 'JetBrains Mono', monospace;
+}
+.meta-tag--expiry { color: #b45309; background: #fffbeb; border-color: #fde68a; font-family: inherit; }
+
+/* 담당 사업부 셀 */
+.item-dept {
+  display: flex;
+  align-items: center;
+}
+
+.dept-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.dept-chip__dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #6366f1;
+  flex-shrink: 0;
+}
+
+.dept-chip__change {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  display: flex;
+  padding: 0;
+  margin-left: 2px;
+  transition: color .13s;
+}
+.dept-chip__change:hover { color: #6366f1; }
+
+.btn-assign-sm {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: #eef2ff;
+  border: 1px dashed #c7d2fe;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #6366f1;
+  cursor: pointer;
+  transition: background .13s;
+}
+.btn-assign-sm:hover { background: #e0e7ff; }
+
+/* 결정 배지 */
+.item-decision { display: flex; align-items: center; justify-content: center; }
+
+.decision-badge {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.decision-badge--keep    { background: #f0fdf4; color: #15803d; }
+.decision-badge--sell    { background: #eef2ff; color: #4338ca; }
+.decision-badge--dispose { background: #fef2f2; color: #dc2626; }
+
+.decision-pending { font-size: 12.5px; color: #cbd5e1; }
+
+.item-arrow {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color .12s, background .12s;
+}
+.item-arrow:hover { color: #6366f1; background: #f0f0ff; }
+
+/* ── 스켈레톤 ────────────────────────────────────── */
+.skel-rows { display: flex; flex-direction: column; }
+.skel-row {
+  height: 60px;
+  border-bottom: 1px solid #f8fafc;
+  background: linear-gradient(90deg, #f8fafc 25%, #f1f5f9 50%, #f8fafc 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── 빈 상태 ─────────────────────────────────────── */
+.empty-state {
+  padding: 56px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  color: #94a3b8;
+}
+.empty-state__icon {
+  width: 52px; height: 52px;
+  background: #f1f5f9;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.empty-state p { font-size: 13.5px; }
+
+/* ── 테이블 푸터 ─────────────────────────────────── */
+.table-footer {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* ── 모달 ────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; backdrop-filter: blur(2px);
+}
+.modal {
+  background: #fff; border-radius: 18px;
+  width: min(480px, 94vw);
+  box-shadow: 0 24px 64px rgba(15,23,42,.18);
+  overflow: hidden;
+}
+.modal__header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px 16px; border-bottom: 1px solid #f1f5f9;
+}
+.modal__title { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; }
+.modal__close {
+  width: 32px; height: 32px;
+  background: #f1f5f9; border: none; border-radius: 8px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b;
+}
+.modal__body { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+.modal__patent-name { font-size: 14px; font-weight: 600; color: #374151; margin: 0; line-height: 1.4; }
+.modal__footer {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 24px 20px; border-top: 1px solid #f1f5f9;
+}
+
+.dept-select-list { display: flex; flex-direction: column; gap: 6px; }
+.dept-option {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .13s, background .13s;
+}
+.dept-option input { display: none; }
+.dept-option--selected { border-color: #6366f1; background: #fafbff; }
+.dept-option__dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  flex-shrink: 0;
+  transition: border-color .13s, background .13s;
+}
+.dept-option--selected .dept-option__dot { background: #6366f1; border-color: #6366f1; }
+.dept-option__name { font-size: 14px; font-weight: 500; color: #0f172a; }
+
+.send-summary { background: #f8fafc; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.send-summary__row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13.5px; color: #374151;
+}
+.send-summary__row--warn strong { color: #dc2626; }
+.send-note { font-size: 12.5px; color: #94a3b8; margin: 0; line-height: 1.6; }
+
+.btn-cancel {
+  padding: 9px 20px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 9px;
+  font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer; color: #475569;
+}
+.btn-confirm {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 22px; background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff; border: none; border-radius: 9px;
+  font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(79,70,229,.3);
+}
+.btn-confirm:disabled { opacity: .6; cursor: not-allowed; }
+
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 전환 */
+.slide-down-enter-active { transition: max-height .25s ease, opacity .2s; max-height: 100px; }
+.slide-down-leave-active { transition: max-height .2s ease, opacity .15s; }
+.slide-down-enter-from, .slide-down-leave-to { max-height: 0; opacity: 0; overflow: hidden; }
+
+.modal-enter-active { transition: opacity .2s; }
+.modal-leave-active { transition: opacity .15s; }
+.modal-enter-from, .modal-leave-to { opacity: 0; }
+.modal-enter-active .modal { animation: modalUp .22s cubic-bezier(.34,1.56,.64,1); }
+@keyframes modalUp { from { transform: translateY(12px) scale(.98); } to { transform: translateY(0) scale(1); } }
+</style>
