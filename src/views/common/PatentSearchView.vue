@@ -7,12 +7,11 @@
         <h2 class="page-header__title">특허 검색</h2>
         <p class="page-header__desc">전체 보유 특허를 검색하고 상세 정보를 확인하세요</p>
       </div>
-      <!-- Legal만 등록 버튼 노출 -->
-      <button v-if="auth.isLegal || auth.isAdmin" class="btn-register" @click="showRegisterModal = true">
+      <button class="btn-register" @click="goToRegister">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
-        신규 특허 등록
+        특허 추가
       </button>
     </div>
 
@@ -138,113 +137,17 @@
       />
     </div>
 
-    <!-- 신규 등록 모달 (간략) -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showRegisterModal" class="modal-overlay" @click.self="showRegisterModal = false">
-          <div class="modal">
-            <div class="modal__header">
-              <h3 class="modal__title">신규 특허 등록</h3>
-              <button class="modal__close" @click="showRegisterModal = false">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-
-            <div class="modal__body">
-              <!-- PDF 업로드 탭 -->
-              <div class="register-tabs">
-                <button class="register-tab" :class="{ 'register-tab--active': registerMode === 'pdf' }" @click="registerMode = 'pdf'">
-                  PDF 업로드
-                </button>
-                <button class="register-tab" :class="{ 'register-tab--active': registerMode === 'manual' }" @click="registerMode = 'manual'">
-                  직접 입력
-                </button>
-              </div>
-
-              <!-- PDF 모드 -->
-              <div v-if="registerMode === 'pdf'" class="upload-zone" @dragover.prevent @drop.prevent="handleDrop">
-                <input type="file" accept=".pdf" ref="fileInput" style="display:none" @change="handleFileSelect" />
-                <div v-if="!uploadedFile" class="upload-zone__content" @click="(fileInput as HTMLInputElement)?.click()">
-                  <div class="upload-zone__icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="17 8 12 3 7 8"/>
-                      <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                  </div>
-                  <p class="upload-zone__title">PDF 파일을 드래그하거나 클릭하여 업로드</p>
-                  <p class="upload-zone__sub">AI가 특허 정보를 자동으로 추출합니다</p>
-                </div>
-                <div v-else class="upload-zone__file">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                  <span>{{ uploadedFile.name }}</span>
-                  <button @click="uploadedFile = null">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <!-- 수동 입력 모드 (간략 필드) -->
-              <div v-else class="manual-form">
-                <div class="form-row">
-                  <div class="field">
-                    <label class="field__label">특허명 *</label>
-                    <input v-model="registerForm.title" type="text" class="field__input" placeholder="특허명 입력" />
-                  </div>
-                </div>
-                <div class="form-row form-row--2">
-                  <div class="field">
-                    <label class="field__label">출원번호 *</label>
-                    <input v-model="registerForm.applicationNumber" type="text" class="field__input" placeholder="10-2026-0000000" />
-                  </div>
-                  <div class="field">
-                    <label class="field__label">등록번호</label>
-                    <input v-model="registerForm.registrationNumber" type="text" class="field__input" placeholder="10-0000000" />
-                  </div>
-                </div>
-                <div class="form-row form-row--2">
-                  <div class="field">
-                    <label class="field__label">출원일</label>
-                    <input v-model="registerForm.applicationDate" type="date" class="field__input" />
-                  </div>
-                  <div class="field">
-                    <label class="field__label">만료 예정일</label>
-                    <input v-model="registerForm.expiryDate" type="date" class="field__input" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="modal__footer">
-              <button class="btn-cancel" @click="showRegisterModal = false">취소</button>
-              <button class="btn-confirm" :disabled="registerLoading" @click="handleRegister">
-                <span v-if="registerLoading" class="spinner" />
-                {{ registerMode === 'pdf' ? 'AI 추출 및 등록' : '등록' }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
 
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { patentsApi } from '@/api/patents'
 import { usePagination } from '@/composables/usePagination'
 import PatentTable, { type PatentRow } from '@/components/patent/PatentTable.vue'
-import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
 import type { Department } from '@/types'
 
@@ -256,11 +159,6 @@ const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = us
 const loading = ref(false)
 const tableItems = ref<PatentRow[]>([])
 const departments = ref<Department[]>([])
-const showRegisterModal = ref(false)
-const registerMode = ref<'pdf' | 'manual'>('pdf')
-const registerLoading = ref(false)
-const uploadedFile = ref<File | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
 
 const filters = reactive({
   q: '',
@@ -268,14 +166,6 @@ const filters = reactive({
   country: '' as string,
   sort: 'expiryDate' as string,
   departmentId: undefined as number | undefined,
-})
-
-const registerForm = reactive({
-  title: '',
-  applicationNumber: '',
-  registrationNumber: '',
-  applicationDate: '',
-  expiryDate: '',
 })
 
 // ── 옵션 ────────────────────────────────────────────
@@ -358,34 +248,10 @@ function goToDetail(patent: PatentRow) {
   router.push(`${base}/patent-search/${patent.id}`)
 }
 
-// ── 파일 업로드 ──────────────────────────────────────
-function handleFileSelect(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (file) uploadedFile.value = file
-}
-
-function handleDrop(e: DragEvent) {
-  const file = e.dataTransfer?.files?.[0]
-  if (file?.type === 'application/pdf') uploadedFile.value = file
-}
-
-// ── 등록 ────────────────────────────────────────────
-async function handleRegister() {
-  registerLoading.value = true
-  try {
-    if (registerMode.value === 'pdf' && uploadedFile.value) {
-      const extracted = await patentsApi.extractFromPdf(uploadedFile.value)
-      await patentsApi.create(extracted as any)
-    } else {
-      await patentsApi.create(registerForm as any)
-    }
-    showRegisterModal.value = false
-    fetchPatents(1)
-  } catch (e) {
-    console.error(e)
-  } finally {
-    registerLoading.value = false
-  }
+// ── 등록 페이지 이동 ─────────────────────────────────
+function goToRegister() {
+  const base = auth.isLegal || auth.isAdmin ? '/legal' : '/biz'
+  router.push(`${base}/patents/new`)
 }
 
 // ── 초기 로드 ────────────────────────────────────────

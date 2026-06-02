@@ -19,7 +19,7 @@
         <transition name="fade-slide">
           <div v-if="!collapsed" class="sidebar__role-badge">
             <span class="sidebar__role-dot sidebar__role-dot--biz" />
-            {{ auth.user?.name ?? '사업부' }}
+            반도체사업부
           </div>
         </transition>
 
@@ -47,8 +47,8 @@
             </div>
             <transition name="fade-slide">
               <div v-if="!collapsed" class="sidebar__user-info">
-                <p class="sidebar__user-name">{{ auth.user?.name ?? '사업부' }}</p>
-                <p class="sidebar__user-role">{{ auth.user?.email ?? '' }}</p>
+                <p class="sidebar__user-name">이담당</p>
+                <p class="sidebar__user-role">반도체사업부</p>
               </div>
             </transition>
           </div>
@@ -160,6 +160,7 @@ const pageTitleMap: Record<string, string> = {
 
 const currentPageTitle = computed(() => {
   const path = route.path
+  if (path === '/biz/patents/new') return '특허 등록'
   if (path.startsWith('/biz/patent-search/')) return '특허 상세'
   return pageTitleMap[path] ?? ''
 })

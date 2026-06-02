@@ -179,6 +179,7 @@ const pageTitleMap: Record<string, string> = {
 
 const currentPageTitle = computed(() => {
   const path = route.path
+  if (path === '/legal/patents/new') return '특허 등록'
   if (path.startsWith('/legal/patent-search/')) return '특허 상세'
   return pageTitleMap[path] ?? ''
 })
