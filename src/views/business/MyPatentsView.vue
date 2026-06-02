@@ -30,7 +30,7 @@
         :key="tab.value"
         class="tab"
         :class="{ 'tab--active': activeTab === tab.value }"
-        @click="activeTab = tab.value"
+        @click="activeTab = tab.value as 'active' | 'expired' | 'history'"
       >
         {{ tab.label }}
         <span class="tab__badge">{{ tab.count }}</span>
@@ -40,10 +40,28 @@
     <!-- ── 유지중인 특허 ── -->
     <template v-if="activeTab === 'active'">
       <div class="table-card">
+        <!-- 툴바 -->
+        <div class="table-toolbar">
+          <div class="toolbar-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input
+              v-model="searchInput"
+              class="search-input"
+              placeholder="특허명, 출원번호, 기술 분야 검색..."
+              type="text"
+              @keyup.enter="doSearch"
+            />
+            <button v-if="searchInput" class="search-clear" @click="clearSearch">×</button>
+          </div>
+          <button class="btn-search" @click="doSearch">검색</button>
+        </div>
+
         <div v-if="loading" class="skel-rows">
           <div class="skel-row" v-for="n in 6" :key="n" />
         </div>
-        <div v-else-if="!activePatents.length" class="empty-state">
+        <div v-else-if="!filteredActivePatents.length" class="empty-state">
           <div class="empty-state__icon">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -55,29 +73,52 @@
         <table v-else class="patent-table">
           <thead>
             <tr>
-              <th>특허명</th>
-              <th>출원번호</th>
-              <th>출원일</th>
-              <th>만료 예정일</th>
-              <th>기술 분야</th>
-              <th>상태</th>
+              <th class="sortable" @click="toggleSort('applicationNumber')">
+                출원번호 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'applicationNumber' }">{{ sortIconChar('applicationNumber') }}</span>
+              </th>
+              <th class="sortable" @click="toggleSort('title')">
+                특허명 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'title' }">{{ sortIconChar('title') }}</span>
+              </th>
+              <th class="sortable" @click="toggleSort('applicationDate')">
+                출원일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'applicationDate' }">{{ sortIconChar('applicationDate') }}</span>
+              </th>
+              <th class="sortable" @click="toggleSort('expiryDate')">
+                만료 예정일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
+              </th>
+              <th class="th-with-filter">
+                <div class="th-label">기술 분야<span v-if="filterTechField" class="filter-dot" /></div>
+                <select v-model="filterTechField" class="col-filter-select" @click.stop>
+                  <option value="">전체</option>
+                  <option v-for="f in techFieldOptions" :key="f" :value="f">{{ f }}</option>
+                </select>
+              </th>
+              <th class="th-with-filter">
+                <div class="th-label">상태<span v-if="filterStatus" class="filter-dot" /></div>
+                <select v-model="filterStatus" class="col-filter-select" @click.stop>
+                  <option value="">전체</option>
+                  <option value="REGISTERED">등록</option>
+                  <option value="EXPIRING_SOON">만료 예정</option>
+                </select>
+              </th>
               <th />
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="p in activePatents"
+              v-for="p in filteredActivePatents"
               :key="p.id"
               class="patent-row"
               @click="router.push(`/patents/${p.id}`)"
             >
+              <td><span class="mono">{{ p.applicationNumber }}</span></td>
               <td>
                 <div class="patent-title-cell">
                   <span class="patent-title">{{ p.title }}</span>
-                  <span v-if="p.manageNumber" class="patent-manage">{{ p.manageNumber }}</span>
+                  <div v-if="p.tags && p.tags.length" class="tag-row">
+                    <span v-for="tag in p.tags" :key="tag" class="kw-tag">{{ tag }}</span>
+                  </div>
                 </div>
               </td>
-              <td><span class="mono">{{ p.applicationNumber }}</span></td>
               <td>{{ formatDate(p.applicationDate) }}</td>
               <td>
                 <span :class="expiryClass(p.expiryDate)">{{ formatDate(p.expiryDate) }}</span>
@@ -107,13 +148,31 @@
       </div>
     </template>
 
-    <!-- ── 만료(포기) 특허 ── -->
+    <!-- ── 만료/포기 특허 ── -->
     <template v-if="activeTab === 'expired'">
       <div class="table-card">
+        <!-- 툴바 -->
+        <div class="table-toolbar">
+          <div class="toolbar-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input
+              v-model="searchInput"
+              class="search-input"
+              placeholder="특허명, 출원번호, 기술 분야 검색..."
+              type="text"
+              @keyup.enter="doSearch"
+            />
+            <button v-if="searchInput" class="search-clear" @click="clearSearch">×</button>
+          </div>
+          <button class="btn-search" @click="doSearch">검색</button>
+        </div>
+
         <div v-if="loading" class="skel-rows">
           <div class="skel-row" v-for="n in 4" :key="n" />
         </div>
-        <div v-else-if="!expiredPatents.length" class="empty-state">
+        <div v-else-if="!filteredExpiredPatents.length" class="empty-state">
           <div class="empty-state__icon">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <circle cx="12" cy="12" r="10"/>
@@ -126,27 +185,42 @@
         <table v-else class="patent-table">
           <thead>
             <tr>
-              <th>특허명</th>
-              <th>출원번호</th>
-              <th>만료일</th>
-              <th>기술 분야</th>
+              <th class="sortable" @click="toggleSort('applicationNumber')">
+                출원번호 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'applicationNumber' }">{{ sortIconChar('applicationNumber') }}</span>
+              </th>
+              <th class="sortable" @click="toggleSort('title')">
+                특허명 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'title' }">{{ sortIconChar('title') }}</span>
+              </th>
+              <th class="sortable" @click="toggleSort('expiryDate')">
+                만료일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
+              </th>
+              <th class="th-with-filter">
+                <div class="th-label">기술 분야<span v-if="filterTechField" class="filter-dot" /></div>
+                <select v-model="filterTechField" class="col-filter-select" @click.stop>
+                  <option value="">전체</option>
+                  <option v-for="f in techFieldOptions" :key="f" :value="f">{{ f }}</option>
+                </select>
+              </th>
               <th>상태</th>
               <th />
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="p in expiredPatents"
+              v-for="p in filteredExpiredPatents"
               :key="p.id"
               class="patent-row patent-row--expired"
               @click="router.push(`/patents/${p.id}`)"
             >
+              <td><span class="mono">{{ p.applicationNumber }}</span></td>
               <td>
                 <div class="patent-title-cell">
                   <span class="patent-title">{{ p.title }}</span>
+                  <div v-if="p.tags && p.tags.length" class="tag-row">
+                    <span v-for="tag in p.tags" :key="tag" class="kw-tag">{{ tag }}</span>
+                  </div>
                 </div>
               </td>
-              <td><span class="mono">{{ p.applicationNumber }}</span></td>
               <td><span class="expiry--expired">{{ formatDate(p.expiryDate) }}</span></td>
               <td>
                 <span v-if="p.techField" class="field-tag">{{ p.techField }}</span>
@@ -187,7 +261,16 @@
             @click="router.push(`/patents/${h.patentId}`)"
           >
             <div class="history-item__decision-icon" :class="`decision-icon--${h.decision.toLowerCase()}`">
-              {{ decisionEmoji(h.decision) }}
+              <!-- 유지: outline circle check -->
+              <svg v-if="h.decision === 'KEEP'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9 12l2 2 4-4"/>
+              </svg>
+              <!-- 포기: trash outline -->
+              <svg v-else-if="h.decision === 'DISPOSE'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
+              </svg>
+              <span v-else class="text-muted">—</span>
             </div>
             <div class="history-item__info">
               <p class="history-item__title">{{ h.patentTitle }}</p>
@@ -223,13 +306,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { patentsApi } from '@/api/patents'
-import { inboxApi } from '@/api/misc'
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
+import { MOCK_PATENTS, MOCK_REEVAL } from '@/mocks/data'
 
 const router = useRouter()
 const auth   = useAuthStore()
@@ -242,7 +324,7 @@ const activeTab = ref<'active' | 'expired' | 'history'>('active')
 interface PatentItem {
   id: number; title: string; applicationNumber: string
   manageNumber?: string; applicationDate?: string
-  expiryDate?: string; techField?: string
+  expiryDate?: string; techField?: string; tags?: string[]
 }
 
 const activePatents  = ref<PatentItem[]>([])
@@ -264,11 +346,95 @@ const historyPage        = ref(1)
 const historyTotalPages  = ref(1)
 const historyTotalItems  = ref(0)
 
+// ── 검색 / 필터 ──────────────────────────────────────
+const searchInput    = ref('')
+const searchQuery    = ref('')
+const filterTechField = ref('')
+const filterStatus   = ref('')
+
+function doSearch() {
+  searchQuery.value = searchInput.value
+}
+function clearSearch() {
+  searchInput.value = ''
+  searchQuery.value = ''
+}
+
+// ── 정렬 ────────────────────────────────────────────
+const sortKey = ref('')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+watch(activeTab, () => {
+  sortKey.value = ''
+  sortDir.value = 'asc'
+})
+
+function toggleSort(key: string) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+
+function sortIconChar(key: string) {
+  if (sortKey.value !== key) return '↕'
+  return sortDir.value === 'asc' ? '↑' : '↓'
+}
+
+// ── 기술 분야 옵션 ───────────────────────────────────
+const techFieldOptions = computed(() => {
+  const all = [...activePatents.value, ...expiredPatents.value]
+  return [...new Set(all.map(p => p.techField).filter(Boolean))] as string[]
+})
+
+// ── 필터 + 정렬 적용 헬퍼 ────────────────────────────
+function applySearchFilter(list: PatentItem[]): PatentItem[] {
+  let result = list
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    result = result.filter(p =>
+      p.title.toLowerCase().includes(q) ||
+      p.applicationNumber.toLowerCase().includes(q) ||
+      (p.techField && p.techField.toLowerCase().includes(q)) ||
+      (p.tags && p.tags.some(t => t.toLowerCase().includes(q)))
+    )
+  }
+  if (filterTechField.value) {
+    result = result.filter(p => p.techField === filterTechField.value)
+  }
+  return result
+}
+
+function applySort(list: PatentItem[]): PatentItem[] {
+  if (!sortKey.value) return list
+  return [...list].sort((a, b) => {
+    const av = (a as any)[sortKey.value] ?? ''
+    const bv = (b as any)[sortKey.value] ?? ''
+    const cmp = av < bv ? -1 : av > bv ? 1 : 0
+    return sortDir.value === 'asc' ? cmp : -cmp
+  })
+}
+
+// ── 계산된 필터/정렬 결과 ────────────────────────────
+const filteredActivePatents = computed(() => {
+  let list = applySearchFilter(activePatents.value)
+  if (filterStatus.value) {
+    list = list.filter(p => patentStatus(p.expiryDate) === filterStatus.value)
+  }
+  return applySort(list)
+})
+
+const filteredExpiredPatents = computed(() => {
+  return applySort(applySearchFilter(expiredPatents.value))
+})
+
 // ── 탭별 카운트 ──────────────────────────────────────
 const tabs = computed(() => [
-  { value: 'active',  label: '유지중인 특허',    count: activeTotalItems.value },
-  { value: 'expired', label: '만료(포기) 특허',  count: expiredPatents.value.length },
-  { value: 'history', label: '검토 제출 이력',   count: historyTotalItems.value },
+  { value: 'active',  label: '유지중인 특허',   count: activeTotalItems.value },
+  { value: 'expired', label: '만료/포기 특허',  count: expiredPatents.value.length },
+  { value: 'history', label: '검토 제출 이력',  count: historyTotalItems.value },
 ])
 
 // ── 요약 카드 ────────────────────────────────────────
@@ -289,7 +455,7 @@ const summaryCards = computed(() => [
     iconBg: '#fffbeb', iconColor: '#f59e0b',
   },
   {
-    label: '만료(포기)', value: expiredPatents.value.length,
+    label: '만료/포기', value: expiredPatents.value.length,
     icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
     iconBg: '#fef2f2', iconColor: '#ef4444',
   },
@@ -325,60 +491,59 @@ function expiryClass(d?: string) {
 function decisionLabel(d: string) {
   return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
 }
-function decisionEmoji(d: string) {
-  return { KEEP: '✅', DISPOSE: '🗑' }[d] ?? '—'
+
+
+// ── 데이터 로드 (반도체사업부 기준) ─────────────────
+function fetchActivePatents(_p = 1) {
+  const mine = MOCK_PATENTS.filter(p => p.dept === '반도체사업부' && p.status !== 'EXPIRED')
+  activePatents.value = mine.map(p => ({
+    id: p.id,
+    title: p.title,
+    applicationNumber: p.applicationNumber,
+    applicationDate: p.applicationDate,
+    expiryDate: p.expiryDate,
+    techField: p.techField,
+    tags: p.tags,
+  }))
+  activeTotalItems.value = mine.length
+  activeTotalPages.value = 1
 }
 
-// ── 데이터 로드 ──────────────────────────────────────
-async function fetchActivePatents(p = 1) {
-  loading.value = true
-  activePage.value = p
-  try {
-    const res = await patentsApi.list({ page: p, size: 15 })
-    // 실제 API에 status 필터 붙으면: patentsApi.list({ status: 'REGISTERED', page: p })
-    activePatents.value   = res.items as PatentItem[]
-    activeTotalItems.value = res.totalItems
-    activeTotalPages.value = res.totalPages
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+function fetchExpiredPatents() {
+  expiredPatents.value = MOCK_PATENTS
+    .filter(p => p.dept === '반도체사업부' && p.status === 'EXPIRED')
+    .map(p => ({
+      id: p.id,
+      title: p.title,
+      applicationNumber: p.applicationNumber,
+      expiryDate: p.expiryDate,
+      techField: p.techField,
+      tags: p.tags,
+    }))
 }
 
-async function fetchExpiredPatents() {
-  try {
-    const res = await patentsApi.list({ page: 1, size: 50 })
-    // 실제: patentsApi.list({ status: 'EXPIRED' })
-    expiredPatents.value = res.items.filter((p: any) => {
-      if (!p.expiryDate) return false
-      return new Date(p.expiryDate).getTime() < Date.now()
-    }) as PatentItem[]
-  } catch (e) { console.error(e) }
+function fetchHistory(_p = 1) {
+  const done = MOCK_REEVAL.filter(r => r.deptId === 2 && r.decision !== null)
+  submissionHistory.value = done.map(r => {
+    const patent = MOCK_PATENTS.find(p => p.id === r.patentId)!
+    return {
+      id: r.patentId,
+      patentId: r.patentId,
+      patentTitle: patent.title,
+      applicationNumber: patent.applicationNumber,
+      decision: r.decision!,
+      comment: '',
+      decidedAt: r.decidedAt ?? '',
+    }
+  })
+  historyTotalItems.value = done.length
+  historyTotalPages.value = 1
 }
 
-async function fetchHistory(p = 1) {
-  historyPage.value = p
-  try {
-    const res = await inboxApi.list({ status: 'done', page: p, size: 15 })
-    submissionHistory.value = res.items
-      .filter(i => i.decision !== null)
-      .map(i => ({
-        id: i.decisionId,
-        patentId: i.patentId,
-        patentTitle: i.title,
-        applicationNumber: '',
-        decision: i.decision!,
-        decidedAt: i.decidedAt ?? '',
-      }))
-    historyTotalItems.value = res.totalItems
-    historyTotalPages.value = res.totalPages
-  } catch (e) { console.error(e) }
-}
-
-onMounted(async () => {
-  await Promise.all([
-    fetchActivePatents(1),
-    fetchExpiredPatents(),
-    fetchHistory(1),
-  ])
+onMounted(() => {
+  fetchActivePatents(1)
+  fetchExpiredPatents()
+  fetchHistory(1)
 })
 </script>
 
@@ -470,6 +635,66 @@ onMounted(async () => {
   overflow: hidden;
 }
 
+/* ── 툴바 ────────────────────────────────────────── */
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fafafa;
+  flex-wrap: wrap;
+}
+
+.toolbar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 7px 10px;
+  transition: border-color .13s;
+}
+.toolbar-search:focus-within { border-color: #818cf8; }
+
+.search-icon { color: #94a3b8; flex-shrink: 0; }
+
+.search-input {
+  flex: 1;
+  border: none; outline: none;
+  font-size: 13px; color: #0f172a;
+  background: transparent;
+  font-family: inherit;
+}
+.search-input::placeholder { color: #cbd5e1; }
+
+.search-clear {
+  background: none; border: none; cursor: pointer;
+  color: #94a3b8; font-size: 16px; line-height: 1;
+  padding: 0 2px; transition: color .12s;
+}
+.search-clear:hover { color: #475569; }
+
+.btn-search {
+  height: 34px;
+  padding: 0 16px;
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background .13s, transform .1s;
+}
+.btn-search:hover { background: #4338ca; }
+.btn-search:active { transform: scale(.97); }
+
+/* ── 테이블 ──────────────────────────────────────── */
 .patent-table {
   width: 100%; border-collapse: collapse; font-size: 13.5px;
 }
@@ -483,6 +708,64 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
+/* 필터 드롭다운 내장 헤더 */
+.th-with-filter {
+  padding: 8px 16px !important;
+  vertical-align: top;
+}
+
+.th-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 5px;
+  font-size: 11.5px; font-weight: 600;
+  color: #64748b; letter-spacing: .02em; text-transform: uppercase;
+}
+
+.filter-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #4f46e5;
+  flex-shrink: 0;
+}
+
+.col-filter-select {
+  display: block;
+  width: 100%;
+  height: 26px;
+  padding: 0 20px 0 7px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 11.5px; font-family: inherit; color: #374151;
+  background: #fff url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L4 4L7 1' stroke='%2394a3b8' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 7px center;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color .13s;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.col-filter-select:focus { outline: none; border-color: #818cf8; }
+
+.patent-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color .12s;
+}
+.patent-table th.sortable:hover { color: #4f46e5; }
+
+.sort-icon {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  color: #cbd5e1;
+  vertical-align: middle;
+  transition: color .12s;
+}
+.sort-icon--active { color: #4f46e5; }
+
 .patent-row {
   border-bottom: 1px solid #f1f5f9;
   cursor: pointer; transition: background .12s;
@@ -494,12 +777,27 @@ onMounted(async () => {
 
 .patent-table td { padding: 14px 16px; vertical-align: middle; }
 
-.patent-title-cell { display: flex; flex-direction: column; gap: 3px; }
+.patent-title-cell { display: flex; flex-direction: column; gap: 5px; }
 .patent-title {
   font-size: 13.5px; font-weight: 600; color: #0f172a; line-height: 1.4;
   display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
 }
 .patent-manage { font-size: 11.5px; color: #94a3b8; font-family: monospace; }
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.kw-tag {
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
 
 .mono { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #475569; }
 

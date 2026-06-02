@@ -5,63 +5,59 @@
     <div class="page-header">
       <div>
         <p class="page-header__eyebrow">{{ quarterLabel }}</p>
-        <h2 class="page-header__title">검토 현황</h2>
+        <h2 class="page-header__title">
+          검토 현황
+          <button class="btn-guide-icon" type="button" aria-label="재평가 안내" @click="showGuide = true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </button>
+        </h2>
         <p class="page-header__desc">이번 분기 재평가 요청받은 특허를 검토하고 의견을 제출하세요</p>
       </div>
-      <!-- 재평가 로직 안내 버튼 -->
-      <button class="btn-guide" @click="showGuide = true">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-          <line x1="12" y1="17" x2="12.01" y2="17"/>
-        </svg>
-        재평가 안내
-      </button>
     </div>
 
-    <!-- 제출 진행 현황 바 -->
-    <div class="progress-card">
-      <div class="progress-card__header">
-        <span class="progress-card__label">제출 현황</span>
-        <span class="progress-card__fraction">{{ submittedCount }} / {{ totalCount }}건</span>
+    <!-- 프로그레스 바 -->
+    <div class="progress-section">
+      <div class="progress-section__header">
+        <span class="progress-section__text">
+          {{ quarterLabel }} 재평가 <strong>{{ totalCount }}건</strong> 중
+          <strong class="progress-section__done">{{ submittedCount }}건</strong> 제출 완료
+        </span>
+        <span class="progress-section__pct">{{ submitPct }}%</span>
       </div>
       <div class="progress-track">
         <div class="progress-fill" :style="{ width: submitPct + '%' }" />
       </div>
-      <div class="progress-card__chips">
-        <span class="chip-stat chip-stat--pending">
-          <span class="chip-stat__dot" />
-          미제출 {{ pendingCount }}건
-        </span>
-        <span class="chip-stat chip-stat--done">
-          <span class="chip-stat__dot" />
-          제출 완료 {{ submittedCount }}건
-        </span>
-        <span v-if="ddayValue > 0" class="chip-stat chip-stat--dday">
-          D-{{ ddayValue }}
-        </span>
-        <span v-else class="chip-stat chip-stat--overdue">마감 초과</span>
+      <div class="progress-section__sub">
+        <span>제출 완료 {{ submittedCount }}건</span>
+        <span class="dot-sep">·</span>
+        <span>미제출 {{ pendingCount }}건</span>
+        <span class="dot-sep">·</span>
+        <span class="dday-text">D-{{ ddayValue }}</span>
       </div>
     </div>
 
-    <!-- 상태 탭 -->
+    <!-- 탭 -->
     <div class="tab-row">
       <button
         v-for="tab in tabs"
         :key="tab.value"
         class="tab"
         :class="{ 'tab--active': activeTab === tab.value }"
-        @click="activeTab = tab.value"
+        @click="activeTab = tab.value as 'all' | 'done' | 'pending'"
       >
         {{ tab.label }}
         <span class="tab__badge" :class="{ 'tab__badge--warn': tab.value === 'pending' && pendingCount > 0 }">
-          {{ tab.value === 'pending' ? pendingCount : submittedCount }}
+          {{ tabCount(tab.value) }}
         </span>
       </button>
     </div>
 
-    <!-- 특허 목록 -->
-    <div class="review-list-card">
+    <!-- 테이블 카드 -->
+    <div class="table-card">
       <div v-if="loading" class="skel-rows">
         <div class="skel-row" v-for="n in 6" :key="n" />
       </div>
@@ -73,154 +69,215 @@
             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
           </svg>
         </div>
-        <p>{{ activeTab === 'pending' ? '미제출 특허가 없습니다 🎉' : '제출 완료된 특허가 없습니다' }}</p>
+        <p>해당 항목이 없습니다.</p>
       </div>
 
-      <div v-else class="review-items">
-        <div
-          v-for="item in filteredItems"
-          :key="item.decisionId"
-          class="review-item"
-          :class="{ 'review-item--done': item.decision }"
-          @click="goDetail(item.patentId)"
-        >
-          <!-- 상태 아이콘 -->
-          <div class="review-item__status-icon" :class="item.decision ? 'status-icon--done' : 'status-icon--pending'">
-            <svg v-if="item.decision" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
-            </svg>
-          </div>
+      <template v-else>
+        <table class="review-table">
+          <thead>
+            <tr>
+              <th>출원번호</th>
+              <th>특허명</th>
+              <th>AI 종합 점수</th>
+              <th>상태</th>
+              <th>제출일</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in filteredItems"
+              :key="item.decisionId"
+              class="review-row"
+              @click="goDetail(item.patentId)"
+            >
+              <!-- 특허번호 -->
+              <td class="col-appno">
+                <span class="mono">{{ item.applicationNumber }}</span>
+              </td>
 
-          <!-- 특허 정보 -->
-          <div class="review-item__info">
-            <p class="review-item__title">{{ item.title }}</p>
-            <div class="review-item__meta">
-              <span class="meta-pill">{{ item.applicationNumber }}</span>
-              <span v-if="item.expiryDate" class="meta-pill meta-pill--expiry">
-                만료 {{ formatDate(item.expiryDate) }}
-              </span>
-            </div>
-          </div>
+              <!-- 특허명 -->
+              <td class="col-title">
+                <span class="title-text">{{ item.title }}</span>
+                <div class="tag-row">
+                  <span v-for="tag in item.tags" :key="tag" class="kw-tag">{{ tag }}</span>
+                </div>
+              </td>
 
-          <!-- 결정 배지 또는 제출 유도 -->
-          <div class="review-item__right" @click.stop>
-            <div v-if="item.decision" class="decision-result">
-              <span class="decision-badge" :class="`decision-badge--${item.decision.toLowerCase()}`">
-                {{ decisionLabel(item.decision) }}
-              </span>
-              <span class="decision-date">{{ formatDate(item.decidedAt) }}</span>
-            </div>
-            <button v-else class="btn-submit-now" @click.stop="openQuickSubmit(item)">
-              의견 제출
-            </button>
-          </div>
+              <!-- AI 종합 점수 -->
+              <td class="col-score">
+                <template v-if="item.aiScore !== null">
+                  <div class="score-cell">
+                    <span class="score-num" :class="scoreClass(item.aiScore)">{{ item.aiScore }}</span>
+                    <div class="score-track">
+                      <div class="score-fill" :class="scoreClass(item.aiScore)" :style="{ width: item.aiScore + '%' }" />
+                    </div>
+                  </div>
+                </template>
+                <span v-else class="text-muted">—</span>
+              </td>
 
-          <svg class="review-item__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M9 18l6-6-6-6"/>
-          </svg>
+              <!-- 상태 -->
+              <td class="col-status">
+                <span class="status-badge" :class="item.decision ? 'status-badge--done' : 'status-badge--pending'">
+                  {{ item.decision ? '제출 완료' : '미제출' }}
+                </span>
+              </td>
+
+              <!-- 제출일 -->
+              <td class="col-date">
+                <span v-if="item.decidedAt" class="date-text">{{ formatDate(item.decidedAt) }}</span>
+                <span v-else class="text-muted">—</span>
+              </td>
+
+            </tr>
+          </tbody>
+        </table>
+
+        <div v-if="totalPages > 1" class="table-footer">
+          <BasePagination :page="page" :total-pages="totalPages" :total-items="totalCount" @update:page="fetchList" />
         </div>
-      </div>
-
-      <!-- 페이지네이션 -->
-      <div v-if="totalPages > 1" class="list-footer">
-        <BasePagination :page="page" :total-pages="totalPages" :total-items="totalCount" @update:page="fetchList" />
-      </div>
+      </template>
     </div>
 
-    <!-- ── 빠른 제출 모달 ── -->
+    <!-- ── SKIPA 재평가 안내 패널 ── -->
     <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showQuickSubmit" class="modal-overlay" @click.self="showQuickSubmit = false">
-          <div class="modal">
-            <div class="modal__header">
-              <h3 class="modal__title">의견 제출</h3>
-              <button class="modal__close" @click="showQuickSubmit = false">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <Transition name="guide-panel">
+        <div v-if="showGuide" class="gp-backdrop" @click.self="showGuide = false">
+          <aside class="gp-panel">
+
+            <!-- 헤더 -->
+            <div class="gp-header">
+              <div class="gp-header__left">
+                <span class="gp-header__badge">SKIPA</span>
+                <div>
+                  <h3 class="gp-header__title">AI 특허 재평가 시스템</h3>
+                  <p class="gp-header__sub">재평가 배경 및 운영 방식 안내</p>
+                </div>
+              </div>
+              <button class="gp-close" @click="showGuide = false">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
               </button>
             </div>
-            <div class="modal__body">
-              <p class="modal__patent-name">{{ quickTarget?.title }}</p>
-              <div class="decision-btns">
-                <button
-                  v-for="opt in decisionOptions"
-                  :key="opt.value"
-                  class="decision-btn"
-                  :class="[`decision-btn--${opt.value.toLowerCase()}`, { 'decision-btn--selected': quickForm.decision === opt.value }]"
-                  @click="quickForm.decision = opt.value"
-                >
-                  <span class="decision-btn__emoji">{{ opt.emoji }}</span>
-                  {{ opt.label }}
-                </button>
-              </div>
-              <textarea
-                v-model="quickForm.comment"
-                class="comment-textarea"
-                placeholder="의견을 입력하세요 (선택)"
-                rows="3"
-              />
-            </div>
-            <div class="modal__footer">
-              <button class="btn-cancel" @click="showQuickSubmit = false">취소</button>
-              <button class="btn-confirm" :disabled="!quickForm.decision || submitting" @click="handleQuickSubmit">
-                <span v-if="submitting" class="spinner" />
-                제출
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
 
-    <!-- ── 재평가 안내 모달 ── -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showGuide" class="modal-overlay" @click.self="showGuide = false">
-          <div class="modal modal--guide">
-            <div class="modal__header">
-              <h3 class="modal__title">재평가 프로세스 안내</h3>
-              <button class="modal__close" @click="showGuide = false">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-            <div class="modal__body modal__body--guide">
+            <!-- 스크롤 콘텐츠 -->
+            <div class="gp-body">
 
-              <!-- 프로세스 스텝 -->
-              <div class="guide-section">
-                <h4 class="guide-section__title">재평가 프로세스</h4>
-                <div class="guide-steps">
-                  <div v-for="(step, i) in guideSteps" :key="i" class="guide-step">
-                    <div class="guide-step__num">{{ i + 1 }}</div>
-                    <div class="guide-step__content">
-                      <p class="guide-step__title">{{ step.title }}</p>
-                      <p class="guide-step__desc">{{ step.desc }}</p>
+              <!-- §1 왜 재평가를 하는가 -->
+              <section class="gp-section">
+                <div class="gp-section__head">
+                  <span class="gp-num">01</span>
+                  <h4 class="gp-section__title">왜 재평가를 하는가</h4>
+                </div>
+                <div class="gp-why-list">
+                  <div class="gp-why-item">
+                    <div class="gp-why-item__icon" style="background:#eff6ff; color:#3b82f6;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="gp-why-item__title">분기별 연차료 납부 결정</p>
+                      <p class="gp-why-item__desc">연차료 납부 시점이 도래한 특허에 대해 매 분기마다 유지/포기 여부를 결정합니다.</p>
+                    </div>
+                  </div>
+                  <div class="gp-why-item">
+                    <div class="gp-why-item__icon" style="background:#f0fdf4; color:#16a34a;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="gp-why-item__title">주관적 판단 → 객관적 가치 평가</p>
+                      <p class="gp-why-item__desc">기존의 주관적·추상적 체크리스트 방식에서 벗어나 AI 기반 객관적 가치 평가 시스템으로 전환했습니다.</p>
                     </div>
                   </div>
                 </div>
-              </div>
+              </section>
 
-              <!-- 평가 항목 -->
-              <div class="guide-section">
-                <h4 class="guide-section__title">평가 항목 설명</h4>
-                <div class="guide-criteria">
-                  <div v-for="c in guideCriteria" :key="c.label" class="guide-criterion">
-                    <div class="guide-criterion__badge" :style="{ background: c.bg, color: c.color }">
-                      {{ c.label }}
-                    </div>
-                    <p class="guide-criterion__desc">{{ c.desc }}</p>
+              <!-- §2 평가 기준 및 지표 -->
+              <section class="gp-section">
+                <div class="gp-section__head">
+                  <span class="gp-num">02</span>
+                  <h4 class="gp-section__title">평가 기준 및 지표</h4>
+                </div>
+                <p class="gp-section__meta">특허청·한국발명진흥회 「IP 가치평가 실무 가이드」 기반 · 세부 항목 17개</p>
+                <div class="gp-pillars">
+                  <div class="gp-pillar" style="border-top-color:#6366f1;">
+                    <p class="gp-pillar__emoji">🔬</p>
+                    <p class="gp-pillar__name">기술성</p>
+                    <p class="gp-pillar__desc">기술 완성도, 진보성, 구현 난이도</p>
+                  </div>
+                  <div class="gp-pillar" style="border-top-color:#0ea5e9;">
+                    <p class="gp-pillar__emoji">⚖️</p>
+                    <p class="gp-pillar__name">권리성</p>
+                    <p class="gp-pillar__desc">청구항 범위, 등록 안정성, 침해 회피 가능성</p>
+                  </div>
+                  <div class="gp-pillar" style="border-top-color:#10b981;">
+                    <p class="gp-pillar__emoji">📈</p>
+                    <p class="gp-pillar__name">시장성·사업성</p>
+                    <p class="gp-pillar__desc">시장 규모, 경쟁 현황, 사내 활용 가능성</p>
                   </div>
                 </div>
-              </div>
+              </section>
+
+              <!-- §3 점수 산출 방식 -->
+              <section class="gp-section">
+                <div class="gp-section__head">
+                  <span class="gp-num">03</span>
+                  <h4 class="gp-section__title">점수 산출 방식</h4>
+                </div>
+                <div class="gp-methods">
+                  <div class="gp-method" v-for="m in scoreMethods" :key="m.tag">
+                    <span class="gp-method__tag" :style="{ background: m.bg, color: m.color }">{{ m.tag }}</span>
+                    <div class="gp-method__body">
+                      <p class="gp-method__title">{{ m.title }}</p>
+                      <p class="gp-method__desc">{{ m.desc }}</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- §4 판단 보조 자료 -->
+              <section class="gp-section">
+                <div class="gp-section__head">
+                  <span class="gp-num">04</span>
+                  <h4 class="gp-section__title">판단 보조 자료</h4>
+                </div>
+                <div class="gp-supports">
+                  <div class="gp-support" v-for="s in supportItems" :key="s.title">
+                    <div class="gp-support__dot" />
+                    <div>
+                      <p class="gp-support__title">{{ s.title }}</p>
+                      <p class="gp-support__desc">{{ s.desc }}</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- §5 프로세스 흐름 -->
+              <section class="gp-section gp-section--last">
+                <div class="gp-section__head">
+                  <span class="gp-num">05</span>
+                  <h4 class="gp-section__title">재평가 프로세스 흐름</h4>
+                </div>
+                <div class="gp-flow">
+                  <div class="gp-flow__item" v-for="(s, i) in flowSteps" :key="i">
+                    <div class="gp-flow__track">
+                      <div class="gp-flow__dot">{{ i + 1 }}</div>
+                      <div v-if="i < flowSteps.length - 1" class="gp-flow__line" />
+                    </div>
+                    <div class="gp-flow__content">
+                      <p class="gp-flow__label">{{ s.label }}</p>
+                      <p class="gp-flow__sub">{{ s.sub }}</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
 
             </div>
-          </div>
+          </aside>
         </div>
       </Transition>
     </Teleport>
@@ -229,116 +286,130 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { inboxApi } from '@/api/misc'
 import { usePagination } from '@/composables/usePagination'
 import BasePagination from '@/components/ui/BasePagination.vue'
-import type { InboxItem } from '@/types'
+import { MOCK_PATENTS, MOCK_REEVAL } from '@/mocks/data'
 
 const router = useRouter()
-const auth   = useAuthStore()
-const { page, totalPages, totalItems: totalCount, query: pageQuery, setPage, setTotal } = usePagination({ defaultSize: 15 })
+const { page, totalPages, totalItems: totalCount, setPage, setTotal } = usePagination({ defaultSize: 15 })
+
+interface ReviewItem {
+  decisionId:        number
+  patentId:          number
+  title:             string
+  applicationNumber: string
+  expiryDate:        string | null
+  decision:          string | null
+  decidedAt:         string | null
+  aiScore:           number | null
+  tags:              string[]
+}
 
 // ── 상태 ────────────────────────────────────────────
-const loading        = ref(false)
-const submitting     = ref(false)
-const showQuickSubmit = ref(false)
-const showGuide      = ref(false)
-const activeTab      = ref<'pending' | 'done'>('pending')
-const allItems       = ref<InboxItem[]>([])
-const quickTarget    = ref<InboxItem | null>(null)
-const quickForm      = reactive<{ decision: string; comment: string }>({ decision: '', comment: '' })
+const loading   = ref(false)
+const showGuide = ref(false)
+const activeTab = ref<'all' | 'done' | 'pending'>('all')
+const allItems  = ref<ReviewItem[]>([])
 
 // ── 계산값 ──────────────────────────────────────────
-const submittedItems = computed(() => allItems.value.filter(i => i.decision !== null))
-const pendingItems   = computed(() => allItems.value.filter(i => i.decision === null))
-const submittedCount = computed(() => submittedItems.value.length)
-const pendingCount   = computed(() => pendingItems.value.length)
-const filteredItems  = computed(() => activeTab.value === 'pending' ? pendingItems.value : submittedItems.value)
-const submitPct      = computed(() => totalCount.value ? Math.round((submittedCount.value / totalCount.value) * 100) : 0)
+const submittedCount = computed(() => allItems.value.filter(i => i.decision !== null).length)
+const pendingCount   = computed(() => allItems.value.filter(i => i.decision === null).length)
+const submitPct      = computed(() =>
+  totalCount.value ? Math.round((submittedCount.value / totalCount.value) * 100) : 0
+)
+
+const filteredItems = computed(() => {
+  if (activeTab.value === 'done')    return allItems.value.filter(i => i.decision !== null)
+  if (activeTab.value === 'pending') return allItems.value.filter(i => i.decision === null)
+  return allItems.value
+})
 
 // ── 마감일 ───────────────────────────────────────────
 const ddayValue = computed(() => {
-  const d = new Date()
-  const q = Math.ceil((d.getMonth() + 1) / 3)
-  const deadline = new Date(d.getFullYear(), q * 3, 0)
+  const deadline = new Date(2026, 5, 30) // 2026-06-30
   return Math.max(0, Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
 })
 
-const quarterLabel = computed(() => {
-  const d = new Date()
-  return `${d.getFullYear()}년 ${Math.ceil((d.getMonth() + 1) / 3)}분기`
-})
+const quarterLabel = computed(() => '2026년 2분기')
 
 // ── 탭 ──────────────────────────────────────────────
 const tabs = [
-  { value: 'pending', label: '미제출' },
+  { value: 'all',     label: '전체'     },
   { value: 'done',    label: '제출 완료' },
+  { value: 'pending', label: '미제출'   },
 ]
 
-// ── 결정 옵션 ────────────────────────────────────────
-const decisionOptions = [
-  { value: 'KEEP',    label: '유지',  emoji: '✅' },
-  { value: 'DISPOSE', label: '포기',  emoji: '🗑' },
+function tabCount(v: string) {
+  if (v === 'done')    return submittedCount.value
+  if (v === 'pending') return pendingCount.value
+  return totalCount.value
+}
+
+// ── 안내 패널 콘텐츠 ──────────────────────────────────
+const scoreMethods = [
+  { tag: '자동 계산',  bg: '#eff6ff', color: '#2563eb', title: '메타데이터 기반 자동 계산',  desc: '피인용 횟수, 청구항 수 등 공개 데이터를 수집해 자동 산출합니다.' },
+  { tag: 'LLM 분석',  bg: '#f5f3ff', color: '#7c3aed', title: 'LLM 청구항 채점',           desc: '청구항 원문을 분석하여 체크리스트 기준으로 1–5점 척도로 채점합니다.' },
+  { tag: '외부 자료',  bg: '#f0fdf4', color: '#15803d', title: '웹 검색 기반 시장성 판단',  desc: '웹 검색으로 시장 동향·경쟁 특허·사업 연관성 정보를 수집합니다.' },
+  { tag: '하이브리드', bg: '#fff7ed', color: '#c2410c', title: 'LLM + 웹 검색 혼합',        desc: '복합 판단이 필요한 항목은 LLM과 웹 검색 결과를 함께 활용합니다.' },
 ]
 
-// ── 가이드 콘텐츠 ─────────────────────────────────────
-const guideSteps = [
-  { title: 'Legal팀 재평가 요청', desc: '분기별로 Legal팀이 검토 대상 특허를 선정하여 각 사업부에 검토 요청을 전송합니다.' },
-  { title: 'AI 자동 분석', desc: 'AI가 특허 원문을 분석하여 기술성·권리성·사업성 평가 보고서를 자동 생성합니다.' },
-  { title: '사업부 검토', desc: '담당 사업부는 AI 보고서와 특허 정보를 바탕으로 유지/포기 의견을 제출합니다.' },
-  { title: '최종 의사결정', desc: 'Legal팀이 사업부 의견을 종합하여 연차료 납부 및 포트폴리오 조정을 결정합니다.' },
+const supportItems = [
+  { title: '사내 활용 현황',  desc: '어떤 제품 또는 프로젝트에 활용되고 있는지 연결 정보를 제공합니다.' },
+  { title: '유사 특허 분석',  desc: 'KIPRIS 기반 동일 기술 분야 특허의 유지/포기 추이를 비교합니다.' },
+  { title: '근거 및 출처 링크', desc: '점수 항목마다 AI 판단 근거와 외부 출처 URL을 자동으로 첨부합니다.' },
 ]
 
-const guideCriteria = [
-  { label: '유지',  bg: '#f0fdf4', color: '#15803d', desc: '현재 사업과의 연관성이 높고 향후 활용 가능성이 있는 특허' },
-  { label: '포기',  bg: '#fef2f2', color: '#dc2626', desc: '사업 연관성이 낮고 유지 비용 대비 가치가 미미한 특허' },
+const flowSteps = [
+  { label: '데이터 추출',      sub: '특허 메타데이터 및 원문 수집' },
+  { label: 'AI 가치 평가',     sub: '기술성·권리성·시장성 자동 분석' },
+  { label: '보고서 자동 생성', sub: '점수·근거·출처 포함 보고서 생성' },
+  { label: '사업부 검토',      sub: '담당자가 AI 보고서 기반 의견 제출' },
+  { label: '최종 결정',        sub: 'Legal팀 최종 포트폴리오 조정' },
 ]
 
 // ── 유틸 ────────────────────────────────────────────
-function decisionLabel(d: string) {
-  return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
+const GRADE_SCORE: Record<string, number> = { S: 91, A: 83, B: 67, C: 54 }
+
+function scoreClass(score: number) {
+  if (score >= 80) return 'score--high'
+  if (score >= 60) return 'score--mid'
+  return 'score--low'
 }
+
 function formatDate(d?: string | null) {
   if (!d) return '—'
-  return d.slice(0, 10).replace(/-/g, '.')
+  return d.slice(0, 10)
 }
+
 function goDetail(id: number) { router.push(`/patents/${id}`) }
 
-// ── 빠른 제출 ─────────────────────────────────────────
-function openQuickSubmit(item: InboxItem) {
-  quickTarget.value = item
-  quickForm.decision = ''
-  quickForm.comment  = ''
-  showQuickSubmit.value = true
-}
-
-async function handleQuickSubmit() {
-  if (!quickForm.decision || !quickTarget.value) return
-  submitting.value = true
-  try {
-    await inboxApi.decide(quickTarget.value.decisionId, {
-      decision: quickForm.decision as any,
-      comment: quickForm.comment || undefined,
-    })
-    showQuickSubmit.value = false
-    await fetchList(page.value)
-  } catch (e) { console.error(e) }
-  finally { submitting.value = false }
-}
-
 // ── 데이터 로드 ──────────────────────────────────────
-async function fetchList(p = 1) {
+function fetchList(_p = 1) {
   loading.value = true
-  setPage(p)
-  try {
-    const res = await inboxApi.list({ status: 'all', ...pageQuery.value })
-    allItems.value = res.items
-    setTotal(res.totalItems, res.totalPages)
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+  setPage(1)
+
+  const items: ReviewItem[] = MOCK_REEVAL
+    .filter(r => r.deptId === 2)
+    .map(r => {
+      const patent = MOCK_PATENTS.find(p => p.id === r.patentId)!
+      return {
+        decisionId:        r.patentId,
+        patentId:          r.patentId,
+        title:             patent.title,
+        applicationNumber: patent.applicationNumber,
+        expiryDate:        patent.expiryDate,
+        decision:          r.decision,
+        decidedAt:         r.decidedAt,
+        aiScore:           patent.grade ? GRADE_SCORE[patent.grade] ?? null : null,
+        tags:              patent.tags,
+      }
+    })
+
+  allItems.value = items
+  setTotal(items.length, 1)
+  loading.value = false
 }
 
 onMounted(() => fetchList(1))
@@ -353,37 +424,34 @@ onMounted(() => fetchList(1))
 }
 
 /* ── 페이지 헤더 ─────────────────────────────────── */
-.page-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
 .page-header__eyebrow {
   font-size: 12px; font-weight: 600;
   letter-spacing: .06em; text-transform: uppercase;
   color: #10b981; margin: 0 0 5px;
 }
+
 .page-header__title {
+  display: flex; align-items: center; gap: 8px;
   font-size: 22px; font-weight: 700;
   color: #0f172a; margin: 0 0 4px;
   letter-spacing: -0.02em;
 }
+
 .page-header__desc { font-size: 13.5px; color: #64748b; margin: 0; }
 
-.btn-guide {
-  display: flex; align-items: center; gap: 7px;
-  padding: 9px 16px;
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 9px;
-  font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; color: #374151;
-  transition: background .13s, border-color .13s;
+.btn-guide-icon {
+  display: grid; place-items: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: #f1f5f9; border: 1px solid #e2e8f0;
+  cursor: pointer; color: #64748b;
+  transition: background .13s, color .13s;
+  flex-shrink: 0;
 }
-.btn-guide:hover { background: #f8fafc; border-color: #cbd5e1; }
+.btn-guide-icon:hover { background: #e2e8f0; color: #0f172a; }
 
-/* ── 진행 카드 ────────────────────────────────────── */
-.progress-card {
+/* ── 프로그레스 섹션 ──────────────────────────────── */
+.progress-section {
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
@@ -393,40 +461,42 @@ onMounted(() => fetchList(1))
   gap: 10px;
 }
 
-.progress-card__header {
+.progress-section__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.progress-card__label   { font-size: 13.5px; font-weight: 700; color: #0f172a; }
-.progress-card__fraction { font-size: 13.5px; font-weight: 700; color: #10b981; }
 
-.progress-track { height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
-.progress-fill  {
+.progress-section__text {
+  font-size: 14px; color: #374151;
+}
+.progress-section__text strong { color: #0f172a; font-weight: 700; }
+.progress-section__done { color: #16a34a !important; }
+
+.progress-section__pct {
+  font-size: 15px; font-weight: 800; color: #16a34a;
+}
+
+.progress-track {
+  height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden;
+}
+.progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #059669, #34d399);
   border-radius: 4px;
   transition: width .6s cubic-bezier(.4,0,.2,1);
 }
 
-.progress-card__chips { display: flex; gap: 8px; flex-wrap: wrap; }
-
-.chip-stat {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 10px; border-radius: 20px;
-  font-size: 12.5px; font-weight: 600;
+.progress-section__sub {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: #94a3b8;
 }
-.chip-stat__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-
-.chip-stat--pending { background: #fffbeb; color: #b45309; }
-.chip-stat--done    { background: #f0fdf4; color: #15803d; }
-.chip-stat--dday    { background: #eef2ff; color: #4338ca; }
-.chip-stat--overdue { background: #fef2f2; color: #dc2626; }
+.dot-sep { color: #cbd5e1; }
+.dday-text { color: #4338ca; font-weight: 600; }
 
 /* ── 탭 ─────────────────────────────────────────── */
 .tab-row {
-  display: flex;
-  gap: 4px;
+  display: flex; gap: 4px;
   border-bottom: 1.5px solid #e2e8f0;
 }
 
@@ -452,93 +522,139 @@ onMounted(() => fetchList(1))
 }
 .tab__badge--warn { background: #fef2f2; color: #dc2626; }
 
-/* ── 목록 카드 ────────────────────────────────────── */
-.review-list-card {
+/* ── 테이블 카드 ─────────────────────────────────── */
+.table-card {
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   overflow: hidden;
 }
 
-.review-items { display: flex; flex-direction: column; }
+.review-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  table-layout: fixed;
+}
 
-.review-item {
-  display: grid;
-  grid-template-columns: 40px 1fr auto auto;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f8fafc;
+.review-table thead tr {
+  border-bottom: 1.5px solid #e2e8f0;
+  background: #fafafa;
+}
+
+.review-table th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 11.5px; font-weight: 600;
+  color: #64748b; letter-spacing: .02em;
+  text-transform: uppercase; white-space: nowrap;
+}
+
+.review-row {
+  border-bottom: 1px solid #f1f5f9;
   cursor: pointer;
   transition: background .12s;
 }
-.review-item:last-child { border-bottom: none; }
-.review-item:hover { background: #f8fafc; }
-.review-item--done { opacity: 0.85; }
+.review-row:last-child { border-bottom: none; }
+.review-row:hover { background: #f8fafc; }
 
-/* 상태 아이콘 */
-.review-item__status-icon {
-  width: 32px; height: 32px;
-  border-radius: 9px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.status-icon--pending { background: #fffbeb; color: #f59e0b; }
-.status-icon--done    { background: #f0fdf4; color: #22c55e; }
-
-/* 특허 정보 */
-.review-item__info { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-
-.review-item__title {
-  font-size: 13.5px; font-weight: 600; color: #0f172a;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  margin: 0;
+.review-table td {
+  padding: 14px 16px;
+  vertical-align: middle;
 }
 
-.review-item__meta { display: flex; gap: 6px; flex-wrap: wrap; }
+/* 컬럼 너비 */
+.col-appno  { width: 16%; white-space: nowrap; }
+.col-title  { width: 40%; }
+.col-score  { width: 20%; }
+.col-status { width: 12%; }
+.col-date   { width: 12%; white-space: nowrap; }
 
-.meta-pill {
-  display: inline-block; padding: 2px 7px;
-  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px;
-  font-size: 11.5px; color: #64748b;
+.mono {
   font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: #475569;
 }
-.meta-pill--expiry { color: #b45309; background: #fffbeb; border-color: #fde68a; font-family: inherit; }
 
-/* 오른쪽 */
-.review-item__right { display: flex; align-items: center; justify-content: flex-end; }
-
-.decision-result { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-.decision-badge {
-  padding: 3px 10px; border-radius: 6px; font-size: 12.5px; font-weight: 700;
+.title-text {
+  font-weight: 600; color: #0f172a;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.decision-badge--keep    { background: #f0fdf4; color: #15803d; }
-.decision-badge--sell    { background: #eef2ff; color: #4338ca; }
-.decision-badge--dispose { background: #fef2f2; color: #dc2626; }
-.decision-date { font-size: 11px; color: #94a3b8; }
 
-.btn-submit-now {
-  padding: 7px 14px;
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-  color: #fff; border: none; border-radius: 8px;
-  font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer;
-  box-shadow: 0 3px 8px rgba(79,70,229,.25);
-  transition: opacity .13s, transform .12s;
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.kw-tag {
+  background: #F1F5F9;
+  color: #64748B;
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 2px 6px;
   white-space: nowrap;
 }
-.btn-submit-now:hover { opacity: .9; transform: translateY(-1px); }
 
-.review-item__arrow {
-  color: #cbd5e1;
-  flex-shrink: 0;
-  transition: color .12s;
+/* AI 종합 점수 */
+.score-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
 }
-.review-item:hover .review-item__arrow { color: #6366f1; }
+.score-num {
+  font-size: 13px; font-weight: 700;
+}
+.score-track {
+  width: 100%;
+  height: 5px; background: #f1f5f9; border-radius: 3px; overflow: hidden;
+}
+.score-fill {
+  height: 100%; border-radius: 3px;
+  transition: width .4s ease;
+}
+.score-num.score--high,
+.score-num.score--mid,
+.score-num.score--low  { color: #2563eb; }
+.score-fill.score--high,
+.score-fill.score--mid,
+.score-fill.score--low  { background: #3b82f6; }
+
+/* 상태 배지 */
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 700;
+  white-space: nowrap;
+}
+.status-badge--done    { background: #f0fdf4; color: #15803d; }
+.status-badge--pending { background: #fff4e6; color: #FF7A00; }
+
+/* 제출일 + 버튼 */
+.date-text { font-size: 13px; color: #475569; }
+
+.btn-submit-inline {
+  display: inline-flex; align-items: center;
+  padding: 5px 12px;
+  background: #FF7A00;
+  color: #fff; border: none; border-radius: 7px;
+  font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(255,122,0,.3);
+  transition: opacity .13s, transform .12s;
+}
+.btn-submit-inline:hover { opacity: .9; transform: translateY(-1px); }
+
+.text-muted { color: #cbd5e1; font-size: 13px; }
 
 /* ── 스켈레톤 ────────────────────────────────────── */
 .skel-rows { display: flex; flex-direction: column; }
 .skel-row {
-  height: 64px; border-bottom: 1px solid #f8fafc;
+  height: 60px; border-bottom: 1px solid #f8fafc;
   background: linear-gradient(90deg, #f8fafc 25%, #f1f5f9 50%, #f8fafc 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
@@ -553,126 +669,175 @@ onMounted(() => fetchList(1))
 }
 .empty-state__icon {
   width: 52px; height: 52px; background: #f1f5f9; border-radius: 14px;
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 4px;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 4px;
 }
 .empty-state p { font-size: 14px; font-weight: 500; }
 
-/* ── 목록 푸터 ────────────────────────────────────── */
-.list-footer {
+/* ── 테이블 푸터 ─────────────────────────────────── */
+.table-footer {
   display: flex; justify-content: center;
   padding: 16px; border-top: 1px solid #f1f5f9;
 }
 
-/* ── 모달 ────────────────────────────────────────── */
-.modal-overlay {
+/* ── 안내 패널 ───────────────────────────────────── */
+.gp-backdrop {
   position: fixed; inset: 0;
-  background: rgba(15,23,42,.45);
-  display: flex; align-items: center; justify-content: center;
+  background: rgba(15,23,42,.4);
   z-index: 200; backdrop-filter: blur(2px);
+  display: flex; justify-content: flex-end;
 }
-.modal {
-  background: #fff; border-radius: 18px;
-  width: min(480px, 94vw);
-  box-shadow: 0 24px 64px rgba(15,23,42,.18);
+
+.gp-panel {
+  width: min(500px, 96vw);
+  height: 100%;
+  background: #fff;
+  display: flex; flex-direction: column;
+  box-shadow: -8px 0 40px rgba(15,23,42,.14);
   overflow: hidden;
 }
-.modal--guide { width: min(580px, 94vw); }
 
-.modal__header {
+/* 헤더 */
+.gp-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 24px 16px; border-bottom: 1px solid #f1f5f9;
+  padding: 22px 24px;
+  background: #0f172a;
+  flex-shrink: 0;
 }
-.modal__title { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; }
-.modal__close {
-  width: 32px; height: 32px; background: #f1f5f9; border: none; border-radius: 8px;
-  cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b;
+.gp-header__left { display: flex; align-items: center; gap: 14px; }
+.gp-header__badge {
+  padding: 3px 9px;
+  background: #10b981; color: #fff;
+  font-size: 11px; font-weight: 800; letter-spacing: .08em;
+  border-radius: 6px; flex-shrink: 0;
 }
-.modal__body { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
-.modal__body--guide { gap: 24px; max-height: 70vh; overflow-y: auto; }
-.modal__patent-name { font-size: 14px; font-weight: 600; color: #374151; margin: 0; line-height: 1.4; }
-.modal__footer {
-  display: flex; justify-content: flex-end; gap: 10px;
-  padding: 14px 24px 20px; border-top: 1px solid #f1f5f9;
+.gp-header__title { font-size: 16px; font-weight: 700; color: #f8fafc; margin: 0 0 2px; }
+.gp-header__sub   { font-size: 12px; color: #94a3b8; margin: 0; }
+.gp-close {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(255,255,255,.08); border: none;
+  cursor: pointer; color: #94a3b8;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .13s, color .13s; flex-shrink: 0;
+}
+.gp-close:hover { background: rgba(255,255,255,.16); color: #f1f5f9; }
+
+/* 스크롤 본문 */
+.gp-body {
+  flex: 1; overflow-y: auto;
+  padding: 0;
+}
+.gp-body::-webkit-scrollbar { width: 4px; }
+.gp-body::-webkit-scrollbar-track { background: transparent; }
+.gp-body::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+
+/* 섹션 공통 */
+.gp-section {
+  padding: 24px 24px 0;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 24px;
+}
+.gp-section--last { border-bottom: none; }
+
+.gp-section__head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px;
+}
+.gp-num {
+  font-size: 11px; font-weight: 800; letter-spacing: .06em;
+  color: #10b981; background: #f0fdf4;
+  padding: 2px 7px; border-radius: 5px; flex-shrink: 0;
+}
+.gp-section__title {
+  font-size: 14px; font-weight: 700; color: #0f172a; margin: 0;
+}
+.gp-section__meta {
+  font-size: 12px; color: #94a3b8; margin: -6px 0 14px;
+  line-height: 1.5;
 }
 
-/* 결정 버튼 그룹 */
-.decision-btns { display: flex; gap: 8px; }
-.decision-btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;
-  padding: 12px 8px;
-  border: 1.5px solid #e2e8f0; border-radius: 10px;
-  background: #fff; font-size: 13px; font-weight: 600;
-  font-family: inherit; cursor: pointer; color: #64748b;
-  transition: border-color .13s, background .13s, color .13s;
+/* §1 왜 재평가 */
+.gp-why-list { display: flex; flex-direction: column; gap: 10px; }
+.gp-why-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px; background: #f8fafc; border-radius: 10px;
 }
-.decision-btn:hover { background: #f8fafc; }
-.decision-btn__emoji { font-size: 20px; }
-.decision-btn--keep.decision-btn--selected    { border-color: #22c55e; background: #f0fdf4; color: #15803d; }
-.decision-btn--sell.decision-btn--selected    { border-color: #6366f1; background: #eef2ff; color: #4338ca; }
-.decision-btn--dispose.decision-btn--selected { border-color: #ef4444; background: #fef2f2; color: #dc2626; }
+.gp-why-item__icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.gp-why-item__title { font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
+.gp-why-item__desc  { font-size: 12.5px; color: #64748b; margin: 0; line-height: 1.6; }
 
-.comment-textarea {
-  width: 100%; padding: 10px 12px;
-  border: 1.5px solid #e2e8f0; border-radius: 9px;
-  font-size: 13.5px; font-family: inherit; color: #0f172a; background: #fafafa;
-  resize: vertical; outline: none; transition: border-color .15s;
-  box-sizing: border-box;
+/* §2 평가 기준 3대 기둥 */
+.gp-pillars { display: flex; gap: 8px; }
+.gp-pillar {
+  flex: 1; padding: 14px 12px;
+  background: #f8fafc; border-radius: 10px;
+  border-top: 3px solid #e2e8f0;
+  text-align: center;
 }
-.comment-textarea:focus { border-color: #6366f1; background: #fff; }
+.gp-pillar__emoji { font-size: 20px; margin: 0 0 6px; }
+.gp-pillar__name  { font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 5px; }
+.gp-pillar__desc  { font-size: 11.5px; color: #64748b; margin: 0; line-height: 1.5; }
 
-.btn-cancel {
-  padding: 9px 20px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 9px;
-  font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer; color: #475569;
+/* §3 점수 산출 */
+.gp-methods { display: flex; flex-direction: column; gap: 8px; }
+.gp-method  {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px; background: #f8fafc; border-radius: 10px;
 }
-.btn-confirm {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 22px; background: linear-gradient(135deg, #4f46e5, #6366f1);
-  color: #fff; border: none; border-radius: 9px;
-  font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer;
-  box-shadow: 0 4px 12px rgba(79,70,229,.3);
+.gp-method__tag {
+  padding: 3px 9px; border-radius: 6px;
+  font-size: 11.5px; font-weight: 700;
+  white-space: nowrap; flex-shrink: 0; margin-top: 1px;
 }
-.btn-confirm:disabled { opacity: .6; cursor: not-allowed; }
-.spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.gp-method__title { font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 3px; }
+.gp-method__desc  { font-size: 12px; color: #64748b; margin: 0; line-height: 1.55; }
 
-/* 가이드 모달 */
-.guide-section { display: flex; flex-direction: column; gap: 14px; }
-.guide-section__title {
-  font-size: 13px; font-weight: 700; color: #374151;
-  text-transform: uppercase; letter-spacing: .06em;
-  padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;
-  margin: 0;
+/* §4 보조 자료 */
+.gp-supports { display: flex; flex-direction: column; gap: 10px; }
+.gp-support  {
+  display: flex; align-items: flex-start; gap: 12px;
 }
+.gp-support__dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #10b981; flex-shrink: 0; margin-top: 5px;
+}
+.gp-support__title { font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 3px; }
+.gp-support__desc  { font-size: 12px; color: #64748b; margin: 0; line-height: 1.55; }
 
-.guide-steps { display: flex; flex-direction: column; gap: 10px; }
-.guide-step { display: flex; align-items: flex-start; gap: 12px; }
-.guide-step__num {
-  width: 24px; height: 24px; border-radius: 50%;
-  background: #eef2ff; color: #6366f1;
+/* §5 프로세스 흐름 */
+.gp-flow { display: flex; flex-direction: column; }
+.gp-flow__item {
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.gp-flow__track {
+  display: flex; flex-direction: column; align-items: center;
+  flex-shrink: 0;
+}
+.gp-flow__dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #0f172a; color: #10b981;
   font-size: 12px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-top: 1px;
+  flex-shrink: 0;
 }
-.guide-step__title { font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 3px; }
-.guide-step__desc  { font-size: 13px; color: #64748b; margin: 0; line-height: 1.6; }
+.gp-flow__line {
+  width: 2px; flex: 1; min-height: 20px;
+  background: #e2e8f0; margin: 4px 0;
+}
+.gp-flow__content { padding-bottom: 20px; padding-top: 4px; }
+.gp-flow__label { font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 3px; }
+.gp-flow__sub   { font-size: 12px; color: #64748b; margin: 0; }
 
-.guide-criteria { display: flex; flex-direction: column; gap: 8px; }
-.guide-criterion {
-  display: flex; align-items: flex-start; gap: 12px;
-  padding: 12px 14px;
-  background: #f8fafc; border-radius: 10px;
-}
-.guide-criterion__badge {
-  padding: 4px 10px; border-radius: 6px;
-  font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
-}
-.guide-criterion__desc { font-size: 13px; color: #374151; line-height: 1.6; margin: 0; }
-
-/* 전환 */
-.modal-enter-active { transition: opacity .2s; }
-.modal-leave-active { transition: opacity .15s; }
-.modal-enter-from, .modal-leave-to { opacity: 0; }
-.modal-enter-active .modal { animation: modalUp .22s cubic-bezier(.34,1.56,.64,1); }
-@keyframes modalUp { from { transform: translateY(12px) scale(.98); } to { transform: translateY(0) scale(1); } }
+/* 패널 트랜지션 */
+.guide-panel-enter-active { transition: opacity .25s; }
+.guide-panel-leave-active { transition: opacity .2s; }
+.guide-panel-enter-from,
+.guide-panel-leave-to     { opacity: 0; }
+.guide-panel-enter-active .gp-panel { animation: panelSlideIn .3s cubic-bezier(.4,0,.2,1); }
+.guide-panel-leave-active .gp-panel { animation: panelSlideOut .22s ease-in; }
+@keyframes panelSlideIn  { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes panelSlideOut { from { transform: translateX(0); }    to { transform: translateX(100%); } }
 </style>

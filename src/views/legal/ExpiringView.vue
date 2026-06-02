@@ -188,6 +188,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { EXPIRING_ITEMS } from '@/mocks/data'
 
 const router = useRouter()
 const auth   = useAuthStore()
@@ -216,17 +217,20 @@ const periods = [
   { value: '5y', label: '5년' },
 ]
 
-const expiringByPeriod: Record<string, number> = { '3m': 8, '6m': 15, '1y': 38, '3y': 92, '5y': 147 }
+const expiringByPeriod: Record<string, number> = { '3m': 1, '6m': 2, '1y': 5, '3y': 12, '5y': 18 }
 
-const activePeriodLabel = computed(() => periods.find(p => p.value === activePeriod.value)?.label + ' 이내' ?? '')
+const activePeriodLabel = computed(() => {
+  const found = periods.find(p => p.value === activePeriod.value)
+  return found ? found.label + ' 이내' : ''
+})
 
 // ── 기간별 막대 차트 ─────────────────────────────────
 const periodBarData = [
-  { label: '3개월', count: 8,   color: '#ef4444' },
-  { label: '6개월', count: 15,  color: '#f59e0b' },
-  { label: '1년',   count: 38,  color: '#6366f1' },
-  { label: '3년',   count: 92,  color: '#0ea5e9' },
-  { label: '5년',   count: 147, color: '#10b981' },
+  { label: '3개월', count: 1,  color: '#ef4444' },
+  { label: '6개월', count: 2,  color: '#f59e0b' },
+  { label: '1년',   count: 5,  color: '#6366f1' },
+  { label: '3년',   count: 12, color: '#0ea5e9' },
+  { label: '5년',   count: 18, color: '#10b981' },
 ]
 const maxPeriod = Math.max(...periodBarData.map(p => p.count))
 function periodBarH(count: number) {
@@ -235,31 +239,18 @@ function periodBarH(count: number) {
 
 // ── 분야별 분포 ──────────────────────────────────────
 const fieldDistAll: Record<string, { name: string; count: number }[]> = {
-  '3m': [{ name: '반도체', count: 5 }, { name: '배터리', count: 2 }, { name: '소재', count: 1 }],
-  '6m': [{ name: '반도체', count: 9 }, { name: '배터리', count: 4 }, { name: 'AI/SW', count: 2 }],
-  '1y': [{ name: '반도체', count: 18 }, { name: '배터리', count: 10 }, { name: '소재', count: 6 }, { name: 'AI/SW', count: 4 }],
-  '3y': [{ name: '반도체', count: 38 }, { name: '배터리', count: 26 }, { name: '소재', count: 18 }, { name: 'AI/SW', count: 10 }],
-  '5y': [{ name: '반도체', count: 58 }, { name: '배터리', count: 42 }, { name: '소재', count: 28 }, { name: 'AI/SW', count: 19 }],
+  '3m': [{ name: '에너지', count: 1 }],
+  '6m': [{ name: '에너지', count: 2 }],
+  '1y': [{ name: '에너지', count: 2 }, { name: '반도체', count: 1 }, { name: '통신', count: 1 }, { name: 'AI/ML', count: 1 }],
+  '3y': [{ name: '에너지', count: 4 }, { name: '반도체', count: 4 }, { name: '통신', count: 2 }, { name: 'AI/ML', count: 2 }],
+  '5y': [{ name: '에너지', count: 6 }, { name: '반도체', count: 6 }, { name: '통신', count: 3 }, { name: 'AI/ML', count: 3 }],
 }
 
 const fieldDistItems = computed(() => fieldDistAll[activePeriod.value] ?? [])
 const maxField       = computed(() => Math.max(...fieldDistItems.value.map(f => f.count), 1))
 
-// ── 만료 목록 (mock) ─────────────────────────────────
-interface ExpiryItem {
-  id: number; title: string; applicationNumber: string
-  techField: string; dept: string; expiryDate: string
-  dday: number; urgency: 'critical' | 'warn' | 'normal'
-}
-
-const allItems: ExpiryItem[] = [
-  { id: 1, title: 'NF3 가스 이물질 제거 시스템',     applicationNumber: '10-2026-0012345', techField: '반도체', dept: '반도체 사업부', expiryDate: '2026-08-15', dday: 75,  urgency: 'critical' },
-  { id: 2, title: '플라즈마 식각 장치 제어 방법',      applicationNumber: '10-2025-0098732', techField: '반도체', dept: '반도체 사업부', expiryDate: '2026-09-22', dday: 113, urgency: 'warn' },
-  { id: 3, title: '배터리 전극 코팅 균일도 향상',      applicationNumber: '10-2025-0041200', techField: '배터리', dept: '배터리 사업부', expiryDate: '2026-10-05', dday: 126, urgency: 'warn' },
-  { id: 4, title: '신소재 열 전도성 향상 방법',         applicationNumber: '10-2024-0081900', techField: '소재',   dept: '소재 사업부',  expiryDate: '2027-01-20', dday: 233, urgency: 'normal' },
-  { id: 5, title: 'AI 기반 품질 검사 자동화 시스템',   applicationNumber: '10-2026-0031891', techField: 'AI/SW',  dept: 'AI 사업부',    expiryDate: '2027-03-01', dday: 273, urgency: 'normal' },
-  { id: 6, title: '반도체 세정 공정 최적화 방법',      applicationNumber: '10-2023-0055100', techField: '반도체', dept: '반도체 사업부', expiryDate: '2026-07-10', dday: 39,  urgency: 'critical' },
-]
+// ── 만료 목록 ────────────────────────────────────────
+const allItems = EXPIRING_ITEMS
 
 const periodDays: Record<string, number> = { '3m': 90, '6m': 180, '1y': 365, '3y': 1095, '5y': 1825 }
 

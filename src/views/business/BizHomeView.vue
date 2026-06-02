@@ -156,8 +156,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { inboxApi } from '@/api/misc'
-import { patentsApi } from '@/api/patents'
+import { MOCK_PATENTS, MOCK_REEVAL, RECENT_SUBMISSIONS } from '@/mocks/data'
 
 const auth   = useAuthStore()
 const router = useRouter()
@@ -185,9 +184,9 @@ const quarterLabel = computed(() => {
   return `${d.getFullYear()}년 ${Math.ceil((d.getMonth() + 1) / 3)}분기`
 })
 
-// ── 제출 현황 ────────────────────────────────────────
-const totalCount     = ref(0)
-const submittedCount = ref(0)
+// ── 제출 현황 (반도체사업부 기준: 6건 재평가, 3건 완료) ─
+const totalCount     = ref(6)
+const submittedCount = ref(3)
 const pendingCount   = computed(() => totalCount.value - submittedCount.value)
 const submitPct      = computed(() =>
   totalCount.value ? Math.round((submittedCount.value / totalCount.value) * 100) : 0
@@ -211,23 +210,25 @@ const statusCards = computed(() => [
   },
 ])
 
-// ── 미제출 특허 목록 ──────────────────────────────────
-const pendingItems = ref<{ id: number; title: string }[]>([])
+// ── 미제출 특허 목록 (반도체사업부 미제출 3건) ─────────
+const pendingItems = ref(
+  MOCK_REEVAL
+    .filter(r => r.deptId === 2 && r.decision === null)
+    .map(r => {
+      const p = MOCK_PATENTS.find(p => p.id === r.patentId)!
+      return { id: p.id, title: p.title }
+    })
+)
 
-// ── 최근 제출 이력 (mock) ────────────────────────────
-const recentSubmissions = ref([
-  { id: 1, patentTitle: 'NF3 가스 이물질 제거 시스템', decision: 'KEEP',    decidedAt: '2026-05-20' },
-  { id: 2, patentTitle: '플라즈마 식각 장치 및 제어',   decision: 'DISPOSE', decidedAt: '2026-05-19' },
-  { id: 3, patentTitle: '배터리 전극 코팅 균일도',       decision: 'KEEP',    decidedAt: '2026-05-17' },
-  { id: 4, patentTitle: 'AI 기반 품질 검사 자동화',      decision: 'DISPOSE', decidedAt: '2026-05-15' },
-])
+// ── 최근 제출 이력 ───────────────────────────────────
+const recentSubmissions = ref(RECENT_SUBMISSIONS)
 
-// ── 담당 특허 현황 (mock) ────────────────────────────
-const patentStatItems = computed(() => [
-  { label: '유지 중',   count: submittedCount.value - 3, color: '#22c55e', pct: 70 },
-  { label: '만료 예정', count: 5, color: '#f59e0b', pct: 22 },
-  { label: '포기/만료', count: 3, color: '#ef4444', pct: 12 },
-])
+// ── 담당 특허 현황 (반도체사업부 8건) ────────────────
+const patentStatItems = [
+  { label: '유지 중',   count: 6, color: '#22c55e', pct: 75 },
+  { label: '만료 예정', count: 1, color: '#f59e0b', pct: 12 },
+  { label: '포기/만료', count: 1, color: '#ef4444', pct: 13 },
+]
 
 function decisionLabel(d: string) {
   return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
@@ -240,22 +241,7 @@ function formatDate(d?: string) {
   return d.replace(/-/g, '.')
 }
 
-// ── 데이터 로드 ──────────────────────────────────────
-async function load() {
-  loading.value = true
-  try {
-    const res = await inboxApi.list({ status: 'all', size: 100 })
-    totalCount.value     = res.totalItems
-    submittedCount.value = res.items.filter(i => i.decision !== null).length
-    pendingItems.value   = res.items
-      .filter(i => i.decision === null)
-      .slice(0, 5)
-      .map(i => ({ id: i.patentId, title: i.title }))
-  } catch { /* API 미연결 시 mock 유지 */ }
-  finally { loading.value = false }
-}
-
-onMounted(load)
+onMounted(() => { loading.value = false })
 </script>
 
 <style scoped>

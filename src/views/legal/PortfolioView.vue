@@ -231,6 +231,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { TREND_DATA } from '@/mocks/data'
 
 // ── 색상 팔레트 ──────────────────────────────────────
 const techColors = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#ef4444','#06b6d4']
@@ -238,22 +239,21 @@ const trendColors = ['#6366f1','#22c55e','#f59e0b']
 
 // ── 요약 카운트 ──────────────────────────────────────
 const summaryCounts = [
-  { value: '247', label: '총 보유 특허' },
-  { value: '38',  label: '만료 예정 (1년)' },
-  { value: '4',   label: '국가' },
-  { value: '5',   label: '기술 분야' },
+  { value: '22', label: '총 보유 특허' },
+  { value: '5',  label: '만료 예정 (1년)' },
+  { value: '5',  label: '국가' },
+  { value: '5',  label: '기술 분야' },
 ]
 
-const totalPatents = 247
+const totalPatents = 22
 
-// ── 트리맵 데이터 ────────────────────────────────────
+// ── 기술 분야 분포 ───────────────────────────────────
 const treemapItems = [
-  { name: '반도체', count: 82 },
-  { name: '배터리', count: 58 },
-  { name: '소재',   count: 42 },
-  { name: 'AI/SW',  count: 35 },
-  { name: '바이오', count: 18 },
-  { name: '기타',   count: 12 },
+  { name: 'AI/ML',  count: 7 },
+  { name: '반도체', count: 5 },
+  { name: '통신',   count: 3 },
+  { name: '에너지', count: 4 },
+  { name: '제조',   count: 3 },
 ]
 
 // ── 기술 분야 도넛 세그먼트 ──────────────────────────
@@ -270,11 +270,11 @@ const techDonutSegments = computed(() => {
 
 // ── 국가별 ───────────────────────────────────────────
 const countryItems = [
-  { country: 'KR', flag: '🇰🇷', count: 142 },
-  { country: 'US', flag: '🇺🇸', count: 58 },
-  { country: 'JP', flag: '🇯🇵', count: 28 },
-  { country: 'EP', flag: '🇪🇺', count: 12 },
-  { country: 'CN', flag: '🇨🇳', count: 7 },
+  { country: '한국', flag: '🇰🇷', count: 10 },
+  { country: '미국', flag: '🇺🇸', count: 4  },
+  { country: '유럽', flag: '🇪🇺', count: 3  },
+  { country: '중국', flag: '🇨🇳', count: 2  },
+  { country: '일본', flag: '🇯🇵', count: 1  },
 ]
 const totalCountry = countryItems.reduce((s, i) => s + i.count, 0)
 
@@ -290,15 +290,7 @@ const countryDonutSegments = computed(() => {
 })
 
 // ── 연도별 추이 ──────────────────────────────────────
-const trendData = [
-  { year: '2020', filed: 18, registered: 14, expired: 3 },
-  { year: '2021', filed: 24, registered: 19, expired: 5 },
-  { year: '2022', filed: 31, registered: 26, expired: 7 },
-  { year: '2023', filed: 38, registered: 30, expired: 9 },
-  { year: '2024', filed: 42, registered: 35, expired: 11 },
-  { year: '2025', filed: 45, registered: 38, expired: 8 },
-  { year: '2026', filed: 29, registered: 22, expired: 4 },
-]
+const trendData = TREND_DATA.map(d => ({ year: String(d.year), filed: d.filed, registered: d.registered, expired: d.expired }))
 const maxTrend = computed(() => Math.max(...trendData.flatMap(d => [d.filed, d.registered, d.expired])))
 
 // ── 꺾은선 차트 설정 ─────────────────────────────────
@@ -342,10 +334,10 @@ const trendDots = computed(() =>
 
 // ── 사업부 도넛 ──────────────────────────────────────
 const deptItems = [
-  { name: '반도체 사업부', count: 98  },
-  { name: '배터리 사업부', count: 72  },
-  { name: 'AI 사업부',    count: 44  },
-  { name: '소재 사업부',  count: 33  },
+  { name: '반도체사업부', count: 8 },
+  { name: '통신사업부',   count: 5 },
+  { name: '에너지사업부', count: 5 },
+  { name: '제조사업부',   count: 4 },
 ]
 
 const donutSegments = computed(() => {
@@ -361,11 +353,10 @@ const donutSegments = computed(() => {
 
 // ── 가치 등급 ────────────────────────────────────────
 const gradeItems = [
-  { grade: 'S', label: '핵심 특허',  count: 28,  bg: '#fefce8', color: '#ca8a04' },
-  { grade: 'A', label: '고가치',     count: 62,  bg: '#f0fdf4', color: '#16a34a' },
-  { grade: 'B', label: '보통',       count: 89,  bg: '#eff6ff', color: '#2563eb' },
-  { grade: 'C', label: '낮은 가치',  count: 45,  bg: '#fef2f2', color: '#dc2626' },
-  { grade: 'D', label: '포기 권장',  count: 23,  bg: '#f8fafc', color: '#94a3b8' },
+  { grade: 'S', label: '핵심 특허', count: 3, bg: '#fefce8', color: '#ca8a04' },
+  { grade: 'A', label: '고가치',    count: 8, bg: '#f0fdf4', color: '#16a34a' },
+  { grade: 'B', label: '보통',      count: 6, bg: '#eff6ff', color: '#2563eb' },
+  { grade: 'C', label: '낮은 가치', count: 3, bg: '#fef2f2', color: '#dc2626' },
 ]
 
 // ── AI 인사이트 ──────────────────────────────────────
@@ -373,17 +364,17 @@ const insights = [
   {
     type: 'warn',
     icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-    text: '반도체 분야 특허 38건이 1년 이내 만료 예정입니다. 유지 여부 검토가 필요합니다.',
+    text: '만료 예정 특허 4건(배전망 그리드, 태양광 패널 등) 중 C등급 2건은 포기 검토가 필요합니다.',
   },
   {
     type: 'info',
     icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
-    text: 'S·A 등급 핵심 특허 90건 중 US 등록 비율이 42%로 해외 권리화가 양호합니다.',
+    text: 'S·A 등급 핵심 특허 11건 중 US·EP·JP 해외 등록 비율이 36%로 주요 기술의 해외 권리화가 진행 중입니다.',
   },
   {
     type: 'suggest',
     icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
-    text: 'D 등급 특허 23건은 연차료 대비 가치가 낮아 포기 검토를 권장합니다.',
+    text: '이번 분기 재평가 18건 중 33%가 아직 미회신 상태입니다. 2026-06-30 마감 전 회신을 독려하세요.',
   },
 ]
 </script>

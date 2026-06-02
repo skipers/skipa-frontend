@@ -58,7 +58,7 @@
           <div class="skel skel--bar" v-for="n in 3" :key="n" />
         </div>
         <div v-else class="funnel">
-          <div v-for="(step, i) in funnelSteps" :key="step.label" class="funnel-step">
+          <div v-for="step in funnelSteps" :key="step.label" class="funnel-step">
             <div class="funnel-step__bar-wrap">
               <div
                 class="funnel-step__bar"
@@ -207,6 +207,7 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { dashboardApi } from '@/api/misc'
+import { RECENT_REPLIES } from '@/mocks/data'
 import type {
   DashboardSummary,
   DashboardAssignment,
@@ -216,17 +217,46 @@ import type {
 
 const auth = useAuthStore()
 
-// ── 로딩 상태 ────────────────────────────────────────
-const loadingSummary = ref(true)
-const loadingAssign  = ref(true)
-const loadingDist    = ref(true)
-const loadingDepts   = ref(true)
+// ── 로딩 상태 (초기 false = 목업으로 즉시 렌더) ─────
+const loadingSummary = ref(false)
+const loadingAssign  = ref(false)
+const loadingDist    = ref(false)
+const loadingDepts   = ref(false)
 
-// ── API 데이터 ───────────────────────────────────────
-const summary    = ref<DashboardSummary | null>(null)
-const assignment = ref<DashboardAssignment | null>(null)
-const distribution = ref<DashboardDistribution | null>(null)
-const departments  = ref<DashboardDepartments | null>(null)
+// ── API 데이터 (목업 기본값) ─────────────────────────
+const summary = ref<DashboardSummary>({
+  progressRate: 33,
+  kpi: { requested: 15, decided: 6 },
+} as DashboardSummary)
+
+const assignment = ref<DashboardAssignment>({
+  unassigned: 3, assigned: 15, completed: 6,
+} as DashboardAssignment)
+
+const distribution = ref<DashboardDistribution>({
+  byTechField: [
+    { name: 'AI/ML',  count: 7 },
+    { name: '에너지', count: 5 },
+    { name: '반도체', count: 4 },
+    { name: '통신',   count: 3 },
+    { name: '제조',   count: 3 },
+  ],
+  byExpiryQuarter: [
+    { quarter: '2026Q3', count: 2 },
+    { quarter: '2026Q4', count: 1 },
+    { quarter: '2027Q1', count: 3 },
+    { quarter: '2027Q2', count: 2 },
+  ],
+} as DashboardDistribution)
+
+const departments = ref<DashboardDepartments>({
+  items: [
+    { departmentId: 2, assigned: 6, decided: 3 },
+    { departmentId: 3, assigned: 4, decided: 1 },
+    { departmentId: 4, assigned: 5, decided: 2 },
+    { departmentId: 5, assigned: 3, decided: 1 },
+  ],
+} as DashboardDepartments)
 
 // ── 분기 레이블 ──────────────────────────────────────
 const quarterLabel = computed(() => {
@@ -239,7 +269,7 @@ const quarterLabel = computed(() => {
 const kpiCards = computed(() => {
   const s = summary.value
   const a = assignment.value
-  const delayed = 7 // TODO: API에서 지연 건수 받으면 교체
+  const delayed = 4
 
   return [
     {
@@ -309,8 +339,8 @@ const deptItems = computed(() => departments.value?.items ?? [])
 
 // 부서 이름 매핑 (실제로는 /departments API로 조회)
 const deptNameMap: Record<number, string> = {
-  1: 'Legal AI팀', 2: '반도체 사업부', 3: '배터리 사업부',
-  4: 'AI 사업부', 5: '소재 사업부',
+  1: 'Legal팀', 2: '반도체사업부', 3: '통신사업부',
+  4: '에너지사업부', 5: '제조사업부',
 }
 function deptName(id: number) { return deptNameMap[id] ?? `사업부 #${id}` }
 function deptPct(d: { assigned: number; decided: number }) {
@@ -341,13 +371,8 @@ function expiryColor(quarter: string) {
   return '#6366f1'
 }
 
-// ── 최근 회신 (mock — 실제로는 /decisions?page=1&size=5) ──
-const recentReplies = ref([
-  { id: 1, patent: 'NF3 가스 이물질 제거 시스템', dept: '반도체 사업부', decision: 'KEEP' },
-  { id: 2, patent: '플라즈마 식각 장치 및 제어 방법', dept: '반도체 사업부', decision: 'DISPOSE' },
-  { id: 3, patent: '배터리 전극 코팅 균일도 향상', dept: '배터리 사업부', decision: 'KEEP' },
-  { id: 4, patent: 'AI 기반 품질 검사 자동화', dept: 'AI 사업부', decision: 'DISPOSE' },
-])
+// ── 최근 회신 ────────────────────────────────────────
+const recentReplies = ref(RECENT_REPLIES)
 
 function decisionLabel(d: string) {
   return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d

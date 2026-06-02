@@ -286,10 +286,11 @@ import { patentsApi } from '@/api/patents'
 import { reviewRequestsApi } from '@/api/misc'
 import { usePagination } from '@/composables/usePagination'
 import BasePagination from '@/components/ui/BasePagination.vue'
+import { MOCK_PATENTS, MOCK_REEVAL, REEVAL_STATUS_COUNTS, DEPT_MAP } from '@/mocks/data'
 import type { Department } from '@/types'
 
 const router = useRouter()
-const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination()
+const { page, totalPages, totalItems, setPage, setTotal } = usePagination()
 
 // ── 상태 ────────────────────────────────────────────
 const loading  = ref(false)
@@ -304,13 +305,9 @@ const assignDeptId    = ref<number | null>(null)
 const assignLoading   = ref(false)
 const bulkAssignMode  = ref(false)
 
-// mock 부서 목록 (실제: GET /departments)
-const departments = ref<Department[]>([
-  { id: 2, name: '반도체 사업부' },
-  { id: 3, name: '배터리 사업부' },
-  { id: 4, name: 'AI 사업부' },
-  { id: 5, name: '소재 사업부' },
-])
+const departments = ref<Department[]>(
+  Object.entries(DEPT_MAP).map(([id, name]) => ({ id: Number(id), name }))
+)
 
 // ── 타입 ────────────────────────────────────────────
 interface ReevalItem {
@@ -349,12 +346,12 @@ const progressPct = computed(() => {
   return Math.round((statusCounts.value.done / total) * 100)
 })
 
-const progressSegments = [
-  { label: '요청 전',   color: '#e2e8f0' },
-  { label: '요청 완료', color: '#6366f1' },
-  { label: '지연',      color: '#ef4444' },
-  { label: '회신 완료', color: '#22c55e' },
-]
+const progressSegments = computed(() => [
+  { label: '요청 전',   color: '#e2e8f0', count: statusCounts.value.unassigned },
+  { label: '요청 완료', color: '#6366f1', count: statusCounts.value.requested  },
+  { label: '지연',      color: '#ef4444', count: statusCounts.value.overdue    },
+  { label: '회신 완료', color: '#22c55e', count: statusCounts.value.done       },
+])
 
 // ── 전체/일부 체크 ───────────────────────────────────
 const allChecked  = computed(() => items.value.length > 0 && items.value.every(i => selectedIds.has(i.id)))
@@ -396,36 +393,34 @@ function formatDate(d?: string) {
 }
 
 // ── 데이터 로드 ──────────────────────────────────────
-// 실제로는 /patents?status=REVIEW_QUARTER&reviewStatus=... 같은 API 연동
-// 지금은 /patents 목록으로 임시 구성
-async function fetchList(p = 1) {
+function fetchList(p = 1) {
   loading.value = true
   setPage(p)
   selectedIds.clear()
-  try {
-    const res = await patentsApi.list({ ...pageQuery.value })
-    // mock reviewStatus 부여
-    items.value = res.items.map((patent, i) => ({
+
+  const allMock: ReevalItem[] = MOCK_REEVAL.map(r => {
+    const patent = MOCK_PATENTS.find(p => p.id === r.patentId)!
+    return {
       id: patent.id,
       title: patent.title,
       applicationNumber: patent.applicationNumber,
-      techField: (patent as any).techField,
+      techField: patent.techField,
       expiryDate: patent.expiryDate,
-      departmentId: i % 3 === 0 ? undefined : [2, 3, 4][i % 3],
-      decision: i % 5 === 4 ? 'KEEP' : i % 7 === 6 ? 'DISPOSE' : null,
-      reviewStatus: (['unassigned', 'requested', 'reviewing', 'overdue', 'done'] as const)[i % 5],
-      isOverdue: i % 7 === 3,
-    }))
-    setTotal(res.totalItems, res.totalPages)
-    statusCounts.value = {
-      all: res.totalItems,
-      unassigned: Math.round(res.totalItems * 0.12),
-      requested:  Math.round(res.totalItems * 0.45),
-      overdue:    Math.round(res.totalItems * 0.08),
-      done:       Math.round(res.totalItems * 0.35),
+      departmentId: r.deptId,
+      decision: r.decision,
+      reviewStatus: r.reviewStatus,
+      isOverdue: r.isOverdue,
     }
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+  })
+
+  const filtered = activeStatus.value === 'all'
+    ? allMock
+    : allMock.filter(i => i.reviewStatus === activeStatus.value)
+
+  items.value = filtered
+  setTotal(filtered.length, 1)
+  statusCounts.value = { ...REEVAL_STATUS_COUNTS }
+  loading.value = false
 }
 
 // ── 배정 ────────────────────────────────────────────
@@ -453,7 +448,7 @@ async function handleAssign() {
       await patentsApi.assignDepartment(assignTarget.value.id, assignDeptId.value)
     }
     showAssignModal.value = false
-    await fetchList(page.value)
+    fetchList(page.value)
   } catch (e) { console.error(e) }
   finally { assignLoading.value = false }
 }
@@ -473,7 +468,7 @@ async function handleSend() {
     })
     showSendModal.value = false
     selectedIds.clear()
-    await fetchList(page.value)
+    fetchList(page.value)
   } catch (e) { console.error(e) }
   finally { sending.value = false }
 }
