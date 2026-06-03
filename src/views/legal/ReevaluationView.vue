@@ -473,7 +473,7 @@ async function handleSend() {
   finally { sending.value = false }
 }
 
-function goDetail(id: number) { router.push(`/patents/${id}`) }
+function goDetail(id: number) { router.push(`/legal/patent-search/${id}`) }
 
 onMounted(() => fetchList(1))
 </script>

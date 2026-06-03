@@ -25,9 +25,10 @@ export const useAuthStore = defineStore('auth', () => {
       tokenStorage.setRefresh('mock-refresh-token')
       user.value = {
         id: credentials.id,
-        name: credentials.id === 'legal' ? 'Legal AI팀' : '반도체 사업부',
+        name: credentials.id === 'legal' ? 'Legal AI팀' : '반도체사업부',
         email: credentials.id + '@skipa.com',
         role: credentials.id === 'legal' ? 'LEGAL' : 'BUSINESS',
+        departmentId: credentials.id === 'legal' ? undefined : 2,
       }
 
       // 실제 API 연결 시 아래 코드 사용

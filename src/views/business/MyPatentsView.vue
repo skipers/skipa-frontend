@@ -108,7 +108,7 @@
               v-for="p in filteredActivePatents"
               :key="p.id"
               class="patent-row"
-              @click="router.push(`/patents/${p.id}`)"
+              @click="router.push(`/biz/patent-search/${p.id}`)"
             >
               <td><span class="mono">{{ p.applicationNumber }}</span></td>
               <td>
@@ -210,7 +210,7 @@
               v-for="p in filteredExpiredPatents"
               :key="p.id"
               class="patent-row patent-row--expired"
-              @click="router.push(`/patents/${p.id}`)"
+              @click="router.push(`/biz/patent-search/${p.id}`)"
             >
               <td><span class="mono">{{ p.applicationNumber }}</span></td>
               <td>
@@ -258,7 +258,7 @@
             v-for="h in submissionHistory"
             :key="h.id"
             class="history-item"
-            @click="router.push(`/patents/${h.patentId}`)"
+            @click="router.push(`/biz/patent-search/${h.patentId}`)"
           >
             <div class="history-item__decision-icon" :class="`decision-icon--${h.decision.toLowerCase()}`">
               <!-- 유지: outline circle check -->
