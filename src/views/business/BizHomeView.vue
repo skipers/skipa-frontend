@@ -156,8 +156,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { inboxApi } from '@/api/misc'
-import { patentsApi } from '@/api/patents'
+import { MOCK_PATENTS, MOCK_REEVAL, RECENT_SUBMISSIONS } from '@/mocks/data'
 
 const auth   = useAuthStore()
 const router = useRouter()
@@ -185,9 +184,9 @@ const quarterLabel = computed(() => {
   return `${d.getFullYear()}년 ${Math.ceil((d.getMonth() + 1) / 3)}분기`
 })
 
-// ── 제출 현황 ────────────────────────────────────────
-const totalCount     = ref(0)
-const submittedCount = ref(0)
+// ── 제출 현황 (반도체사업부 기준: 6건 재평가, 3건 완료) ─
+const totalCount     = ref(6)
+const submittedCount = ref(3)
 const pendingCount   = computed(() => totalCount.value - submittedCount.value)
 const submitPct      = computed(() =>
   totalCount.value ? Math.round((submittedCount.value / totalCount.value) * 100) : 0
@@ -211,23 +210,25 @@ const statusCards = computed(() => [
   },
 ])
 
-// ── 미제출 특허 목록 ──────────────────────────────────
-const pendingItems = ref<{ id: number; title: string }[]>([])
+// ── 미제출 특허 목록 (반도체사업부 미제출 3건) ─────────
+const pendingItems = ref(
+  MOCK_REEVAL
+    .filter(r => r.deptId === 2 && r.decision === null)
+    .map(r => {
+      const p = MOCK_PATENTS.find(p => p.id === r.patentId)!
+      return { id: p.id, title: p.title }
+    })
+)
 
-// ── 최근 제출 이력 (mock) ────────────────────────────
-const recentSubmissions = ref([
-  { id: 1, patentTitle: 'NF3 가스 이물질 제거 시스템', decision: 'KEEP',    decidedAt: '2026-05-20' },
-  { id: 2, patentTitle: '플라즈마 식각 장치 및 제어',   decision: 'DISPOSE', decidedAt: '2026-05-19' },
-  { id: 3, patentTitle: '배터리 전극 코팅 균일도',       decision: 'KEEP',    decidedAt: '2026-05-17' },
-  { id: 4, patentTitle: 'AI 기반 품질 검사 자동화',      decision: 'DISPOSE', decidedAt: '2026-05-15' },
-])
+// ── 최근 제출 이력 ───────────────────────────────────
+const recentSubmissions = ref(RECENT_SUBMISSIONS)
 
-// ── 담당 특허 현황 (mock) ────────────────────────────
-const patentStatItems = computed(() => [
-  { label: '유지 중',   count: submittedCount.value - 3, color: '#22c55e', pct: 70 },
-  { label: '만료 예정', count: 5, color: '#f59e0b', pct: 22 },
-  { label: '포기/만료', count: 3, color: '#ef4444', pct: 12 },
-])
+// ── 담당 특허 현황 (반도체사업부 8건) ────────────────
+const patentStatItems = [
+  { label: '유지 중',   count: 6, color: '#22c55e', pct: 75 },
+  { label: '만료 예정', count: 1, color: '#f59e0b', pct: 12 },
+  { label: '포기/만료', count: 1, color: '#ef4444', pct: 13 },
+]
 
 function decisionLabel(d: string) {
   return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
@@ -240,22 +241,7 @@ function formatDate(d?: string) {
   return d.replace(/-/g, '.')
 }
 
-// ── 데이터 로드 ──────────────────────────────────────
-async function load() {
-  loading.value = true
-  try {
-    const res = await inboxApi.list({ status: 'all', size: 100 })
-    totalCount.value     = res.totalItems
-    submittedCount.value = res.items.filter(i => i.decision !== null).length
-    pendingItems.value   = res.items
-      .filter(i => i.decision === null)
-      .slice(0, 5)
-      .map(i => ({ id: i.patentId, title: i.title }))
-  } catch { /* API 미연결 시 mock 유지 */ }
-  finally { loading.value = false }
-}
-
-onMounted(load)
+onMounted(() => { loading.value = false })
 </script>
 
 <style scoped>
@@ -280,28 +266,28 @@ onMounted(load)
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--c-green-400);
+  color: #6366f1;
   margin: 0 0 5px;
 }
 
 .greeting__title {
   font-size: 24px;
   font-weight: 700;
-  color: var(--color-text);
+  color: #0f172a;
   margin: 0 0 4px;
   letter-spacing: -0.02em;
 }
-.greeting__title span { color: var(--c-green-500); }
+.greeting__title span { color: #4f46e5; }
 
-.greeting__desc { font-size: 13.5px; color: var(--color-text-muted); margin: 0; }
+.greeting__desc { font-size: 13.5px; color: #64748b; margin: 0; }
 
 .btn-goto {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: var(--color-text);
-  color: var(--color-surface);
+  background: #0f172a;
+  color: #fff;
   border-radius: 10px;
   text-decoration: none;
   font-size: 13.5px;
@@ -309,7 +295,7 @@ onMounted(load)
   transition: background .15s, transform .12s;
   white-space: nowrap;
 }
-.btn-goto:hover { background: var(--color-navy-hover); transform: translateY(-1px); }
+.btn-goto:hover { background: #1e293b; transform: translateY(-1px); }
 
 /* ── 상단 행 ─────────────────────────────────────── */
 .top-row {
@@ -328,8 +314,8 @@ onMounted(load)
 
 /* ── D-Day 카드 ──────────────────────────────────── */
 .dday-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 18px;
   padding: 24px 20px;
   display: flex;
@@ -341,8 +327,8 @@ onMounted(load)
 }
 
 .dday-card--urgent {
-  background: linear-gradient(145deg, var(--c-red-50), var(--color-surface));
-  border-color: var(--color-danger-border);
+  background: linear-gradient(145deg, #fff5f5, #fff);
+  border-color: #fecaca;
 }
 
 .dday-card__label {
@@ -350,7 +336,7 @@ onMounted(load)
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .06em;
-  color: var(--color-text-subtle);
+  color: #94a3b8;
 }
 
 .dday-card__main {
@@ -362,7 +348,7 @@ onMounted(load)
 .dday-card__prefix {
   font-size: 42px;
   font-weight: 900;
-  color: var(--color-text);
+  color: #0f172a;
   letter-spacing: -0.04em;
   line-height: 1;
 }
@@ -370,17 +356,17 @@ onMounted(load)
 .dday-card__num {
   font-size: 42px;
   font-weight: 900;
-  color: var(--color-text);
+  color: #0f172a;
   letter-spacing: -0.04em;
   line-height: 1;
 }
 
 .dday-card--urgent .dday-card__num,
-.dday-card--urgent .dday-card__prefix { color: var(--color-danger); }
+.dday-card--urgent .dday-card__prefix { color: #dc2626; }
 
 .dday-card__date {
   font-size: 12px;
-  color: var(--color-text-subtle);
+  color: #94a3b8;
   margin: 0;
 }
 
@@ -389,8 +375,8 @@ onMounted(load)
   align-items: center;
   gap: 5px;
   padding: 5px 10px;
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
+  background: #fef2f2;
+  color: #dc2626;
   border-radius: 7px;
   font-size: 11.5px;
   font-weight: 600;
@@ -405,8 +391,8 @@ onMounted(load)
 }
 
 .status-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 14px 18px;
   display: flex;
@@ -433,7 +419,7 @@ onMounted(load)
 
 .status-card__label {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: #64748b;
   font-weight: 500;
   margin: 0;
   margin-left: auto;
@@ -441,8 +427,8 @@ onMounted(load)
 
 /* ── 제출 진행률 카드 ────────────────────────────── */
 .submit-progress-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 14px;
   padding: 20px;
   display: flex;
@@ -457,18 +443,18 @@ onMounted(load)
   align-items: center;
 }
 
-.submit-progress-card__title { font-size: 14px; font-weight: 700; color: var(--color-text); margin: 0; }
-.submit-progress-card__pct   { font-size: 15px; font-weight: 800; color: var(--c-green-400); }
+.submit-progress-card__title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
+.submit-progress-card__pct   { font-size: 15px; font-weight: 800; color: #6366f1; }
 
 .progress-track {
   height: 8px;
-  background: var(--color-surface-muted);
+  background: #f1f5f9;
   border-radius: 4px;
   overflow: hidden;
 }
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--c-green-500), var(--c-green-300));
+  background: linear-gradient(90deg, #4f46e5, #818cf8);
   border-radius: 4px;
   transition: width .6s cubic-bezier(.4,0,.2,1);
 }
@@ -477,13 +463,13 @@ onMounted(load)
   display: flex;
   justify-content: space-between;
   font-size: 12.5px;
-  color: var(--color-text-muted);
+  color: #64748b;
 }
-.submit-progress-card__detail strong { color: var(--color-text); font-weight: 700; }
+.submit-progress-card__detail strong { color: #0f172a; font-weight: 700; }
 
 /* 미제출 미리보기 */
 .pending-preview {
-  border-top: 1px solid var(--color-surface-muted);
+  border-top: 1px solid #f1f5f9;
   padding-top: 12px;
   display: flex;
   flex-direction: column;
@@ -495,7 +481,7 @@ onMounted(load)
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .04em;
-  color: var(--color-text-subtle);
+  color: #94a3b8;
   margin: 0 0 4px;
 }
 
@@ -504,17 +490,17 @@ onMounted(load)
   align-items: center;
   gap: 8px;
   padding: 7px 10px;
-  background: var(--color-surface-hover);
+  background: #f8fafc;
   border-radius: 7px;
   cursor: pointer;
   transition: background .12s;
 }
-.pending-item:hover { background: var(--color-surface-muted); }
+.pending-item:hover { background: #f1f5f9; }
 
 .pending-item__dot {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: var(--color-warn);
+  background: #f59e0b;
   flex-shrink: 0;
 }
 
@@ -522,7 +508,7 @@ onMounted(load)
   flex: 1;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: #374151;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -531,7 +517,7 @@ onMounted(load)
 .pending-more {
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--color-primary);
+  color: #6366f1;
   text-decoration: none;
   padding: 4px 10px;
   text-align: center;
@@ -548,8 +534,8 @@ onMounted(load)
 
 /* ── 공통 카드 ────────────────────────────────────── */
 .card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 14px;
   padding: 20px;
   display: flex;
@@ -558,14 +544,14 @@ onMounted(load)
 }
 
 .card__header { display: flex; align-items: center; justify-content: space-between; }
-.card__title  { font-size: 14px; font-weight: 700; color: var(--color-text); margin: 0; }
-.card__link   { font-size: 12.5px; font-weight: 500; color: var(--color-primary); text-decoration: none; }
-.card__link:hover { color: var(--color-primary-darker); }
-.card__empty  { font-size: 13px; color: var(--color-text-subtle); padding: 24px 0; text-align: center; }
+.card__title  { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
+.card__link   { font-size: 12.5px; font-weight: 500; color: #6366f1; text-decoration: none; }
+.card__link:hover { color: #4338ca; }
+.card__empty  { font-size: 13px; color: #94a3b8; padding: 24px 0; text-align: center; }
 .card__skel   { display: flex; flex-direction: column; gap: 8px; }
 .skel-row {
   height: 40px; border-radius: 8px;
-  background: linear-gradient(90deg, var(--color-surface-muted) 25%, var(--c-slate-150) 50%, var(--color-surface-muted) 75%);
+  background: linear-gradient(90deg, #f1f5f9 25%, #e8edf5 50%, #f1f5f9 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -580,7 +566,7 @@ onMounted(load)
   justify-content: space-between;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--color-surface-hover);
+  border-bottom: 1px solid #f8fafc;
 }
 .submission-item:last-child { border-bottom: none; }
 
@@ -600,24 +586,24 @@ onMounted(load)
   font-size: 14px;
   flex-shrink: 0;
 }
-.sub-icon--keep    { background: var(--color-success-bg); }
-.sub-icon--sell    { background: var(--color-primary-bg); }
-.sub-icon--dispose { background: var(--color-danger-bg); }
+.sub-icon--keep    { background: #f0fdf4; }
+.sub-icon--sell    { background: #eef2ff; }
+.sub-icon--dispose { background: #fef2f2; }
 
 .submission-item__title {
-  font-size: 13px; font-weight: 600; color: var(--color-text);
+  font-size: 13px; font-weight: 600; color: #0f172a;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   margin: 0 0 2px;
 }
-.submission-item__date { font-size: 11.5px; color: var(--color-text-subtle); margin: 0; }
+.submission-item__date { font-size: 11.5px; color: #94a3b8; margin: 0; }
 
 .decision-badge {
   padding: 3px 9px; border-radius: 6px;
   font-size: 12px; font-weight: 700; flex-shrink: 0;
 }
-.decision-badge--keep    { background: var(--color-success-bg); color: var(--color-success-dark); }
-.decision-badge--sell    { background: var(--color-primary-bg); color: var(--color-primary-darker); }
-.decision-badge--dispose { background: var(--color-danger-bg); color: var(--color-danger); }
+.decision-badge--keep    { background: #f0fdf4; color: #15803d; }
+.decision-badge--sell    { background: #eef2ff; color: #4338ca; }
+.decision-badge--dispose { background: #fef2f2; color: #dc2626; }
 
 /* ── 담당 특허 현황 ───────────────────────────────── */
 .patent-stats { display: flex; flex-direction: column; gap: 10px; }
@@ -625,14 +611,14 @@ onMounted(load)
 .patent-stat { display: flex; flex-direction: column; gap: 5px; }
 
 .patent-stat__bar-wrap {
-  height: 7px; background: var(--color-surface-muted); border-radius: 4px; overflow: hidden;
+  height: 7px; background: #f1f5f9; border-radius: 4px; overflow: hidden;
 }
 .patent-stat__bar {
   height: 100%; border-radius: 4px;
   transition: width .7s cubic-bezier(.4,0,.2,1);
 }
 .patent-stat__info { display: flex; justify-content: space-between; align-items: center; }
-.patent-stat__label { font-size: 12.5px; color: var(--color-text-secondary); font-weight: 500; }
+.patent-stat__label { font-size: 12.5px; color: #374151; font-weight: 500; }
 .patent-stat__count { font-size: 12.5px; font-weight: 700; }
 
 /* ── Lab 프로모 ──────────────────────────────────── */
@@ -641,26 +627,26 @@ onMounted(load)
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: linear-gradient(135deg, var(--color-surface-soft), var(--c-primary-50));
-  border: 1px solid var(--color-primary-border);
+  background: linear-gradient(135deg, #fafbff, #f5f3ff);
+  border: 1px solid #e0e7ff;
   border-radius: 12px;
   text-decoration: none;
   margin-top: 4px;
   transition: border-color .15s, background .15s;
 }
-.lab-promo:hover { border-color: var(--c-primary-200); background: var(--c-primary-50); }
+.lab-promo:hover { border-color: #c7d2fe; background: #f0edff; }
 
 .lab-promo__icon {
   width: 36px; height: 36px;
-  background: var(--color-primary-bg);
+  background: #eef2ff;
   border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-primary);
+  color: #6366f1;
   flex-shrink: 0;
 }
 
-.lab-promo__title { font-size: 13.5px; font-weight: 700; color: var(--color-text); margin: 0 0 2px; }
-.lab-promo__desc  { font-size: 12px; color: var(--color-text-muted); margin: 0; }
+.lab-promo__title { font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
+.lab-promo__desc  { font-size: 12px; color: #64748b; margin: 0; }
 </style>

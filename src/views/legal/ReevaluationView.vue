@@ -64,7 +64,7 @@
         >
           <option value="">전체</option>
           <option value="-1">미배정</option>
-          <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+          <option v-for="d in sortedDepartments" :key="d.id" :value="d.id">{{ d.name }}</option>
         </select>
       </div>
       <div class="sub-filter-divider" />
@@ -235,7 +235,7 @@
               <p v-if="!bulkAssignMode" class="modal__patent-name">{{ assignTarget?.title }}</p>
               <div class="dept-select-list">
                 <label
-                  v-for="d in departments"
+                  v-for="d in sortedDepartments"
                   :key="d.id"
                   class="dept-option"
                   :class="{ 'dept-option--selected': assignDeptId === d.id }"
@@ -347,6 +347,10 @@ const departments = ref<Department[]>([
   { id: 4, name: 'AI 사업부' },
   { id: 5, name: '소재 사업부' },
 ])
+
+const sortedDepartments = computed(() =>
+  [...departments.value].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+)
 
 // ── 타입 ────────────────────────────────────────────
 interface ReevalItem {
