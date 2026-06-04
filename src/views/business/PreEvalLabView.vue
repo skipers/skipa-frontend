@@ -19,10 +19,19 @@ interface EvaluationResult {
   metrics: EvaluationMetric[]
 }
 
+interface EvaluationInputs {
+  patentName: string
+  techDescription: string
+  claimInputs: string[]
+  relatedBusiness: string
+  targetCountries: string
+}
+
 interface EvaluationHistoryItem {
   id: string
   patentName: string
   evaluatedAt: string
+  inputs: EvaluationInputs
   evaluation: EvaluationResult
 }
 
@@ -40,6 +49,13 @@ const DUMMY_HISTORY: EvaluationHistoryItem[] = [
     id: 'demo-3',
     patentName: '머신러닝 기반 웨이퍼 불량 검출 시스템',
     evaluatedAt: '2026-03-10T09:30:00.000Z',
+    inputs: {
+      patentName: '머신러닝 기반 웨이퍼 불량 검출 시스템',
+      techDescription: 'CNN 기반 이미지 분류 모델을 활용하여 웨이퍼 표면의 불량을 실시간으로 검출하는 시스템입니다.',
+      claimInputs: ['웨이퍼 이미지를 입력받아 불량 여부를 분류하는 단계', '불량 위치를 히트맵으로 시각화하는 단계'],
+      relatedBusiness: '반도체 제조 공정 품질관리',
+      targetCountries: '한국, 미국, 일본',
+    },
     evaluation: {
       ipc: 'G06T 7/00',
       grade: 'A',
@@ -56,6 +72,13 @@ const DUMMY_HISTORY: EvaluationHistoryItem[] = [
     id: 'demo-2',
     patentName: '5G 기반 실시간 데이터 압축 알고리즘',
     evaluatedAt: '2026-02-25T14:00:00.000Z',
+    inputs: {
+      patentName: '5G 기반 실시간 데이터 압축 알고리즘',
+      techDescription: '5G 네트워크 환경에서 지연 없이 대용량 데이터를 압축 전송하는 알고리즘입니다.',
+      claimInputs: ['적응형 압축률 조절 방법'],
+      relatedBusiness: '통신 인프라 및 클라우드 서비스',
+      targetCountries: '한국, 미국, 유럽',
+    },
     evaluation: {
       ipc: 'H04L 29/08',
       grade: 'B',
@@ -72,6 +95,13 @@ const DUMMY_HISTORY: EvaluationHistoryItem[] = [
     id: 'demo-1',
     patentName: '자율주행 장애물 회피 경로 계획 기술',
     evaluatedAt: '2026-01-15T11:00:00.000Z',
+    inputs: {
+      patentName: '자율주행 장애물 회피 경로 계획 기술',
+      techDescription: '라이다 및 카메라 센서 융합을 통해 동적 장애물을 실시간으로 감지하고 최적 경로를 재계획하는 기술입니다.',
+      claimInputs: ['센서 융합으로 장애물을 감지하는 단계', '충돌 없는 경로를 실시간 재계획하는 단계', '경로 전환을 차량에 전달하는 단계'],
+      relatedBusiness: '자율주행 차량 및 모빌리티 플랫폼',
+      targetCountries: '한국, 미국, 독일, 중국',
+    },
     evaluation: {
       ipc: 'B60W 50/00',
       grade: 'S',
@@ -138,6 +168,10 @@ const displayedEvaluation = computed<EvaluationResult | null>(() => {
   }
   return evaluation.value
 })
+
+const selectedHistoryItem = computed(() =>
+  history.value.find((item) => item.id === selectedHistoryId.value) ?? null
+)
 
 // ── 유틸 ─────────────────────────────────────────────
 const gradeDescriptions: Record<Grade, string> = {
@@ -226,6 +260,13 @@ function startEvaluation() {
     id: `${Date.now()}`,
     patentName: patentName.value.trim(),
     evaluatedAt: new Date().toISOString(),
+    inputs: {
+      patentName: patentName.value.trim(),
+      techDescription: techDescription.value.trim(),
+      claimInputs: claimInputs.value.map((c) => c.trim()).filter(Boolean),
+      relatedBusiness: relatedBusiness.value.trim(),
+      targetCountries: targetCountries.value.trim(),
+    },
     evaluation: result,
   }
   history.value.unshift(item)
@@ -381,60 +422,105 @@ onBeforeUnmount(() => {
               <path d="M15 18l-6-6 6-6"/>
             </svg>
           </button>
-          <h2 class="panel-title">발명 정보 입력</h2>
+          <!-- 읽기 전용 뷰 (히스토리 선택 시) -->
+          <template v-if="selectedHistoryItem">
+            <div class="readonly-header">
+              <button class="btn-back" type="button" @click="resetAssessment">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 12H5M12 5l-7 7 7 7"/>
+                </svg>
+                새 평가로 돌아가기
+              </button>
+              <h2 class="panel-title readonly-panel-title">{{ selectedHistoryItem.patentName }}</h2>
+              <p class="readonly-date">평가일 {{ formatDate(selectedHistoryItem.evaluatedAt) }}</p>
+            </div>
 
-          <form class="form-stack" @submit.prevent="startEvaluation">
-            <label class="field">
-              <span class="field__label">특허명 <em>*</em></span>
-              <input v-model="patentName" type="text" placeholder="예: 영상 분석 기반 위험 예측 시스템" />
-            </label>
-
-            <label class="field">
-              <span class="field__label">기술 설명 <em>*</em></span>
-              <textarea v-model="techDescription" rows="4" placeholder="핵심 기술의 작동 방식, 차별점, 활용 맥락을 입력하세요." />
-            </label>
-
-            <div class="claim-group">
-              <span class="field__label">청구항</span>
-              <div class="claim-list">
-                <div v-for="(_, index) in claimInputs" :key="index" class="claim-row">
-                  <textarea
-                    v-model="claimInputs[index]"
-                    class="claim-textarea"
-                    rows="2"
-                    placeholder="청구항 내용을 입력하세요."
-                  />
-                  <button
-                    class="claim-btn"
-                    type="button"
-                    @click="index === claimInputs.length - 1 ? addClaimInput() : removeClaimInput(index)"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                      <template v-if="index === claimInputs.length - 1">
-                        <path d="M12 5v14M5 12h14"/>
-                      </template>
-                      <template v-else>
-                        <path d="M18 6 6 18M6 6l12 12"/>
-                      </template>
-                    </svg>
-                  </button>
+            <div class="readonly-fields">
+              <div class="readonly-field">
+                <p class="readonly-field__label">특허명</p>
+                <p class="readonly-field__value">{{ selectedHistoryItem.inputs.patentName || '-' }}</p>
+              </div>
+              <div class="readonly-field">
+                <p class="readonly-field__label">기술 설명</p>
+                <p class="readonly-field__value">{{ selectedHistoryItem.inputs.techDescription || '-' }}</p>
+              </div>
+              <div class="readonly-field">
+                <p class="readonly-field__label">청구항</p>
+                <div v-if="selectedHistoryItem.inputs.claimInputs.length" class="readonly-field__value readonly-field__value--claims">
+                  <ol class="readonly-claim-list">
+                    <li v-for="(claim, i) in selectedHistoryItem.inputs.claimInputs" :key="i">{{ claim }}</li>
+                  </ol>
                 </div>
+                <p v-else class="readonly-field__value readonly-field__value--empty">-</p>
+              </div>
+              <div class="readonly-field">
+                <p class="readonly-field__label">관련 사업</p>
+                <p class="readonly-field__value">{{ selectedHistoryItem.inputs.relatedBusiness || '-' }}</p>
+              </div>
+              <div class="readonly-field">
+                <p class="readonly-field__label">출원 예정 국가</p>
+                <p class="readonly-field__value">{{ selectedHistoryItem.inputs.targetCountries || '-' }}</p>
               </div>
             </div>
+          </template>
 
-            <div class="two-col">
-              <label class="field">
-                <span class="field__label">관련 사업</span>
-                <input v-model="relatedBusiness" type="text" placeholder="예: 반도체 제조 공정 품질관리" />
-              </label>
-              <label class="field">
-                <span class="field__label">출원 예정 국가</span>
-                <input v-model="targetCountries" type="text" placeholder="예: 한국, 미국, 유럽" />
-              </label>
-            </div>
+          <!-- 입력 폼 -->
+          <template v-else>
+            <h2 class="panel-title">발명 정보 입력</h2>
 
-            <button class="btn-primary" type="submit" :disabled="!isStartEnabled">평가 시작</button>
-          </form>
+            <form class="form-stack" @submit.prevent="startEvaluation">
+              <label class="field">
+                <span class="field__label">특허명 <em>*</em></span>
+                <input v-model="patentName" type="text" placeholder="예: 영상 분석 기반 위험 예측 시스템" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">기술 설명 <em>*</em></span>
+                <textarea v-model="techDescription" rows="4" placeholder="핵심 기술의 작동 방식, 차별점, 활용 맥락을 입력하세요." />
+              </label>
+
+              <div class="claim-group">
+                <span class="field__label">청구항</span>
+                <div class="claim-list">
+                  <div v-for="(_, index) in claimInputs" :key="index" class="claim-row">
+                    <textarea
+                      v-model="claimInputs[index]"
+                      class="claim-textarea"
+                      rows="2"
+                      placeholder="청구항 내용을 입력하세요."
+                    />
+                    <button
+                      class="claim-btn"
+                      type="button"
+                      @click="index === claimInputs.length - 1 ? addClaimInput() : removeClaimInput(index)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <template v-if="index === claimInputs.length - 1">
+                          <path d="M12 5v14M5 12h14"/>
+                        </template>
+                        <template v-else>
+                          <path d="M18 6 6 18M6 6l12 12"/>
+                        </template>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="two-col">
+                <label class="field">
+                  <span class="field__label">관련 사업</span>
+                  <input v-model="relatedBusiness" type="text" placeholder="예: 반도체 제조 공정 품질관리" />
+                </label>
+                <label class="field">
+                  <span class="field__label">출원 예정 국가</span>
+                  <input v-model="targetCountries" type="text" placeholder="예: 한국, 미국, 유럽" />
+                </label>
+              </div>
+
+              <button class="btn-primary" type="submit" :disabled="!isStartEnabled">평가 시작</button>
+            </form>
+          </template>
         </section>
 
         <!-- 평가 결과 -->
@@ -806,6 +892,78 @@ onBeforeUnmount(() => {
   transform: translateY(-1px);
 }
 .btn-primary:disabled { background: #94a3b8; box-shadow: none; cursor: not-allowed; }
+
+/* ── 읽기 전용 뷰 ─────────────────────────────────── */
+.readonly-header { margin-bottom: 24px; }
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  margin-bottom: 14px;
+  transition: color 0.13s;
+}
+.btn-back:hover { color: var(--accent-hover); }
+.btn-back svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+.readonly-panel-title { margin-bottom: 4px; }
+
+.readonly-date {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.readonly-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.readonly-field { display: flex; flex-direction: column; gap: 6px; }
+
+.readonly-field__label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #223247;
+  margin: 0;
+}
+
+.readonly-field__value {
+  font-size: 13.5px;
+  color: #374151;
+  line-height: 1.7;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.readonly-field__value--empty { color: #94a3b8; }
+.readonly-field__value--claims { padding: 10px 14px; }
+
+.readonly-claim-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.readonly-claim-list li {
+  font-size: 13.5px;
+  color: #374151;
+  line-height: 1.65;
+}
 
 /* ── 결과 패널 ────────────────────────────────────── */
 .empty-state {
