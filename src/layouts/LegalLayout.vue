@@ -180,7 +180,18 @@ const currentPageTitle = computed(() => {
 })
 
 function isActive(to: string) {
-  if (to === '/legal/patent-search') return route.path.startsWith('/legal/patent-search')
+  const isDetailPage = !!route.path.match(/^\/legal\/patent-search\/\d+$/)
+  const fromParam    = route.query.from
+
+  const isFromReevaluation = isDetailPage && fromParam === 'reevaluation'
+  const isFromExpiring     = isDetailPage && fromParam === 'expiring'
+
+  if (to === '/legal/reevaluation') return route.path === '/legal/reevaluation' || isFromReevaluation
+  if (to === '/legal/expiring')     return route.path === '/legal/expiring'     || isFromExpiring
+  if (to === '/legal/patent-search') {
+    if (isFromReevaluation || isFromExpiring) return false
+    return route.path.startsWith('/legal/patent-search')
+  }
   return route.path.startsWith(to)
 }
 

@@ -95,7 +95,7 @@
             v-for="item in filteredItems"
             :key="item.id"
             class="expiry-item"
-            @click="router.push(`/legal/patent-search/${item.id}`)"
+            @click="router.push(`/legal/patent-search/${item.id}?from=expiring`)"
           >
             <div class="expiry-item__urgency" :class="`urgency--${item.urgency}`">
               <span class="urgency-dot" />
@@ -161,7 +161,7 @@
                 class="cal-event"
                 :class="`cal-event--${ev.urgency}`"
                 :title="ev.title"
-                @click="router.push(`/legal/patent-search/${ev.id}`)"
+                @click="router.push(`/legal/patent-search/${ev.id}?from=expiring`)"
               >
                 {{ ev.title.slice(0, 10) }}{{ ev.title.length > 10 ? '…' : '' }}
               </div>
@@ -173,7 +173,7 @@
         <!-- 선택한 날 이벤트 -->
         <div v-if="selectedDayEvents.length" class="cal-detail">
           <h4 class="cal-detail__title">{{ selectedDateStr }} 만료 특허</h4>
-          <div v-for="ev in selectedDayEvents" :key="ev.id" class="cal-detail-item" @click="router.push(`/legal/patent-search/${ev.id}`)">
+          <div v-for="ev in selectedDayEvents" :key="ev.id" class="cal-detail-item" @click="router.push(`/legal/patent-search/${ev.id}?from=expiring`)">
             <div class="urgency-dot" :class="`urgency-dot--${ev.urgency}`" />
             <span>{{ ev.title }}</span>
           </div>
