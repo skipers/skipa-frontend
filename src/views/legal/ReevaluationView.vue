@@ -23,7 +23,7 @@
     <!-- 진행 요약 바 -->
     <div class="progress-bar-card">
       <div class="progress-bar-card__info">
-        <span class="progress-bar-card__label">분기 처리 현황</span>
+        <span class="progress-bar-card__label">처리 현황</span>
         <span class="progress-bar-card__pct">{{ progressPct }}%</span>
       </div>
       <div class="progress-track">
@@ -121,6 +121,17 @@
         <p class="table-toolbar__total">총 <strong>{{ totalItems }}</strong>건</p>
       </div>
 
+      <!-- 열 헤더 -->
+      <div class="col-header">
+        <div class="col-header__check" />
+        <div class="col-header__cell">특허명</div>
+        <div class="col-header__cell col-header__appnum">출원번호</div>
+        <div class="col-header__cell">기술 분야</div>
+        <div class="col-header__cell">담당 사업부</div>
+        <div class="col-header__cell col-header__decision">결정</div>
+        <div />
+      </div>
+
       <!-- 로딩 스켈레톤 -->
       <div v-if="loading" class="skel-rows">
         <div class="skel-row" v-for="n in 8" :key="n" />
@@ -161,16 +172,21 @@
                 <span class="item-status-dot" />
                 {{ reviewStatusLabel(item.reviewStatus) }}
               </span>
-              <span v-if="item.isOverdue" class="overdue-badge">기한 초과</span>
+
               <h4 class="item-title">{{ item.title }}</h4>
             </div>
-            <div class="item-meta">
-              <span class="meta-tag">{{ item.applicationNumber }}</span>
-              <span v-if="item.techField" class="meta-tag">{{ item.techField }}</span>
-              <span v-if="item.expiryDate" class="meta-tag meta-tag--expiry">
-                만료 {{ formatDate(item.expiryDate) }}
-              </span>
-            </div>
+            <p v-if="item.summary" class="item-summary">{{ item.summary }}</p>
+          </div>
+
+          <!-- 출원번호 -->
+          <div class="item-appnum" @click="goDetail(item.id)">
+            <span class="mono">{{ item.applicationNumber }}</span>
+          </div>
+
+          <!-- 기술 분야 -->
+          <div class="item-field" @click="goDetail(item.id)">
+            <span v-if="item.techField" class="field-tag">{{ item.techField }}</span>
+            <span v-else class="text-muted">—</span>
           </div>
 
           <!-- 담당 사업부 -->
@@ -233,17 +249,32 @@
             </div>
             <div class="modal__body">
               <p v-if="!bulkAssignMode" class="modal__patent-name">{{ assignTarget?.title }}</p>
+              <div class="dept-search-wrap">
+                <svg class="dept-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input
+                  v-model="deptSearch"
+                  type="text"
+                  class="dept-search-input"
+                  placeholder="사업부 검색"
+                  autocomplete="off"
+                />
+              </div>
               <div class="dept-select-list">
-                <label
-                  v-for="d in sortedDepartments"
-                  :key="d.id"
-                  class="dept-option"
-                  :class="{ 'dept-option--selected': assignDeptId === d.id }"
-                >
-                  <input type="radio" :value="d.id" v-model="assignDeptId" />
-                  <span class="dept-option__dot" />
-                  <span class="dept-option__name">{{ d.name }}</span>
-                </label>
+                <template v-if="filteredDepartments.length">
+                  <label
+                    v-for="d in filteredDepartments"
+                    :key="d.id"
+                    class="dept-option"
+                    :class="{ 'dept-option--selected': assignDeptId === d.id }"
+                  >
+                    <input type="radio" :value="d.id" v-model="assignDeptId" />
+                    <span class="dept-option__dot" />
+                    <span class="dept-option__name">{{ d.name }}</span>
+                  </label>
+                </template>
+                <p v-else class="dept-no-result">검색 결과가 없습니다</p>
               </div>
             </div>
             <div class="modal__footer">
@@ -274,16 +305,22 @@
             <div class="modal__body">
               <div class="send-summary">
                 <div class="send-summary__row">
-                  <span>선택 특허</span>
-                  <strong>{{ selectedIds.size }}건</strong>
+                  <span>전송 대상</span>
+                  <strong>{{ selectedIds.size - unassignedCount }}건</strong>
                 </div>
-                <div class="send-summary__row">
-                  <span>분기</span>
-                  <strong>{{ quarterLabel }}</strong>
+                <div class="send-summary__divider" />
+                <div
+                  v-for="row in deptBreakdown"
+                  :key="row.deptId"
+                  class="send-summary__row send-summary__row--dept"
+                >
+                  <span class="send-summary__dept-dot" />
+                  <span>{{ row.deptName }}</span>
+                  <strong>{{ row.count }}건</strong>
                 </div>
                 <div class="send-summary__row send-summary__row--warn" v-if="unassignedCount > 0">
-                  <span>⚠️ 미배정 특허</span>
-                  <strong>{{ unassignedCount }}건 (제외됨)</strong>
+                  <span>⚠️ 미배정 (제외)</span>
+                  <strong>{{ unassignedCount }}건</strong>
                 </div>
               </div>
               <p class="send-note">배정된 사업부에 검토 요청이 전달됩니다. 전송 후 취소할 수 없습니다.</p>
@@ -339,13 +376,27 @@ const assignTarget    = ref<ReevalItem | null>(null)
 const assignDeptId    = ref<number | null>(null)
 const assignLoading   = ref(false)
 const bulkAssignMode  = ref(false)
+const deptSearch      = ref('')
+
+const filteredDepartments = computed(() => {
+  const q = deptSearch.value.trim().toLowerCase()
+  return q ? sortedDepartments.value.filter(d => d.name.toLowerCase().includes(q)) : sortedDepartments.value
+})
 
 // mock 부서 목록 (실제: GET /departments)
 const departments = ref<Department[]>([
-  { id: 2, name: '반도체 사업부' },
-  { id: 3, name: '배터리 사업부' },
-  { id: 4, name: 'AI 사업부' },
-  { id: 5, name: '소재 사업부' },
+  { id: 2,  name: '반도체 사업부' },
+  { id: 3,  name: '배터리 사업부' },
+  { id: 4,  name: 'AI 사업부' },
+  { id: 5,  name: '소재 사업부' },
+  { id: 6,  name: '디스플레이 사업부' },
+  { id: 7,  name: '전장 사업부' },
+  { id: 8,  name: '에너지 사업부' },
+  { id: 9,  name: '바이오 사업부' },
+  { id: 10, name: '로봇 사업부' },
+  { id: 11, name: '통신 사업부' },
+  { id: 12, name: '화학 사업부' },
+  { id: 13, name: '의료기기 사업부' },
 ])
 
 const sortedDepartments = computed(() =>
@@ -358,7 +409,7 @@ interface ReevalItem {
   title: string
   applicationNumber: string
   techField?: string
-  expiryDate?: string
+  summary?: string
   departmentId?: number
   decision?: string | null
   reviewStatus: 'unassigned' | 'requested' | 'overdue' | 'done'
@@ -419,6 +470,18 @@ const unassignedCount = computed(() =>
   }).length
 )
 
+// ── 사업부별 배분 ─────────────────────────────────────
+const deptBreakdown = computed(() => {
+  const map = new Map<number, number>()
+  ;[...selectedIds].forEach(id => {
+    const item = items.value.find(i => i.id === id)
+    if (item?.departmentId) map.set(item.departmentId, (map.get(item.departmentId) ?? 0) + 1)
+  })
+  return [...map.entries()]
+    .map(([deptId, count]) => ({ deptId, deptName: deptName(deptId), count }))
+    .sort((a, b) => a.deptName.localeCompare(b.deptName, 'ko'))
+})
+
 // ── 유틸 ────────────────────────────────────────────
 function deptName(id?: number) {
   return departments.value.find(d => d.id === id)?.name ?? `사업부 #${id}`
@@ -432,25 +495,20 @@ function decisionLabel(d: string) {
   return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
 }
 
-function formatDate(d?: string) {
-  if (!d) return '—'
-  return d.slice(0, 10).replace(/-/g, '.')
-}
-
 // ── Mock 특허 목록 ───────────────────────────────────
 const mockPatents: ReevalItem[] = [
-  { id: 1,  title: 'NF3 가스 이물질 제거 시스템',         applicationNumber: '10-2026-0012345', techField: '반도체', expiryDate: '2026-08-15', departmentId: 2, decision: 'KEEP',    reviewStatus: 'done',       isOverdue: false },
-  { id: 2,  title: '플라즈마 식각 장치 제어 방법',          applicationNumber: '10-2025-0098732', techField: '반도체', expiryDate: '2026-09-22', departmentId: 2, decision: null,      reviewStatus: 'requested',  isOverdue: false },
-  { id: 3,  title: '배터리 전극 코팅 균일도 향상',          applicationNumber: '10-2025-0041200', techField: '배터리', expiryDate: '2026-10-05', departmentId: 3, decision: 'KEEP',    reviewStatus: 'done',       isOverdue: false },
-  { id: 4,  title: '신소재 열 전도성 향상 방법',            applicationNumber: '10-2024-0081900', techField: '소재',   expiryDate: '2027-01-20', departmentId: 5, decision: 'DISPOSE', reviewStatus: 'done',       isOverdue: false },
-  { id: 5,  title: 'AI 기반 품질 검사 자동화 시스템',       applicationNumber: '10-2026-0031891', techField: 'AI/SW',  expiryDate: '2027-03-01', departmentId: 4, decision: null,      reviewStatus: 'requested',  isOverdue: false },
-  { id: 6,  title: '반도체 세정 공정 최적화 방법',          applicationNumber: '10-2023-0055100', techField: '반도체', expiryDate: '2026-07-10', departmentId: undefined, decision: null, reviewStatus: 'unassigned', isOverdue: false },
-  { id: 7,  title: '리튬이온 배터리 수명 예측 알고리즘',    applicationNumber: '10-2025-0067432', techField: '배터리', expiryDate: '2027-05-14', departmentId: 3, decision: null,      reviewStatus: 'overdue',    isOverdue: true  },
-  { id: 8,  title: '고온 내열 소재 합성 공정',              applicationNumber: '10-2024-0012980', techField: '소재',   expiryDate: '2026-11-30', departmentId: 5, decision: null,      reviewStatus: 'requested',  isOverdue: false },
-  { id: 9,  title: '반도체 패키징 방열 구조',               applicationNumber: '10-2026-0044211', techField: '반도체', expiryDate: '2027-02-08', departmentId: 2, decision: null,      reviewStatus: 'requested',  isOverdue: false },
-  { id: 10, title: '신경망 기반 결함 검출 시스템',          applicationNumber: '10-2025-0029004', techField: 'AI/SW',  expiryDate: '2027-07-22', departmentId: 4, decision: null,      reviewStatus: 'requested',  isOverdue: false },
-  { id: 11, title: '전고체 배터리 전해질 조성물',           applicationNumber: '10-2024-0093100', techField: '배터리', expiryDate: '2026-12-19', departmentId: undefined, decision: null, reviewStatus: 'unassigned', isOverdue: false },
-  { id: 12, title: '산화막 성장 제어 방법',                 applicationNumber: '10-2023-0077650', techField: '반도체', expiryDate: '2027-04-03', departmentId: 2, decision: 'DISPOSE', reviewStatus: 'done',       isOverdue: false },
+  { id: 1,  title: 'NF3 가스 이물질 제거 시스템',         applicationNumber: '10-2026-0012345', techField: '반도체', summary: '반도체 식각 공정에서 발생하는 NF3 가스 내 미세 이물질을 효율적으로 포집·제거하기 위한 복합 필터 시스템으로, 정전 포집 방식과 물리적 여과를 결합하여 기존 대비 제거 효율 98.5% 이상을 달성한다.', departmentId: 2, decision: 'KEEP',    reviewStatus: 'done',       isOverdue: false },
+  { id: 2,  title: '플라즈마 식각 장치 제어 방법',          applicationNumber: '10-2025-0098732', techField: '반도체', summary: '플라즈마 밀도 및 에너지 분포를 실시간 센싱하여 RF 전력과 가스 유량을 자동 조절함으로써 식각 균일도를 향상시키는 피드백 제어 방법에 관한 발명이다.', departmentId: 2, decision: null,      reviewStatus: 'requested',  isOverdue: false },
+  { id: 3,  title: '배터리 전극 코팅 균일도 향상',          applicationNumber: '10-2025-0041200', techField: '배터리', summary: '슬롯-다이 코터의 유량 맥동을 억제하는 능동형 압력 보상 메커니즘을 적용하여 전극 활물질 코팅 두께 편차를 ±0.3 μm 이내로 제어하는 기술이다.', departmentId: 3, decision: 'KEEP',    reviewStatus: 'done',       isOverdue: false },
+  { id: 4,  title: '신소재 열 전도성 향상 방법',            applicationNumber: '10-2024-0081900', techField: '소재',   summary: '그래핀-질화붕소 복합체를 고분자 매트릭스에 수직 배향으로 분산시켜 두께 방향 열전도도를 기존 대비 4.2배 향상시키는 소재 합성 및 성형 방법이다.', departmentId: 5, decision: 'DISPOSE', reviewStatus: 'done',       isOverdue: false },
+  { id: 5,  title: 'AI 기반 품질 검사 자동화 시스템',       applicationNumber: '10-2026-0031891', techField: 'AI/SW',  summary: '비전 트랜스포머 모델과 능동 학습 루프를 결합하여 반도체 외관 결함을 실시간으로 분류하고, 소량의 레이블 데이터만으로도 고정밀 검사를 수행하는 자동화 시스템이다.', departmentId: 4, decision: null,      reviewStatus: 'requested',  isOverdue: false },
+  { id: 6,  title: '반도체 세정 공정 최적화 방법',          applicationNumber: '10-2023-0055100', techField: '반도체', summary: '습식 세정 공정에서 메가소닉 에너지와 희석 HF를 순차 적용하는 최적 시퀀스를 제안하며, 파티클 제거율을 유지하면서 산화막 손실을 30% 이상 저감한다.', departmentId: undefined, decision: null, reviewStatus: 'unassigned', isOverdue: false },
+  { id: 7,  title: '리튬이온 배터리 수명 예측 알고리즘',    applicationNumber: '10-2025-0067432', techField: '배터리', summary: '사이클 충·방전 데이터에서 추출한 증분 용량 곡선 특징을 LSTM 모델에 입력하여 잔여 수명(RUL)을 95% 신뢰구간으로 예측하는 알고리즘이다.', departmentId: 3, decision: null,      reviewStatus: 'overdue',    isOverdue: true  },
+  { id: 8,  title: '고온 내열 소재 합성 공정',              applicationNumber: '10-2024-0012980', techField: '소재',   summary: '텅스텐 카바이드 나노입자를 실리콘 카바이드 기지에 스파크 플라즈마 소결로 치밀화하여 1400°C 이상의 고온 환경에서 기계적 강도와 산화 저항성을 동시에 확보하는 공정이다.', departmentId: 5, decision: null,      reviewStatus: 'requested',  isOverdue: false },
+  { id: 9,  title: '반도체 패키징 방열 구조',               applicationNumber: '10-2026-0044211', techField: '반도체', summary: '칩 후면에 마이크로 채널 히트싱크를 직접 집적하고 이중 유체 루프로 냉각하는 구조를 통해 고발열 AI 가속기 칩의 접합 온도를 25°C 이상 저감하는 패키징 기술이다.', departmentId: 2, decision: null,      reviewStatus: 'requested',  isOverdue: false },
+  { id: 10, title: '신경망 기반 결함 검출 시스템',          applicationNumber: '10-2025-0029004', techField: 'AI/SW',  summary: '다중 스케일 컨볼루션 네트워크와 어텐션 게이트를 결합하여 X선 및 초음파 이미지에서 내부 균열·기공 등 미세 결함을 동시에 검출하는 비파괴 검사 시스템이다.', departmentId: 4, decision: null,      reviewStatus: 'requested',  isOverdue: false },
+  { id: 11, title: '전고체 배터리 전해질 조성물',           applicationNumber: '10-2024-0093100', techField: '배터리', summary: '황화물계 고체 전해질에 Li₆PS₅Cl 유도체를 도입하고 입계 저항 최소화 소결 조건을 최적화하여 이온 전도도 10 mS/cm 이상을 실온에서 구현하는 조성물이다.', departmentId: undefined, decision: null, reviewStatus: 'unassigned', isOverdue: false },
+  { id: 12, title: '산화막 성장 제어 방법',                 applicationNumber: '10-2023-0077650', techField: '반도체', summary: '원자층 증착(ALD) 사이클 수와 전구체 노출 시간을 정밀 제어하여 High-k 게이트 산화막의 두께 균일도 및 계면 트랩 밀도를 개선하는 공정 제어 방법이다.', departmentId: 2, decision: 'DISPOSE', reviewStatus: 'done',       isOverdue: false },
 ]
 
 // ── 데이터 로드 ──────────────────────────────────────
@@ -465,7 +523,7 @@ async function fetchList(p = 1) {
       title: patent.title,
       applicationNumber: patent.applicationNumber,
       techField: (patent as any).techField,
-      expiryDate: patent.expiryDate,
+      summary: (patent as any).summary,
       departmentId: i % 3 === 0 ? undefined : [2, 3, 4][i % 3],
       decision: i % 5 === 4 ? 'KEEP' : i % 7 === 6 ? 'DISPOSE' : null,
       reviewStatus: (['unassigned', 'requested', 'overdue', 'done', 'requested'] as const)[i % 5],
@@ -513,6 +571,7 @@ function openAssign(item: ReevalItem) {
   assignTarget.value = item
   assignDeptId.value = item.departmentId ?? null
   bulkAssignMode.value = false
+  deptSearch.value = ''
   showAssignModal.value = true
 }
 
@@ -520,6 +579,7 @@ function openBulkAssign() {
   assignTarget.value = null
   assignDeptId.value = null
   bulkAssignMode.value = true
+  deptSearch.value = ''
   showAssignModal.value = true
 }
 
@@ -532,10 +592,24 @@ async function handleAssign() {
     } else if (assignTarget.value) {
       await patentsApi.assignDepartment(assignTarget.value.id, assignDeptId.value)
     }
+  } catch {
+    // API 미구현: mock 데이터 직접 업데이트
+    if (bulkAssignMode.value) {
+      ;[...selectedIds].forEach(id => {
+        const p = mockPatents.find(p => p.id === id)
+        if (p) p.departmentId = assignDeptId.value!
+      })
+    } else if (assignTarget.value) {
+      const p = mockPatents.find(p => p.id === assignTarget.value!.id)
+      if (p) p.departmentId = assignDeptId.value!
+    }
+  } finally {
+    assignLoading.value = false
     showAssignModal.value = false
+    const preserved = new Set(selectedIds)
     await fetchList(page.value)
-  } catch (e) { console.error(e) }
-  finally { assignLoading.value = false }
+    preserved.forEach(id => selectedIds.add(id))
+  }
 }
 
 // ── 검토 요청 전송 ───────────────────────────────────
@@ -551,11 +625,13 @@ async function handleSend() {
       quarter: `${d.getFullYear()}Q${Math.ceil((d.getMonth() + 1) / 3)}`,
       items: assignedItems.map(i => ({ patentId: i.id, departmentId: i.departmentId! })),
     })
+  } catch (e) { console.error(e) }
+  finally {
+    sending.value = false
     showSendModal.value = false
     selectedIds.clear()
     await fetchList(page.value)
-  } catch (e) { console.error(e) }
-  finally { sending.value = false }
+  }
 }
 
 function goDetail(id: number) { router.push(`/patents/${id}`) }
@@ -899,14 +975,38 @@ onMounted(() => {
 }
 .table-toolbar__total strong { color: var(--color-text); }
 
+/* ── 열 헤더 ─────────────────────────────────────── */
+.col-header {
+  display: grid;
+  grid-template-columns: 36px 1fr 150px 90px 180px 100px 36px;
+  gap: 20px;
+  padding: 8px 20px;
+  border-bottom: 1.5px solid var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.col-header__check { width: 36px; }
+
+.col-header__cell {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.col-header__appnum { padding-left: 28px; }
+.col-header__decision { text-align: center; }
+
 /* ── 재평가 목록 아이템 ───────────────────────────── */
 .reeval-list { display: flex; flex-direction: column; }
 
 .reeval-item {
   display: grid;
-  grid-template-columns: 36px 1fr 180px 100px 36px;
+  grid-template-columns: 36px 1fr 150px 90px 180px 100px 36px;
   align-items: center;
-  gap: 12px;
+  gap: 20px;
   padding: 14px 20px;
   border-bottom: 1px solid var(--color-surface-hover);
   transition: background .12s;
@@ -930,7 +1030,7 @@ onMounted(() => {
 .item-main {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
   min-width: 0;
 }
@@ -965,17 +1065,6 @@ onMounted(() => {
 .item-status--overdue    { background: var(--color-danger-bg); color: var(--color-danger); }
 .item-status--done       { background: var(--color-success-bg); color: var(--color-success-dark); }
 
-.overdue-badge {
-  display: inline-flex;
-  padding: 2px 7px;
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
-  border: 1px solid var(--color-danger-border);
-  border-radius: 5px;
-  font-size: 11px;
-  font-weight: 700;
-}
-
 .item-title {
   font-size: 13.5px;
   font-weight: 600;
@@ -986,24 +1075,44 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.item-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+.item-summary {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.meta-tag {
-  display: inline-block;
-  padding: 2px 7px;
-  background: var(--color-surface-hover);
-  border: 1px solid var(--color-border);
-  border-radius: 5px;
-  font-size: 11.5px;
-  color: var(--color-text-muted);
-  font-family: 'JetBrains Mono', monospace;
+.item-appnum {
+  cursor: pointer;
+  min-width: 0;
+  padding-left: 28px;
 }
-.meta-tag--expiry { color: var(--color-warn-dark); background: var(--color-warn-bg); border-color: var(--c-amber-200); font-family: inherit; }
+
+.item-field {
+  cursor: pointer;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 12px;
+  color: var(--c-slate-600);
+}
+
+.field-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--color-surface-muted);
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--c-slate-600);
+  font-weight: 500;
+}
+
+.text-muted { color: var(--c-slate-300); }
 
 /* 담당 사업부 셀 */
 .item-dept {
@@ -1158,15 +1267,54 @@ onMounted(() => {
   padding: 14px 24px 20px; border-top: 1px solid var(--color-surface-muted);
 }
 
-.dept-select-list { display: flex; flex-direction: column; gap: 6px; }
+.dept-search-wrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+.dept-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+.dept-search-input {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .13s;
+}
+.dept-search-input:focus { border-color: var(--color-primary); }
+.dept-search-input::placeholder { color: var(--color-text-subtle); }
+
+.dept-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.dept-select-list::-webkit-scrollbar { width: 4px; }
+.dept-select-list::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
+
 .dept-option {
   display: flex; align-items: center; gap: 10px;
-  padding: 11px 14px;
-  border: 1.5px solid var(--color-border);
-  border-radius: 10px;
+  padding: 9px 12px;
+  border: 1.5px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
-  transition: border-color .13s, background .13s;
+  transition: background .1s, border-color .1s;
 }
+.dept-option:hover { background: var(--color-surface-hover); }
 .dept-option input { display: none; }
 .dept-option--selected { border-color: var(--color-primary); background: var(--color-surface-soft); }
 .dept-option__dot {
@@ -1176,13 +1324,52 @@ onMounted(() => {
   transition: border-color .13s, background .13s;
 }
 .dept-option--selected .dept-option__dot { background: var(--color-primary); border-color: var(--color-primary); }
-.dept-option__name { font-size: 14px; font-weight: 500; color: var(--color-text); }
+.dept-option__name { font-size: 13.5px; font-weight: 500; color: var(--color-text); }
 
-.send-summary { background: var(--color-surface-hover); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
-.send-summary__row {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 13.5px; color: var(--color-text-secondary);
+.dept-no-result {
+  font-size: 13px;
+  color: var(--color-text-subtle);
+  text-align: center;
+  padding: 20px 0;
+  margin: 0;
 }
+
+.send-summary {
+  background: var(--color-surface-hover);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.send-summary__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13.5px;
+  color: var(--color-text-secondary);
+}
+.send-summary__row--dept {
+  gap: 8px;
+  justify-content: flex-start;
+  color: var(--color-text);
+}
+.send-summary__row--dept strong {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+}
+.send-summary__dept-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  flex-shrink: 0;
+}
+.send-summary__divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 2px 0;
+}
+.send-summary__row--warn { color: var(--color-danger); }
 .send-summary__row--warn strong { color: var(--color-danger); }
 .send-note { font-size: 12.5px; color: var(--color-text-subtle); margin: 0; line-height: 1.6; }
 

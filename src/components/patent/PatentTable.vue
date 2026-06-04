@@ -49,8 +49,16 @@
               만료일
               <SortIcon :active="sortKey === 'expiryDate'" :dir="sortDir" />
             </th>
-            <th class="col-status">상태</th>
             <th class="col-field">기술 분야</th>
+            <th
+              class="col-citation sortable"
+              :class="{ 'sort-active': sortKey === 'citationCount' }"
+              @click="toggleSort('citationCount')"
+            >
+              피인용
+              <SortIcon :active="sortKey === 'citationCount'" :dir="sortDir" />
+            </th>
+            <th class="col-status">상태</th>
             <th class="col-action" />
           </tr>
         </thead>
@@ -67,7 +75,7 @@
             <td class="col-title">
               <div class="patent-title-cell">
                 <span class="patent-title">{{ patent.title }}</span>
-                <span v-if="patent.manageNumber" class="patent-manage-num">{{ patent.manageNumber }}</span>
+                <span v-if="patent.summary" class="patent-summary">{{ patent.summary }}</span>
               </div>
             </td>
 
@@ -83,20 +91,26 @@
 
             <!-- 만료일 -->
             <td class="col-date">
-              <span :class="expiryClass(patent.expiryDate)">
+              <span :class="isExpired(patent.expiryDate) ? 'expiry--expired' : ''">
                 {{ formatDate(patent.expiryDate) }}
               </span>
-            </td>
-
-            <!-- 상태 -->
-            <td class="col-status">
-              <PatentStatusBadge :status="patent.status ?? 'REGISTERED'" />
             </td>
 
             <!-- 기술 분야 -->
             <td class="col-field">
               <span v-if="patent.techField" class="field-tag">{{ patent.techField }}</span>
               <span v-else class="text-muted">—</span>
+            </td>
+
+            <!-- 피인용 -->
+            <td class="col-citation">
+              <span v-if="patent.citationCount != null" class="citation-count">{{ patent.citationCount }}</span>
+              <span v-else class="text-muted">—</span>
+            </td>
+
+            <!-- 상태 -->
+            <td class="col-status">
+              <PatentStatusBadge :status="patent.status ?? 'REGISTERED'" />
             </td>
 
             <!-- 상세 이동 -->
@@ -137,12 +151,13 @@ export interface PatentRow {
   title: string
   applicationNumber: string
   registrationNumber?: string
-  manageNumber?: string
   applicationDate?: string
   expiryDate?: string
   status?: string
   techField?: string
   businessField?: string
+  summary?: string
+  citationCount?: number
 }
 
 const props = withDefaults(defineProps<{
@@ -177,13 +192,10 @@ function formatDate(d?: string) {
   return d.slice(0, 10).replace(/-/g, '.')
 }
 
-function expiryClass(d?: string) {
-  if (!d) return ''
-  const diff = (new Date(d).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  if (diff < 0)    return 'expiry expiry--expired'
-  if (diff < 365)  return 'expiry expiry--soon'
-  return ''
+function isExpired(d?: string) {
+  return !!d && new Date(d).getTime() < Date.now()
 }
+
 </script>
 
 <style scoped>
@@ -255,12 +267,13 @@ function expiryClass(d?: string) {
 }
 
 /* ── 셀 너비 ─────────────────────────────────────────── */
-.col-title   { min-width: 260px; }
-.col-number  { width: 160px; }
-.col-date    { width: 100px; white-space: nowrap; }
-.col-status  { width: 110px; }
-.col-field   { width: 110px; }
-.col-action  { width: 40px; text-align: right; }
+.col-title    { min-width: 260px; }
+.col-number   { width: 160px; }
+.col-date     { width: 100px; white-space: nowrap; }
+.col-status   { width: 110px; }
+.col-field    { width: 110px; }
+.col-citation { width: 70px; text-align: center; }
+.col-action   { width: 40px; text-align: right; }
 
 /* ── 특허명 셀 ───────────────────────────────────────── */
 .patent-title-cell {
@@ -279,10 +292,14 @@ function expiryClass(d?: string) {
   overflow: hidden;
 }
 
-.patent-manage-num {
-  font-size: 11.5px;
-  color: var(--color-text-subtle);
-  font-family: 'JetBrains Mono', 'Consolas', monospace;
+.patent-summary {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* ── 기타 셀 스타일 ──────────────────────────────────── */
@@ -292,8 +309,6 @@ function expiryClass(d?: string) {
   color: var(--c-slate-600);
 }
 
-.expiry--soon    { color: var(--color-warn-dark); font-weight: 600; }
-.expiry--expired { color: var(--color-danger); font-weight: 600; }
 
 .field-tag {
   display: inline-block;
@@ -306,6 +321,14 @@ function expiryClass(d?: string) {
 }
 
 .text-muted { color: var(--c-slate-300); }
+
+.citation-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.expiry--expired { color: var(--color-danger); font-weight: 600; }
 
 .row-arrow {
   display: flex;
