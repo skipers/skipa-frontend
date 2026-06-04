@@ -395,7 +395,7 @@ onMounted(loadAll)
 .legal-home {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   font-family: 'Pretendard', sans-serif;
 }
 
@@ -825,13 +825,16 @@ onMounted(loadAll)
 }
 
 .reply-item__badge {
-  padding: 3px 8px;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 20px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   flex-shrink: 0;
 }
-.reply-badge--keep    { background: #f0fdf4; color: #15803d; }
-.reply-badge--sell    { background: #eef2ff; color: #4338ca; }
-.reply-badge--dispose { background: #fef2f2; color: #dc2626; }
+.reply-badge--keep    { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.reply-badge--sell    { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+.reply-badge--dispose { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
 </style>

@@ -1,7 +1,7 @@
 <template>
   <div class="app-shell">
     <!-- 사이드바 -->
-    <aside class="sidebar" :class="{ 'sidebar--collapsed': collapsed }">
+    <aside class="sidebar">
       <div class="sidebar__inner">
 
         <!-- 로고 -->
@@ -13,79 +13,55 @@
               <circle cx="14" cy="14" r="2" fill="currentColor"/>
             </svg>
           </span>
-          <transition name="fade-slide">
-            <span v-if="!collapsed" class="sidebar__logo-text">SKIPA</span>
-          </transition>
+          <span class="sidebar__logo-text">SKIPA</span>
         </div>
 
         <!-- 역할 배지 -->
-        <transition name="fade-slide">
-          <div v-if="!collapsed" class="sidebar__role-badge">
-            <span class="sidebar__role-dot" />
-            Legal AI팀
-          </div>
-        </transition>
+        <div class="sidebar__role-badge">
+          <span class="sidebar__role-dot" />
+          Legal AI팀
+        </div>
 
         <!-- 네비게이션 -->
         <nav class="sidebar__nav">
-          <p class="sidebar__nav-label" v-if="!collapsed">메뉴</p>
+          <p class="sidebar__nav-label">메뉴</p>
           <RouterLink
             v-for="item in navItems"
             :key="item.name"
             :to="item.to"
             class="nav-item"
             :class="{ 'nav-item--active': isActive(item.to) }"
-            :title="collapsed ? item.label : undefined"
           >
             <span class="nav-item__icon" v-html="item.icon" />
-            <transition name="fade-slide">
-              <span v-if="!collapsed" class="nav-item__label">{{ item.label }}</span>
-            </transition>
-            <transition name="fade-slide">
-              <span v-if="!collapsed && item.badge" class="nav-item__badge">{{ item.badge }}</span>
-            </transition>
+            <span class="nav-item__label">{{ item.label }}</span>
+            <span v-if="item.badge" class="nav-item__badge">{{ item.badge }}</span>
           </RouterLink>
         </nav>
 
         <!-- 하단 영역 -->
         <div class="sidebar__bottom">
           <!-- 사용자 정보 -->
-          <div class="sidebar__user" :class="{ 'sidebar__user--compact': collapsed }">
+          <div class="sidebar__user">
             <div class="sidebar__avatar">
               {{ avatarInitial }}
             </div>
-            <transition name="fade-slide">
-              <div v-if="!collapsed" class="sidebar__user-info">
-                <p class="sidebar__user-name">{{ auth.user?.name ?? 'Legal AI팀' }}</p>
-                <p class="sidebar__user-role">{{ auth.user?.email ?? '' }}</p>
-              </div>
-            </transition>
+            <div class="sidebar__user-info">
+              <p class="sidebar__user-name">{{ auth.user?.name ?? 'Legal AI팀' }}</p>
+              <p class="sidebar__user-role">{{ auth.user?.email ?? '' }}</p>
+            </div>
           </div>
 
           <!-- 로그아웃 -->
-          <button class="sidebar__logout" @click="handleLogout" :title="collapsed ? '로그아웃' : undefined">
+          <button class="sidebar__logout" @click="handleLogout">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
-            <transition name="fade-slide">
-              <span v-if="!collapsed">로그아웃</span>
-            </transition>
+            <span>로그아웃</span>
           </button>
         </div>
       </div>
-
-      <!-- 접기 버튼 -->
-      <button class="sidebar__toggle" @click="collapsed = !collapsed" :aria-label="collapsed ? '사이드바 펼치기' : '사이드바 접기'">
-        <svg
-          width="14" height="14"
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-          :style="{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.25s' }"
-        >
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-      </button>
     </aside>
 
     <!-- 메인 콘텐츠 -->
@@ -96,13 +72,6 @@
           <h1 class="topbar__title">{{ currentPageTitle }}</h1>
         </div>
         <div class="topbar__right">
-          <!-- 특허 검색 바로가기 -->
-          <RouterLink to="/legal/patent-search" class="topbar__search-btn">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            특허 검색
-          </RouterLink>
           <NotificationDropdown />
         </div>
       </header>
@@ -116,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import NotificationDropdown from '@/components/ui/NotificationDropdown.vue'
@@ -124,7 +93,6 @@ import NotificationDropdown from '@/components/ui/NotificationDropdown.vue'
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const collapsed = ref(false)
 
 const avatarInitial = computed(() => {
   const name = auth.user?.name ?? 'L'
@@ -221,12 +189,7 @@ async function handleLogout() {
   position: sticky;
   top: 0;
   height: 100vh;
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-}
-
-.sidebar--collapsed {
-  width: 68px;
 }
 
 .sidebar__inner {
@@ -389,11 +352,6 @@ async function handleLogout() {
   white-space: nowrap;
 }
 
-.sidebar__user--compact {
-  padding: 10px 8px;
-  justify-content: center;
-}
-
 .sidebar__avatar {
   width: 32px; height: 32px;
   background: linear-gradient(135deg, #4f46e5, #7c3aed);
@@ -452,29 +410,6 @@ async function handleLogout() {
   color: #f87171;
 }
 
-/* 접기 버튼 */
-.sidebar__toggle {
-  position: absolute;
-  right: -12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 24px; height: 24px;
-  background: #1e293b;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: rgba(255,255,255,0.5);
-  z-index: 10;
-  transition: background 0.15s, color 0.15s;
-}
-
-.sidebar__toggle:hover {
-  background: #334155;
-  color: #fff;
-}
 
 /* ── 메인 영역 ───────────────────────────────────────── */
 .main-area {
@@ -556,20 +491,4 @@ async function handleLogout() {
   overflow-y: auto;
 }
 
-/* ── 전환 애니메이션 ──────────────────────────────────── */
-.fade-slide-enter-active {
-  transition: opacity 0.18s, transform 0.18s;
-}
-.fade-slide-leave-active {
-  transition: opacity 0.1s, transform 0.1s;
-  position: absolute;
-}
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateX(-6px);
-}
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateX(-4px);
-}
 </style>
