@@ -383,7 +383,7 @@ function formatDate(d?: string | null) {
   return d.slice(0, 10)
 }
 
-function goDetail(id: number) { router.push(`/biz/patent-search/${id}`) }
+function goDetail(id: number) { router.push(`/biz/patent-search/${id}?from=review`) }
 
 // ── 데이터 로드 ──────────────────────────────────────
 function fetchList(_p = 1) {

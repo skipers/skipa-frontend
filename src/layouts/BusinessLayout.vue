@@ -68,12 +68,7 @@
             </svg>
             특허 검색
           </RouterLink>
-          <button class="topbar__icon-btn" aria-label="알림">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-          </button>
+          <NotificationDropdown />
         </div>
       </header>
 
@@ -88,6 +83,7 @@
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import NotificationDropdown from '@/components/ui/NotificationDropdown.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -145,15 +141,20 @@ const currentPageTitle = computed(() => {
 })
 
 function isActive(to: string) {
-  // 특허 검색 상세(/biz/patent-search/:id)에서 from=management면 담당 특허 관리를 활성화
-  const isSearchDetailFromManagement =
-    route.path.match(/^\/biz\/patent-search\/\d+$/) && route.query.from === 'management'
+  const isDetailPage = !!route.path.match(/^\/biz\/patent-search\/\d+$/)
+  const fromParam    = route.query.from
 
+  const isFromManagement = isDetailPage && fromParam === 'management'
+  const isFromReview     = isDetailPage && fromParam === 'review'
+
+  if (to === '/biz/review') {
+    return route.path === '/biz/review' || isFromReview
+  }
   if (to === '/biz/patents') {
-    return route.path.startsWith('/biz/patents') || !!isSearchDetailFromManagement
+    return route.path.startsWith('/biz/patents') || isFromManagement
   }
   if (to === '/biz/patent-search') {
-    if (isSearchDetailFromManagement) return false
+    if (isFromManagement || isFromReview) return false
     return route.path.startsWith('/biz/patent-search')
   }
   return route.path.startsWith(to)

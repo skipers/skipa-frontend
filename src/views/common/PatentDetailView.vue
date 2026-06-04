@@ -1,5 +1,5 @@
 <template>
-  <div class="detail-page">
+  <div class="detail-page" :style="{ '--chat-width': chatPanelWidth }">
 
     <!-- 접근 권한 없음 -->
     <div v-if="accessDenied" class="access-denied">
@@ -424,12 +424,65 @@
 
     </template>
 
+    <!-- ── 챗봇 FAB ── -->
+    <button v-if="!chatbotOpen" class="chat-fab" type="button" aria-label="AI 챗봇에게 질문하기" @click="toggleChatbot">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    </button>
+
+    <!-- ── 챗봇 패널 ── -->
+    <aside class="chat-panel" :class="{ open: chatbotOpen, expanded: chatbotExpanded }">
+      <div class="chat-shell">
+        <header class="chat-header">
+          <button class="icon-button" type="button" @click="chatbotExpanded = !chatbotExpanded">
+            <svg v-if="!chatbotExpanded" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M5 9V5h4M19 15v4h-4M5 15v4h4M19 9V5h-4"/>
+            </svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M14 10V6h4M10 14v4H6M10 10 6 6M18 18l-4-4"/>
+            </svg>
+          </button>
+          <strong>SKIPA AI</strong>
+          <button class="icon-button" type="button" @click="closeChatbot">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18"/>
+            </svg>
+          </button>
+        </header>
+
+        <div ref="chatViewport" class="chat-body">
+          <div v-for="message in chatMessages" :key="message.id" class="chat-row" :class="message.role">
+            <div class="chat-bubble" :class="message.role">
+              <template v-if="message.typing">
+                <span class="typing-dots"><span/><span/><span/></span>
+              </template>
+              <template v-else>{{ message.text }}</template>
+            </div>
+          </div>
+        </div>
+
+        <form class="chat-composer" @submit.prevent="sendChatMessage">
+          <input v-model="chatInput" type="text" placeholder="특허에 대해 질문해 보세요." @keydown="handleChatKeydown"/>
+          <button type="submit">전송</button>
+        </form>
+      </div>
+    </aside>
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+
+type ChatRole = 'assistant' | 'user'
+interface ChatMessage {
+  id: number
+  role: ChatRole
+  text: string
+  typing?: boolean
+}
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
 import {
   MOCK_PATENTS, MOCK_REEVAL, MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS,
@@ -583,6 +636,70 @@ function setupObserver() {
   }
 }
 
+// ── 챗봇 ─────────────────────────────────────────────
+const chatbotOpen     = ref(false)
+const chatbotExpanded = ref(false)
+const chatInput       = ref('')
+const chatMessages    = ref<ChatMessage[]>([
+  { id: 1, role: 'assistant', text: `${patent.value?.title ?? '이 특허'}에 대해 궁금한 점을 질문해주세요.` },
+])
+const chatViewport  = ref<HTMLElement | null>(null)
+const messageId     = ref(2)
+const pendingTimers = new Set<number>()
+
+const chatPanelWidth = computed(() =>
+  chatbotOpen.value ? (chatbotExpanded.value ? '100vw' : '480px') : '0px'
+)
+
+function scrollChatToBottom() {
+  if (chatViewport.value) chatViewport.value.scrollTop = chatViewport.value.scrollHeight
+}
+
+function nextMessageId() {
+  return messageId.value++
+}
+
+async function toggleChatbot() {
+  chatbotOpen.value = !chatbotOpen.value
+  if (!chatbotOpen.value) { chatbotExpanded.value = false; return }
+  await nextTick()
+  scrollChatToBottom()
+}
+
+function closeChatbot() { chatbotOpen.value = false; chatbotExpanded.value = false }
+
+async function sendChatMessage() {
+  const text = chatInput.value.trim()
+  if (!text) return
+  if (!chatbotOpen.value) { chatbotOpen.value = true; await nextTick() }
+
+  chatMessages.value.push({ id: nextMessageId(), role: 'user', text })
+  chatInput.value = ''
+
+  const typingId = nextMessageId()
+  chatMessages.value.push({ id: typingId, role: 'assistant', text: '', typing: true })
+  await nextTick()
+  scrollChatToBottom()
+
+  const timerId = window.setTimeout(() => {
+    const idx = chatMessages.value.findIndex((m) => m.id === typingId)
+    if (idx !== -1) {
+      chatMessages.value.splice(idx, 1, {
+        id: nextMessageId(),
+        role: 'assistant',
+        text: '해당 특허의 평가 결과를 분석한 결과, 기술적 독창성이 높게 평가되었습니다. 추가적으로 궁금한 점이 있으시면 질문해주세요.',
+      })
+    }
+    pendingTimers.delete(timerId)
+    void nextTick(() => { scrollChatToBottom() })
+  }, 1000)
+  pendingTimers.add(timerId)
+}
+
+function handleChatKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendChatMessage() }
+}
+
 // ── 의견 제출 ────────────────────────────────────────
 interface SubmittedOpinion { decision: 'KEEP' | 'DISPOSE'; comment: string; submittedAt: string }
 const submittedOpinion = ref<SubmittedOpinion | null>(null)
@@ -613,6 +730,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   observer?.disconnect()
+  pendingTimers.forEach((t) => window.clearTimeout(t))
+  pendingTimers.clear()
 })
 
 async function submitOpinion() {
@@ -650,6 +769,9 @@ function relevanceClass(r: '상' | '중' | '하') {
   display: flex;
   flex-direction: column;
   gap: 0;
+  --chat-width: 0px;
+  padding-right: var(--chat-width);
+  transition: padding-right 0.3s ease;
 }
 
 /* ── 헤더 래퍼 (non-sticky) ─────────────────────────── */
@@ -1127,4 +1249,106 @@ function relevanceClass(r: '상' | '중' | '하') {
   animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 챗봇 FAB ─────────────────────────────────────── */
+.chat-fab {
+  position: fixed; right: 32px; bottom: 32px; z-index: 60;
+  width: 58px; height: 58px; border-radius: 50%; border: none;
+  background: #10b981; color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.chat-fab:hover { transform: scale(1.07); box-shadow: 0 12px 32px rgba(16, 185, 129, 0.5); }
+.chat-fab svg { width: 24px; height: 24px; }
+
+/* ── 챗봇 패널 ────────────────────────────────────── */
+.chat-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 55;
+  width: 480px;
+  transform: translateX(100%);
+  transition: transform 0.3s ease, width 0.3s ease;
+  pointer-events: none;
+}
+.chat-panel.open { transform: translateX(0); pointer-events: auto; }
+.chat-panel.expanded { width: 100vw; }
+
+.chat-shell {
+  display: flex; flex-direction: column;
+  width: 100%; height: 100%;
+  background: #f8fafc;
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: -20px 0 48px rgba(15, 23, 42, 0.14);
+}
+
+.chat-header {
+  display: grid; grid-template-columns: auto 1fr auto;
+  align-items: center; gap: 14px;
+  min-height: 64px; padding: 0 20px;
+  background: #0f172a; color: #fff;
+}
+.chat-header strong { justify-self: center; font-size: 15px; font-weight: 800; }
+
+.icon-button {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,0.12); border: none; cursor: pointer;
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  transition: background 0.13s;
+}
+.icon-button:hover { background: rgba(255,255,255,0.2); }
+.icon-button svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+
+.chat-body {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px; padding: 18px;
+}
+.chat-row           { display: flex; }
+.chat-row.assistant { justify-content: flex-start; }
+.chat-row.user      { justify-content: flex-end; }
+.chat-bubble {
+  max-width: min(80%, 300px); padding: 12px 15px;
+  border-radius: 16px; font-size: 13.5px; line-height: 1.7; white-space: pre-line;
+}
+.chat-bubble.assistant { background: #fff; color: #102033; border-top-left-radius: 4px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
+.chat-bubble.user      { background: #0f172a; color: #fff; border-top-right-radius: 4px; }
+
+.typing-dots { display: inline-flex; align-items: center; gap: 4px; min-height: 18px; }
+.typing-dots span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #94a3b8; animation: chat-bounce 1.1s infinite ease-in-out;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+.chat-composer {
+  display: grid; grid-template-columns: 1fr auto; gap: 10px;
+  padding: 14px 18px 18px;
+  border-top: 1px solid rgba(15,23,42,0.08);
+  background: rgba(255,255,255,0.9);
+}
+.chat-composer input {
+  width: 100%; box-sizing: border-box;
+  border: 1px solid rgba(15,23,42,0.12); border-radius: 12px;
+  padding: 10px 14px; font-size: 13.5px; font-family: inherit;
+  color: #102033; background: #fff; outline: none;
+  transition: border-color 0.15s;
+}
+.chat-composer input:focus { border-color: #10b981; }
+.chat-composer button {
+  padding: 0 18px; border-radius: 12px; border: none;
+  background: #0f172a; color: #fff;
+  font-size: 13.5px; font-weight: 700; font-family: inherit; cursor: pointer;
+  transition: background 0.13s;
+}
+.chat-composer button:hover { background: #1e293b; }
+
+@keyframes chat-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.55; }
+  40%            { transform: translateY(-4px); opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .chat-fab { right: 20px; bottom: 20px; }
+  .chat-panel { width: 100vw; }
+}
 </style>
