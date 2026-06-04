@@ -16,7 +16,7 @@ const MAP: Record<string, { label: string; variant: string }> = {
   EXPIRING_SOON:   { label: '만료 예정', variant: 'amber'  },
   EXPIRING:        { label: '만료 예정', variant: 'amber'  },
   EXPIRED:         { label: '만료',      variant: 'red'    },
-  ABANDONED:       { label: '포기',      variant: 'red'    },
+  ABANDONED:       { label: '포기',      variant: 'gray'   },
   PENDING:         { label: '심사 중',   variant: 'blue'   },
   GENERATING:      { label: 'AI 분석 중', variant: 'indigo' },
   COMPLETED:       { label: '분석 완료', variant: 'green'  },

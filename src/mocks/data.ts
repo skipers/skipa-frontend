@@ -1,6 +1,6 @@
 // 전체 페이지 공유 더미 데이터 (2026-06-02 기준)
 
-export type PatentStatus = 'REGISTERED' | 'EXPIRING_SOON' | 'EXPIRED'
+export type PatentStatus = 'REGISTERED' | 'EXPIRING_SOON' | 'EXPIRED' | 'ABANDONED'
 export type Grade = 'S' | 'A' | 'B' | 'C'
 export type ReevalStatus = 'unassigned' | 'requested' | 'overdue' | 'done'
 export type Decision = 'KEEP' | 'DISPOSE'
@@ -55,6 +55,7 @@ export const MOCK_PATENTS: MockPatent[] = [
   { id: 6,  title: '반도체 식각 공정 플라즈마 제어 장치',           applicationNumber: 'CN-2022-0045678', applicationDate: '2022-03-25', expiryDate: '2027-03-25', techField: '반도체', dept: '반도체사업부', status: 'EXPIRING_SOON', grade: 'B', aiOpinion: '재검토 필요', tags: ['플라즈마제어', '반도체', '공정최적화'] },
   { id: 7,  title: '자율주행 객체 인식 딥러닝 경량화 모델',         applicationNumber: 'KR-2021-0189023', applicationDate: '2021-11-08', expiryDate: '2041-11-08', techField: 'AI/ML', dept: '반도체사업부', status: 'REGISTERED',    grade: 'B', aiOpinion: '재검토 필요', tags: ['자율주행', '딥러닝', '경량화'] },
   { id: 8,  title: '반도체 CMP 공정 균일도 향상 방법',             applicationNumber: 'KR-2021-0056789', applicationDate: '2021-04-25', expiryDate: '2024-10-15', techField: '반도체', dept: '반도체사업부', status: 'EXPIRED',       grade: 'C', aiOpinion: '포기 권고',    tags: ['CMP', '균일도', '반도체공정'] },
+  { id: 23, title: '반도체 웨이퍼 결함 검출 AI 알고리즘',         applicationNumber: 'KR-2022-0031789', applicationDate: '2022-06-20', expiryDate: '2026-03-15', techField: 'AI/ML', dept: '반도체사업부', status: 'ABANDONED',     grade: 'B', aiOpinion: '포기 권고',    tags: ['딥러닝', '결함감지', '웨이퍼'] },
 
   // 통신사업부 (5건)
   { id: 9,  title: '5G 통신 빔포밍 최적화 알고리즘',               applicationNumber: 'KR-2023-0045612', applicationDate: '2023-02-28', expiryDate: '2043-02-28', techField: '통신',  dept: '통신사업부',   status: 'REGISTERED',    grade: 'A', aiOpinion: '유지 권고',    tags: ['5G', '빔포밍', '통신'] },
@@ -154,6 +155,7 @@ export const ANNUITY_DATA = [
 
 export const PATENT_INVENTORS: Record<number, string> = {
   1: '김지훈, 박소연', 2: '이민준, 최정호, 한수연', 3: '김철수, 이서연, 박준혁',
+  23: '이민준, 최정호, 한수연',
   4: '정수현, 오민지', 5: '한지수, 강민준, 장현우', 6: '이재원, 송은지',
   7: '박성훈, 김나연, 최준서', 8: '윤정민, 이채원', 9: '김도현, 오승환, 박예진',
   10: '이준혁, 강소연, 박민준', 11: '최민석, 박지훈, 이현아', 12: '정예원, 김성민',
@@ -308,3 +310,56 @@ export const MOCK_RELATED_PROJECTS: MockRelatedProject[] = [
     description: 'IoT 센서 데이터의 실시간 분석 및 이상 탐지에 본 특허 기술이 활용될 수 있습니다. 2027년 1분기 출시 예정 플랫폼에 통합을 검토 중입니다.',
   },
 ]
+
+// ── 특허별 제출 의견 이력 ─────────────────────────────
+export interface MockOpinionHistory {
+  decision: 'KEEP' | 'DISPOSE'
+  submitter: string
+  submittedAt: string
+  comment: string
+}
+
+export const MOCK_OPINION_HISTORIES: Record<number, MockOpinionHistory[]> = {
+  // 반도체사업부 - CMP 공정 균일도 향상 방법 (EXPIRED, 2024-10-15)
+  8: [
+    {
+      decision: 'KEEP',
+      submitter: '반도체사업부 이담당',
+      submittedAt: '2022-09-05',
+      comment: '반도체 CMP 공정 핵심 기술로 현재 양산 라인에 직접 적용되고 있어 유지가 필요합니다.',
+    },
+  ],
+  // 통신사업부 - 무선 충전 효율 향상 코일 구조 설계 (EXPIRED, 2025-06-30)
+  13: [
+    {
+      decision: 'KEEP',
+      submitter: '통신사업부 이담당',
+      submittedAt: '2023-04-15',
+      comment: '기존 무선 충전 모듈 제품군에 적용 중인 기술로, 유지 의견을 제출합니다.',
+    },
+  ],
+  // 제조사업부 - 산업용 로봇 공정 최적화 알고리즘 (EXPIRED, 2024-12-31)
+  22: [
+    {
+      decision: 'KEEP',
+      submitter: '제조사업부 이담당',
+      submittedAt: '2022-11-20',
+      comment: '산업용 로봇 자동화 공정에 연계된 핵심 기술입니다. 유지를 권장합니다.',
+    },
+  ],
+  // 반도체사업부 - 반도체 웨이퍼 결함 검출 AI 알고리즘 (ABANDONED, 2026-03-15)
+  23: [
+    {
+      decision: 'DISPOSE',
+      submitter: '반도체사업부 이담당',
+      submittedAt: '2026-03-10',
+      comment: '유사 기술 대체로 활용도가 낮아 포기를 결정합니다.',
+    },
+    {
+      decision: 'KEEP',
+      submitter: '반도체사업부 이담당',
+      submittedAt: '2023-03-10',
+      comment: '현재 사업부 핵심 기술과 직결되어 있어 유지가 필요합니다.',
+    },
+  ],
+}

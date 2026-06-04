@@ -108,7 +108,7 @@
               v-for="p in filteredActivePatents"
               :key="p.id"
               class="patent-row"
-              @click="router.push(`/biz/patent-search/${p.id}`)"
+              @click="router.push(`/biz/patent-search/${p.id}?from=management`)"
             >
               <td><span class="mono">{{ p.applicationNumber }}</span></td>
               <td>
@@ -192,7 +192,7 @@
                 특허명 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'title' }">{{ sortIconChar('title') }}</span>
               </th>
               <th class="sortable" @click="toggleSort('expiryDate')">
-                만료일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
+                만료/포기일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
               </th>
               <th class="th-with-filter">
                 <div class="th-label">기술 분야<span v-if="filterTechField" class="filter-dot" /></div>
@@ -210,7 +210,7 @@
               v-for="p in filteredExpiredPatents"
               :key="p.id"
               class="patent-row patent-row--expired"
-              @click="router.push(`/biz/patent-search/${p.id}`)"
+              @click="router.push(`/biz/patents/${p.id}?from=management`)"
             >
               <td><span class="mono">{{ p.applicationNumber }}</span></td>
               <td>
@@ -226,7 +226,7 @@
                 <span v-if="p.techField" class="field-tag">{{ p.techField }}</span>
                 <span v-else class="text-muted">—</span>
               </td>
-              <td><PatentStatusBadge status="EXPIRED" /></td>
+              <td><PatentStatusBadge :status="p.status ?? 'EXPIRED'" /></td>
               <td>
                 <svg class="row-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path d="M9 18l6-6-6-6"/>
@@ -258,7 +258,7 @@
             v-for="h in submissionHistory"
             :key="h.id"
             class="history-item"
-            @click="router.push(`/biz/patent-search/${h.patentId}`)"
+            @click="router.push(`/biz/patent-search/${h.patentId}?from=management`)"
           >
             <div class="history-item__decision-icon" :class="`decision-icon--${h.decision.toLowerCase()}`">
               <!-- 유지: outline circle check -->
@@ -325,6 +325,7 @@ interface PatentItem {
   id: number; title: string; applicationNumber: string
   manageNumber?: string; applicationDate?: string
   expiryDate?: string; techField?: string; tags?: string[]
+  status?: string
 }
 
 const activePatents  = ref<PatentItem[]>([])
@@ -511,7 +512,7 @@ function fetchActivePatents(_p = 1) {
 
 function fetchExpiredPatents() {
   expiredPatents.value = MOCK_PATENTS
-    .filter(p => p.dept === '반도체사업부' && p.status === 'EXPIRED')
+    .filter(p => p.dept === '반도체사업부' && (p.status === 'EXPIRED' || p.status === 'ABANDONED'))
     .map(p => ({
       id: p.id,
       title: p.title,
@@ -519,6 +520,7 @@ function fetchExpiredPatents() {
       expiryDate: p.expiryDate,
       techField: p.techField,
       tags: p.tags,
+      status: p.status,
     }))
 }
 
