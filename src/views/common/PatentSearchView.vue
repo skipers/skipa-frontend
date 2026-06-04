@@ -8,7 +8,7 @@
         <p class="page-header__desc">전체 보유 특허를 검색하고 상세 정보를 확인하세요</p>
       </div>
       <!-- Legal만 등록 버튼 노출 -->
-      <button v-if="auth.isLegal || auth.isAdmin" class="btn-register" @click="showRegisterModal = true">
+      <button v-if="auth.isLegal || auth.isAdmin" class="btn-register" @click="goToRegister">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
@@ -404,6 +404,12 @@ function handleFileSelect(e: Event) {
 function handleDrop(e: DragEvent) {
   const file = e.dataTransfer?.files?.[0]
   if (file?.type === 'application/pdf') uploadedFile.value = file
+}
+
+// ── 등록 페이지 이동 ─────────────────────────────────
+function goToRegister() {
+  const base = auth.isLegal || auth.isAdmin ? '/legal' : '/biz'
+  router.push(`${base}/patents/new`)
 }
 
 // ── 등록 ────────────────────────────────────────────

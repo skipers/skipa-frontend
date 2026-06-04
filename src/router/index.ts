@@ -60,7 +60,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'patents/new',
         name: 'LegalPatentRegister',
-        component: () => import('@/views/common/PatentRegisterView.vue'),
+        component: () => import('@/views/legal/LegalPatentRegisterView.vue'),
       },
     ],
   },
@@ -114,7 +114,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'patents/new',
         name: 'BizPatentRegister',
-        component: () => import('@/views/common/PatentRegisterView.vue'),
+        component: () => import('@/views/business/BizPatentRegisterView.vue'),
       },
       {
         path: 'patents/:id',

@@ -83,12 +83,6 @@
           <h1 class="topbar__title">{{ currentPageTitle }}</h1>
         </div>
         <div class="topbar__right">
-          <RouterLink to="/biz/patent-search" class="topbar__search-btn">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            특허 검색
-          </RouterLink>
           <button class="topbar__icon-btn" aria-label="알림">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
