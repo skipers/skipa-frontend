@@ -631,9 +631,9 @@ onBeforeUnmount(() => {
 <style scoped>
 /* ── CSS 변수 & 루트 ──────────────────────────────── */
 .lab-page {
-  --accent:        #10b981;
-  --accent-hover:  #059669;
-  --accent-soft:   rgba(16, 185, 129, 0.12);
+  --accent:        #6366f1;
+  --accent-hover:  #4f46e5;
+  --accent-soft:   rgba(99, 102, 241, 0.12);
   --navy:          #0f172a;
   --drawer-w:      260px;
   --chat-width:    0px;
@@ -717,7 +717,7 @@ onBeforeUnmount(() => {
 .drawer-item:last-child { border-bottom: none; }
 .drawer-item:hover { background: #f8fafc; }
 .drawer-item--active {
-  background: #f0fdf4;
+  background: #eef2ff;
   border-left: 3px solid var(--accent);
   padding-left: 13px;
 }
@@ -733,7 +733,7 @@ onBeforeUnmount(() => {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.drawer-item--active .drawer-item__name { color: #059669; }
+.drawer-item--active .drawer-item__name { color: #4f46e5; }
 
 .drawer-item__meta {
   display: flex;
@@ -883,12 +883,12 @@ onBeforeUnmount(() => {
   width: 100%; height: 50px; border: none; border-radius: 14px;
   background: var(--accent); color: #fff;
   font-size: 15px; font-weight: 800; font-family: inherit; cursor: pointer;
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.28);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.28);
   transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
-  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.38);
+  box-shadow: 0 10px 28px rgba(99, 102, 241, 0.38);
   transform: translateY(-1px);
 }
 .btn-primary:disabled { background: #94a3b8; box-shadow: none; cursor: not-allowed; }
@@ -987,7 +987,7 @@ onBeforeUnmount(() => {
 .grade-card {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 22px 0 18px;
-  background: #f0fdf4; border-radius: 16px; margin-bottom: 16px;
+  background: #eef2ff; border-radius: 16px; margin-bottom: 16px;
 }
 .grade-card__kicker {
   font-size: 11px; font-weight: 700; color: #94a3b8;
@@ -1019,7 +1019,7 @@ onBeforeUnmount(() => {
 .comment-item__text { font-size: 13.5px; color: #374151; line-height: 1.7; margin: 0; white-space: pre-line; }
 .comment-item--overall {
   padding: 14px 16px;
-  background: #f0fdf4;
+  background: #eef2ff;
   border-left: 3px solid var(--accent);
   border-radius: 0 10px 10px 0;
 }
@@ -1031,10 +1031,10 @@ onBeforeUnmount(() => {
   width: 58px; height: 58px; border-radius: 50%; border: none;
   background: var(--accent); color: #fff; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
   transition: transform 0.15s, box-shadow 0.15s;
 }
-.chat-fab:hover { transform: scale(1.07); box-shadow: 0 12px 32px rgba(16, 185, 129, 0.5); }
+.chat-fab:hover { transform: scale(1.07); box-shadow: 0 12px 32px rgba(99, 102, 241, 0.5); }
 .chat-fab svg { width: 24px; height: 24px; }
 
 /* ── 챗봇 패널 ────────────────────────────────────── */

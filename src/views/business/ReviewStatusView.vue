@@ -119,6 +119,7 @@
               <!-- 상태 -->
               <td class="col-status">
                 <span class="status-badge" :class="item.decision ? 'status-badge--done' : 'status-badge--pending'">
+                  <span class="status-badge__dot" />
                   {{ item.decision ? '제출 완료' : '미제출' }}
                 </span>
               </td>
@@ -427,7 +428,7 @@ onMounted(() => fetchList(1))
 .page-header__eyebrow {
   font-size: 12px; font-weight: 600;
   letter-spacing: .06em; text-transform: uppercase;
-  color: #10b981; margin: 0 0 5px;
+  color: #6366f1; margin: 0 0 5px;
 }
 
 .page-header__title {
@@ -471,10 +472,10 @@ onMounted(() => fetchList(1))
   font-size: 14px; color: #374151;
 }
 .progress-section__text strong { color: #0f172a; font-weight: 700; }
-.progress-section__done { color: #16a34a !important; }
+.progress-section__done { color: #6366f1 !important; }
 
 .progress-section__pct {
-  font-size: 15px; font-weight: 800; color: #16a34a;
+  font-size: 15px; font-weight: 800; color: #6366f1;
 }
 
 .progress-track {
@@ -482,7 +483,7 @@ onMounted(() => fetchList(1))
 }
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #059669, #34d399);
+  background: linear-gradient(90deg, #4f46e5, #818cf8);
   border-radius: 4px;
   transition: width .6s cubic-bezier(.4,0,.2,1);
 }
@@ -626,13 +627,21 @@ onMounted(() => fetchList(1))
 
 /* 상태 배지 */
 .status-badge {
-  display: inline-block;
-  padding: 3px 10px; border-radius: 20px;
-  font-size: 12px; font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
   white-space: nowrap;
 }
-.status-badge--done    { background: #f0fdf4; color: #15803d; }
-.status-badge--pending { background: #fff4e6; color: #FF7A00; }
+.status-badge__dot {
+  width: 5px; height: 5px;
+  border-radius: 50%; flex-shrink: 0;
+}
+.status-badge--done    { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.status-badge--done    .status-badge__dot { background: #22c55e; }
+.status-badge--pending { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.status-badge--pending .status-badge__dot { background: #f59e0b; }
 
 /* 제출일 + 버튼 */
 .date-text { font-size: 13px; color: #475569; }
@@ -706,7 +715,7 @@ onMounted(() => fetchList(1))
 .gp-header__left { display: flex; align-items: center; gap: 14px; }
 .gp-header__badge {
   padding: 3px 9px;
-  background: #10b981; color: #fff;
+  background: #6366f1; color: #fff;
   font-size: 11px; font-weight: 800; letter-spacing: .08em;
   border-radius: 6px; flex-shrink: 0;
 }
@@ -744,7 +753,7 @@ onMounted(() => fetchList(1))
 }
 .gp-num {
   font-size: 11px; font-weight: 800; letter-spacing: .06em;
-  color: #10b981; background: #f0fdf4;
+  color: #6366f1; background: #eef2ff;
   padding: 2px 7px; border-radius: 5px; flex-shrink: 0;
 }
 .gp-section__title {
@@ -802,7 +811,7 @@ onMounted(() => fetchList(1))
 }
 .gp-support__dot {
   width: 7px; height: 7px; border-radius: 50%;
-  background: #10b981; flex-shrink: 0; margin-top: 5px;
+  background: #6366f1; flex-shrink: 0; margin-top: 5px;
 }
 .gp-support__title { font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 3px; }
 .gp-support__desc  { font-size: 12px; color: #64748b; margin: 0; line-height: 1.55; }
@@ -818,7 +827,7 @@ onMounted(() => fetchList(1))
 }
 .gp-flow__dot {
   width: 28px; height: 28px; border-radius: 50%;
-  background: #0f172a; color: #10b981;
+  background: #0f172a; color: #a5b4fc;
   font-size: 12px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;

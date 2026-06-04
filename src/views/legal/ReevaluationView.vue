@@ -752,7 +752,7 @@ onMounted(() => fetchList(1))
   grid-template-columns: 36px 1fr 180px 100px 36px;
   align-items: center;
   gap: 12px;
-  padding: 14px 20px;
+  padding: 14px 16px;
   border-bottom: 1px solid #f8fafc;
   transition: background .12s;
 }
@@ -792,9 +792,9 @@ onMounted(() => fetchList(1))
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 8px;
-  border-radius: 5px;
-  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 12px;
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -804,11 +804,11 @@ onMounted(() => fetchList(1))
   background: currentColor;
   flex-shrink: 0;
 }
-.item-status--unassigned { background: #f1f5f9; color: #64748b; }
-.item-status--requested  { background: #eef2ff; color: #4338ca; }
-.item-status--reviewing  { background: #fffbeb; color: #b45309; }
-.item-status--overdue    { background: #fef2f2; color: #dc2626; }
-.item-status--done       { background: #f0fdf4; color: #15803d; }
+.item-status--unassigned { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+.item-status--requested  { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.item-status--reviewing  { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.item-status--overdue    { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.item-status--done       { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
 
 .overdue-badge {
   display: inline-flex;
@@ -840,15 +840,14 @@ onMounted(() => fetchList(1))
 
 .meta-tag {
   display: inline-block;
-  padding: 2px 7px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 5px;
-  font-size: 11.5px;
+  padding: 2px 6px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  font-size: 11px;
   color: #64748b;
-  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
 }
-.meta-tag--expiry { color: #b45309; background: #fffbeb; border-color: #fde68a; font-family: inherit; }
+.meta-tag--expiry { color: #b45309; background: #fffbeb; border: 1px solid #fde68a; }
 
 /* 담당 사업부 셀 */
 .item-dept {
@@ -909,14 +908,17 @@ onMounted(() => fetchList(1))
 .item-decision { display: flex; align-items: center; justify-content: center; }
 
 .decision-badge {
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-size: 12.5px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
 }
-.decision-badge--keep    { background: #f0fdf4; color: #15803d; }
-.decision-badge--sell    { background: #eef2ff; color: #4338ca; }
-.decision-badge--dispose { background: #fef2f2; color: #dc2626; }
+.decision-badge--keep    { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.decision-badge--sell    { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+.decision-badge--dispose { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
 
 .decision-pending { font-size: 12.5px; color: #cbd5e1; }
 

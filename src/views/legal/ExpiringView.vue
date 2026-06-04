@@ -460,7 +460,7 @@ const selectedDateStr   = ref('')
   grid-template-columns: 16px 1fr auto 24px;
   align-items: center;
   gap: 12px;
-  padding: 14px 20px;
+  padding: 14px 16px;
   border-bottom: 1px solid #f8fafc;
   cursor: pointer;
   transition: background .12s;
@@ -486,9 +486,10 @@ const selectedDateStr   = ref('')
 }
 .expiry-item__meta { display: flex; gap: 6px; flex-wrap: wrap; }
 .meta-pill {
-  display: inline-block; padding: 2px 7px;
-  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px;
-  font-size: 11.5px; color: #64748b;
+  display: inline-block; padding: 2px 6px;
+  background: #f1f5f9; border-radius: 4px;
+  font-size: 11px; color: #64748b;
+  white-space: nowrap;
 }
 
 .expiry-item__date { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }

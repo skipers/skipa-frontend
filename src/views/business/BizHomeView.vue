@@ -266,7 +266,7 @@ onMounted(() => { loading.value = false })
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: #10b981;
+  color: #6366f1;
   margin: 0 0 5px;
 }
 
@@ -277,7 +277,7 @@ onMounted(() => { loading.value = false })
   margin: 0 0 4px;
   letter-spacing: -0.02em;
 }
-.greeting__title span { color: #059669; }
+.greeting__title span { color: #4f46e5; }
 
 .greeting__desc { font-size: 13.5px; color: #64748b; margin: 0; }
 
@@ -444,7 +444,7 @@ onMounted(() => { loading.value = false })
 }
 
 .submit-progress-card__title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
-.submit-progress-card__pct   { font-size: 15px; font-weight: 800; color: #10b981; }
+.submit-progress-card__pct   { font-size: 15px; font-weight: 800; color: #6366f1; }
 
 .progress-track {
   height: 8px;
@@ -454,7 +454,7 @@ onMounted(() => { loading.value = false })
 }
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #059669, #34d399);
+  background: linear-gradient(90deg, #4f46e5, #818cf8);
   border-radius: 4px;
   transition: width .6s cubic-bezier(.4,0,.2,1);
 }

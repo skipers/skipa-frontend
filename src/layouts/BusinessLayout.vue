@@ -247,10 +247,10 @@ async function handleLogout() {
   flex-shrink: 0;
   box-shadow: 0 0 5px rgba(99, 102, 241, 0.8);
 }
-/* 사업부 액센트 — 초록 */
+
 .sidebar__role-dot--biz {
-  background: #34d399;
-  box-shadow: 0 0 5px rgba(52, 211, 153, 0.8);
+  background: #6366f1;
+  box-shadow: 0 0 5px rgba(99, 102, 241, 0.8);
 }
 
 .sidebar__nav {
@@ -289,13 +289,16 @@ async function handleLogout() {
   position: relative;
 }
 .nav-item:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.85); }
-.nav-item--active { background: rgba(52, 211, 153, 0.12); color: #6ee7b7; }
+.nav-item--active {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+}
 .nav-item--active::before {
   content: '';
   position: absolute;
   left: 0; top: 25%; bottom: 25%;
   width: 3px;
-  background: #34d399;
+  background: #6366f1;
   border-radius: 0 3px 3px 0;
 }
 
@@ -333,7 +336,7 @@ async function handleLogout() {
   flex-shrink: 0;
 }
 .sidebar__avatar--biz {
-  background: linear-gradient(135deg, #059669, #34d399);
+  background: linear-gradient(135deg,#4f46e5, #7c3aed);
 }
 
 .sidebar__user-info { overflow: hidden; }

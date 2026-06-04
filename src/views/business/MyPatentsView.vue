@@ -560,7 +560,7 @@ onMounted(() => {
 /* ── 페이지 헤더 ─────────────────────────────────── */
 .page-header__eyebrow {
   font-size: 12px; font-weight: 600; letter-spacing: .06em;
-  text-transform: uppercase; color: #10b981; margin: 0 0 5px;
+  text-transform: uppercase; color: #6366f1; margin: 0 0 5px;
 }
 .page-header__title {
   font-size: 22px; font-weight: 700; color: #0f172a;
