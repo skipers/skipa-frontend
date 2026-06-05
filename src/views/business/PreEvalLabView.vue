@@ -366,8 +366,18 @@ onBeforeUnmount(() => {
       <!-- 상단 바 -->
       <div class="top-bar">
         <div class="top-bar__left">
-          <p class="top-bar__title">사전 평가 Lab</p>
-          <p class="top-bar__sub">출원 전 발명을 AI로 사전 진단합니다.</p>
+          <div class="top-bar__title-row">
+            <div>
+              <p class="top-bar__title">사전 평가 Lab</p>
+              <p class="top-bar__sub">출원 전 발명을 AI로 사전 진단합니다.</p>
+            </div>
+            <button class="btn-new-eval" type="button" @click="resetAssessment">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              새 평가
+            </button>
+          </div>
         </div>
 
         <!-- 평가 이력 드롭다운 -->
@@ -418,12 +428,6 @@ onBeforeUnmount(() => {
             <!-- 읽기 전용 뷰 (히스토리 선택 시) -->
           <template v-if="selectedHistoryItem">
             <div class="readonly-header">
-              <button class="btn-back" type="button" @click="resetAssessment">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 12H5M12 5l-7 7 7 7"/>
-                </svg>
-                새 평가로 돌아가기
-              </button>
               <h2 class="panel-title readonly-panel-title">{{ selectedHistoryItem.patentName }}</h2>
               <p class="readonly-date">평가일 {{ formatDate(selectedHistoryItem.evaluatedAt) }}</p>
             </div>
@@ -666,8 +670,19 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin-bottom: 20px;
 }
+.top-bar__title-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
 .top-bar__title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
 .top-bar__sub   { font-size: 12px; color: #94a3b8; margin: 0; }
+.btn-new-eval {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+  background: #3b82f6; color: #fff;
+  transition: background 0.15s;
+}
+.btn-new-eval:hover { background: #2563eb; }
 
 /* ── 평가 이력 드롭다운 ──────────────────────────── */
 .history-dropdown { }
@@ -780,7 +795,7 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: minmax(0, 40%) minmax(0, 60%);
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
 }
 
 /* ── 패널 공통 ────────────────────────────────────── */
@@ -789,8 +804,8 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 20px;
 }
-.form-panel   { padding: 28px 24px; }
-.result-panel { padding: 28px 24px; min-height: 640px; }
+.form-panel   { padding: 28px 24px; display: flex; flex-direction: column; }
+.result-panel { padding: 28px 24px; display: flex; flex-direction: column; }
 
 
 /* ── 폼 ───────────────────────────────────────────── */
@@ -931,7 +946,7 @@ onBeforeUnmount(() => {
 .empty-state {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  min-height: 560px; gap: 16px;
+  flex: 1; gap: 16px;
   color: #94a3b8; text-align: center;
 }
 .empty-icon {
