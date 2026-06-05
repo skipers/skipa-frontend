@@ -10,15 +10,34 @@
       </div>
     </div>
 
-    <!-- 요약 카드 -->
-    <div class="summary-row">
-      <div class="summary-card" v-for="s in summaryCards" :key="s.label">
-        <div class="summary-card__icon" :style="{ background: s.iconBg, color: s.iconColor }">
-          <span v-html="s.icon" />
+    <!-- 포트폴리오 현황 -->
+    <div class="portfolio-stat">
+      <div class="portfolio-stat__header">
+        <span class="portfolio-stat__title">보유 특허 현황</span>
+        <span class="portfolio-stat__total">전체 {{ portfolioTotal }}건</span>
+      </div>
+      <div class="portfolio-stat__bar">
+        <div class="portfolio-stat__seg portfolio-stat__seg--active"
+          :style="{ width: activePct + '%' }"
+          :title="`유지 중 ${activeTotalItems}건`"
+        />
+        <div class="portfolio-stat__seg portfolio-stat__seg--expired"
+          :style="{ width: (100 - activePct) + '%' }"
+          :title="`만료·포기 ${expiredPatents.length}건`"
+        />
+      </div>
+      <div class="portfolio-stat__legend">
+        <div class="portfolio-stat__legend-item">
+          <span class="portfolio-stat__dot portfolio-stat__dot--active" />
+          <span class="portfolio-stat__label">유지 중</span>
+          <strong class="portfolio-stat__count">{{ activeTotalItems }}건</strong>
+          <span class="portfolio-stat__pct">({{ activePct }}%)</span>
         </div>
-        <div class="summary-card__info">
-          <p class="summary-card__value">{{ s.value }}</p>
-          <p class="summary-card__label">{{ s.label }}</p>
+        <div class="portfolio-stat__legend-item">
+          <span class="portfolio-stat__dot portfolio-stat__dot--expired" />
+          <span class="portfolio-stat__label">만료·포기</span>
+          <strong class="portfolio-stat__count">{{ expiredPatents.length }}건</strong>
+          <span class="portfolio-stat__pct">({{ 100 - activePct }}%)</span>
         </div>
       </div>
     </div>
@@ -39,6 +58,25 @@
 
     <!-- ── 유지중인 특허 ── -->
     <template v-if="activeTab === 'active'">
+      <!-- 필터 바 -->
+      <div class="filter-bar">
+        <div class="filter-bar__group">
+          <span class="filter-bar__label">기술 분야</span>
+          <select v-model="filterTechField" class="filter-bar__select">
+            <option value="">전체</option>
+            <option v-for="f in techFieldOptions" :key="f" :value="f">{{ f }}</option>
+          </select>
+        </div>
+        <div class="filter-bar__divider" />
+        <div class="filter-bar__group">
+          <span class="filter-bar__label">상태</span>
+          <select v-model="filterStatus" class="filter-bar__select">
+            <option value="">전체</option>
+            <option value="REGISTERED">등록</option>
+            <option value="EXPIRING_SOON">만료 예정</option>
+          </select>
+        </div>
+      </div>
       <div class="table-card">
         <!-- 툴바 -->
         <div class="table-toolbar">
@@ -85,21 +123,8 @@
               <th class="sortable" @click="toggleSort('expiryDate')">
                 만료 예정일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
               </th>
-              <th class="th-with-filter">
-                <div class="th-label">기술 분야<span v-if="filterTechField" class="filter-dot" /></div>
-                <select v-model="filterTechField" class="col-filter-select" @click.stop>
-                  <option value="">전체</option>
-                  <option v-for="f in techFieldOptions" :key="f" :value="f">{{ f }}</option>
-                </select>
-              </th>
-              <th class="th-with-filter">
-                <div class="th-label">상태<span v-if="filterStatus" class="filter-dot" /></div>
-                <select v-model="filterStatus" class="col-filter-select" @click.stop>
-                  <option value="">전체</option>
-                  <option value="REGISTERED">등록</option>
-                  <option value="EXPIRING_SOON">만료 예정</option>
-                </select>
-              </th>
+              <th>기술 분야</th>
+              <th>상태</th>
               <th />
             </tr>
           </thead>
@@ -150,6 +175,16 @@
 
     <!-- ── 만료/포기 특허 ── -->
     <template v-if="activeTab === 'expired'">
+      <!-- 필터 바 -->
+      <div class="filter-bar">
+        <div class="filter-bar__group">
+          <span class="filter-bar__label">기술 분야</span>
+          <select v-model="filterTechField" class="filter-bar__select">
+            <option value="">전체</option>
+            <option v-for="f in techFieldOptions" :key="f" :value="f">{{ f }}</option>
+          </select>
+        </div>
+      </div>
       <div class="table-card">
         <!-- 툴바 -->
         <div class="table-toolbar">
@@ -194,13 +229,7 @@
               <th class="sortable" @click="toggleSort('expiryDate')">
                 만료/포기일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
               </th>
-              <th class="th-with-filter">
-                <div class="th-label">기술 분야<span v-if="filterTechField" class="filter-dot" /></div>
-                <select v-model="filterTechField" class="col-filter-select" @click.stop>
-                  <option value="">전체</option>
-                  <option v-for="f in techFieldOptions" :key="f" :value="f">{{ f }}</option>
-                </select>
-              </th>
+              <th>기술 분야</th>
               <th>상태</th>
               <th />
             </tr>
@@ -439,33 +468,29 @@ const tabs = computed(() => [
 ])
 
 // ── 요약 카드 ────────────────────────────────────────
-const summaryCards = computed(() => [
-  {
-    label: '유지중', value: activeTotalItems.value,
-    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
-    iconBg: '#f0fdf4', iconColor: '#22c55e',
-  },
-  {
-    label: '만료 예정 (1년)',
-    value: activePatents.value.filter(p => {
-      if (!p.expiryDate) return false
-      const diff = (new Date(p.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-      return diff >= 0 && diff < 365
-    }).length,
-    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
-    iconBg: '#fffbeb', iconColor: '#f59e0b',
-  },
-  {
-    label: '만료/포기', value: expiredPatents.value.length,
-    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
-    iconBg: '#fef2f2', iconColor: '#ef4444',
-  },
-  {
-    label: '제출 완료', value: historyTotalItems.value,
-    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
-    iconBg: '#eef2ff', iconColor: '#6366f1',
-  },
-])
+const portfolioTotal = computed(() => activeTotalItems.value + expiredPatents.value.length)
+const activePct = computed(() => {
+  const total = portfolioTotal.value
+  if (!total) return 0
+  return Math.round(activeTotalItems.value / total * 100)
+})
+
+// ── AI 등급 / 결정 ──────────────────────────────────
+function aiScore(p: { id: number; grade: string | null }): number | null {
+  if (!p.grade) return null
+  const ranges: Record<string, [number, number]> = { S: [88, 97], A: [75, 87], B: [58, 74], C: [42, 57] }
+  const [min, max] = ranges[p.grade] ?? [50, 60]
+  return min + (p.id % (max - min + 1))
+}
+
+function patentDecision(patentId: number): string {
+  const r = MOCK_REEVAL.find(r => r.patentId === patentId && r.decision !== null)
+  return r?.decision ?? 'NONE'
+}
+
+function decisionLabel(d: string): string {
+  return { KEEP: '유지', DISPOSE: '포기', NONE: '미제출' }[d] ?? d
+}
 
 // ── 유틸 ────────────────────────────────────────────
 function formatDate(d?: string | null) {
@@ -489,9 +514,6 @@ function expiryClass(d?: string) {
   return ''
 }
 
-function decisionLabel(d: string) {
-  return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
-}
 
 
 // ── 데이터 로드 (반도체사업부 기준) ─────────────────
@@ -569,37 +591,49 @@ onMounted(() => {
 .page-header__desc { font-size: 13.5px; color: #64748b; margin: 0; }
 
 /* ── 요약 카드 ────────────────────────────────────── */
-.summary-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+/* ── 포트폴리오 현황 ──────────────────────────────── */
+.portfolio-stat {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
-@media (max-width: 800px) { .summary-row { grid-template-columns: repeat(2, 1fr); } }
-
-.summary-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 16px 18px;
+.portfolio-stat__header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  transition: box-shadow .15s;
+  justify-content: space-between;
 }
-.summary-card:hover { box-shadow: 0 4px 16px rgba(15,23,42,.06); }
+.portfolio-stat__title { font-size: 14px; font-weight: 700; color: var(--color-text); }
+.portfolio-stat__total { font-size: 13px; font-weight: 600; color: var(--color-text-muted); }
 
-.summary-card__icon {
-  width: 38px; height: 38px;
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+.portfolio-stat__bar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  gap: 2px;
 }
+.portfolio-stat__seg { height: 100%; transition: width 0.4s cubic-bezier(.4,0,.2,1); }
+.portfolio-stat__seg--active  { background: #6366f1; border-radius: 6px 0 0 6px; }
+.portfolio-stat__seg--expired { background: #e2e8f0; border-radius: 0 6px 6px 0; }
 
-.summary-card__value {
-  font-size: 22px; font-weight: 800; color: #0f172a;
-  letter-spacing: -.03em; line-height: 1; margin: 0 0 3px;
+.portfolio-stat__legend {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
 }
-.summary-card__label { font-size: 12px; color: #64748b; margin: 0; font-weight: 500; }
+.portfolio-stat__legend-item { display: flex; align-items: center; gap: 6px; }
+.portfolio-stat__dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.portfolio-stat__dot--active  { background: #6366f1; }
+.portfolio-stat__dot--expired { background: #e2e8f0; border: 1px solid #cbd5e1; }
+.portfolio-stat__label { font-size: 13px; color: var(--color-text-secondary); }
+.portfolio-stat__count { font-size: 13px; font-weight: 700; color: var(--color-text); }
+.portfolio-stat__pct   { font-size: 12px; color: var(--color-text-muted); }
 
 /* ── 탭 ─────────────────────────────────────────── */
 .tabs {
@@ -638,6 +672,34 @@ onMounted(() => {
 }
 
 /* ── 툴바 ────────────────────────────────────────── */
+/* ── 필터 바 ─────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+.filter-bar__group { display: flex; align-items: center; gap: 8px; }
+.filter-bar__label { font-size: 12.5px; font-weight: 600; color: var(--color-text-muted); white-space: nowrap; }
+.filter-bar__select {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 4px 28px 4px 10px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  min-width: 110px;
+}
+.filter-bar__select:focus { border-color: var(--color-primary); }
+.filter-bar__divider { width: 1px; height: 18px; background: var(--color-border); flex-shrink: 0; }
+
 .table-toolbar {
   display: flex;
   align-items: center;
@@ -812,6 +874,29 @@ onMounted(() => {
   font-size: 12px; color: #475569; font-weight: 500;
 }
 .text-muted { color: #cbd5e1; }
+
+/* ── AI 등급 ──────────────────────────────── */
+.ai-grade-cell { display: flex; align-items: center; gap: 6px; }
+.ai-grade-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 6px;
+  font-size: 12px; font-weight: 800; flex-shrink: 0;
+}
+.ai-grade--s { background: #eef2ff; color: #6366f1; }
+.ai-grade--a { background: #edfdf6; color: #1d9c6e; }
+.ai-grade--b { background: #eaf8fd; color: #2ea8cc; }
+.ai-grade--c { background: #fff8ec; color: #c47a0a; }
+.ai-grade--d { background: #fdf0f0; color: #c45050; }
+.ai-grade-score { font-size: 12.5px; font-weight: 600; color: var(--color-text-secondary); }
+
+/* ── 결정 pill ────────────────────────────── */
+.decision-pill {
+  display: inline-block; padding: 2px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+}
+.decision-pill--keep    { background: #edfdf6; color: #1d9c6e; }
+.decision-pill--dispose { background: #fdf0f0; color: #c45050; }
+.decision-pill--none    { background: var(--color-surface-muted); color: var(--color-text-muted); }
 
 .row-arrow {
   color: #cbd5e1; opacity: 0;

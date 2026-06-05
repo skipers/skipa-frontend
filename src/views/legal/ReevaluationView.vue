@@ -292,49 +292,73 @@
     <!-- ── 검토 요청 전송 모달 ── -->
     <Teleport to="body">
       <Transition name="modal">
-        <div v-if="showSendModal" class="modal-overlay" @click.self="showSendModal = false">
+        <div v-if="showSendModal" class="modal-overlay" @click.self="showSendModal = false; sendSuccess = false">
           <div class="modal">
             <div class="modal__header">
-              <h3 class="modal__title">검토 요청 전송</h3>
-              <button class="modal__close" @click="showSendModal = false">
+              <h3 class="modal__title">{{ sendSuccess ? '전송 완료' : '검토 요청 전송' }}</h3>
+              <button class="modal__close" @click="showSendModal = false; sendSuccess = false">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
               </button>
             </div>
-            <div class="modal__body">
-              <div class="send-summary">
-                <div class="send-summary__row">
-                  <span>전송 대상</span>
-                  <strong>{{ selectedIds.size - unassignedCount }}건</strong>
+            <!-- 전송 완료 상태 -->
+            <template v-if="sendSuccess">
+              <div class="modal__body send-success">
+                <div class="send-success__icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
                 </div>
-                <div class="send-summary__divider" />
-                <div
-                  v-for="row in deptBreakdown"
-                  :key="row.deptId"
-                  class="send-summary__row send-summary__row--dept"
-                >
-                  <span class="send-summary__dept-dot" />
-                  <span>{{ row.deptName }}</span>
-                  <strong>{{ row.count }}건</strong>
-                </div>
-                <div class="send-summary__row send-summary__row--warn" v-if="unassignedCount > 0">
-                  <span>⚠️ 미배정 (제외)</span>
-                  <strong>{{ unassignedCount }}건</strong>
-                </div>
+                <p class="send-success__title">검토 요청이 전송되었습니다</p>
+                <p class="send-success__desc">{{ sentCount }}개 사업부에 요청이 전달되었습니다.</p>
               </div>
-              <p class="send-note">배정된 사업부에 검토 요청이 전달됩니다. 전송 후 취소할 수 없습니다.</p>
-            </div>
-            <div class="modal__footer">
-              <button class="btn-cancel" @click="showSendModal = false">취소</button>
-              <button class="btn-confirm" :disabled="sending" @click="handleSend">
-                <span v-if="sending" class="spinner" />
-                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/>
-                </svg>
-                전송
-              </button>
-            </div>
+              <div class="modal__footer">
+                <button class="btn-confirm" @click="showSendModal = false; sendSuccess = false">확인</button>
+              </div>
+            </template>
+
+            <!-- 전송 전 상태 -->
+            <template v-else>
+              <div class="modal__body">
+                <div class="send-summary">
+                  <div class="send-summary__row">
+                    <span>전송 대상</span>
+                    <strong>{{ sendableCount }}건</strong>
+                  </div>
+                  <div class="send-summary__divider" />
+                  <div
+                    v-for="row in deptBreakdown"
+                    :key="row.deptId"
+                    class="send-summary__row send-summary__row--dept"
+                  >
+                    <span class="send-summary__dept-dot" />
+                    <span>{{ row.deptName }}</span>
+                    <strong>{{ row.count }}건</strong>
+                  </div>
+                  <div class="send-summary__row send-summary__row--warn" v-if="unassignedCount > 0">
+                    <span>⚠️ 미배정 (제외)</span>
+                    <strong>{{ unassignedCount }}건</strong>
+                  </div>
+                  <div class="send-summary__row send-summary__row--warn" v-if="alreadyRequestedCount > 0">
+                    <span>⚠️ 요청 완료·지연·회신 완료 (제외)</span>
+                    <strong>{{ alreadyRequestedCount }}건</strong>
+                  </div>
+                </div>
+                <p class="send-note">배정된 사업부에 검토 요청이 전달됩니다. 전송 후 취소할 수 없습니다.</p>
+              </div>
+              <div class="modal__footer">
+                <button class="btn-cancel" @click="showSendModal = false">취소</button>
+                <button class="btn-confirm" :disabled="sending || sendableCount === 0" @click="handleSend">
+                  <span v-if="sending" class="spinner" />
+                  <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/>
+                  </svg>
+                  전송
+                </button>
+              </div>
+            </template>
           </div>
         </div>
       </Transition>
@@ -358,7 +382,9 @@ const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = us
 
 // ── 상태 ────────────────────────────────────────────
 const loading  = ref(false)
-const sending  = ref(false)
+const sending     = ref(false)
+const sendSuccess = ref(false)
+const sentCount   = ref(0)
 const items    = ref<ReevalItem[]>([])
 const selectedIds = reactive(new Set<number>())
 const activeStatus   = ref('all')
@@ -470,12 +496,24 @@ const unassignedCount = computed(() =>
   }).length
 )
 
+const alreadyRequestedCount = computed(() =>
+  [...selectedIds].filter(id => {
+    const item = items.value.find(i => i.id === id)
+    return item?.departmentId && ['requested', 'done', 'overdue'].includes(item?.reviewStatus)
+  }).length
+)
+
+const sendableCount = computed(() =>
+  selectedIds.size - unassignedCount.value - alreadyRequestedCount.value
+)
+
 // ── 사업부별 배분 ─────────────────────────────────────
 const deptBreakdown = computed(() => {
   const map = new Map<number, number>()
   ;[...selectedIds].forEach(id => {
     const item = items.value.find(i => i.id === id)
-    if (item?.departmentId) map.set(item.departmentId, (map.get(item.departmentId) ?? 0) + 1)
+    if (item?.departmentId && !['requested', 'done', 'overdue'].includes(item?.reviewStatus))
+      map.set(item.departmentId, (map.get(item.departmentId) ?? 0) + 1)
   })
   return [...map.entries()]
     .map(([deptId, count]) => ({ deptId, deptName: deptName(deptId), count }))
@@ -618,7 +656,7 @@ async function handleSend() {
   try {
     const assignedItems = [...selectedIds]
       .map(id => items.value.find(i => i.id === id))
-      .filter(i => i?.departmentId) as ReevalItem[]
+      .filter(i => i?.departmentId && !['requested', 'done', 'overdue'].includes(i?.reviewStatus)) as ReevalItem[]
 
     const d = new Date()
     await reviewRequestsApi.create({
@@ -628,7 +666,8 @@ async function handleSend() {
   } catch (e) { console.error(e) }
   finally {
     sending.value = false
-    showSendModal.value = false
+    sentCount.value = sendableCount.value
+    sendSuccess.value = true
     selectedIds.clear()
     await fetchList(page.value)
   }
@@ -1372,6 +1411,28 @@ onMounted(() => {
 .send-summary__row--warn { color: var(--color-danger); }
 .send-summary__row--warn strong { color: var(--color-danger); }
 .send-note { font-size: 12.5px; color: var(--color-text-subtle); margin: 0; line-height: 1.6; }
+
+.send-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 24px;
+  text-align: center;
+}
+.send-success__icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--color-success-bg);
+  color: var(--color-success-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.send-success__title { font-size: 16px; font-weight: 700; color: var(--color-text); margin: 0; }
+.send-success__desc  { font-size: 13.5px; color: var(--color-text-muted); margin: 0; }
 
 .btn-cancel {
   padding: 9px 20px; background: var(--color-surface-muted); border: 1px solid var(--color-border); border-radius: 9px;
