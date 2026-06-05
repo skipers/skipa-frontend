@@ -634,7 +634,7 @@ async function handleSend() {
   }
 }
 
-function goDetail(id: number) { router.push(`/patents/${id}`) }
+function goDetail(id: number) { router.push(`/legal/patent-search/${id}`) }
 
 onMounted(() => {
   const tab      = route.query.tab      as string | undefined
