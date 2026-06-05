@@ -98,7 +98,7 @@
             v-for="item in filteredItems"
             :key="item.id"
             class="expiry-item"
-            @click="router.push({ name: props.deptId ? 'BizExpiringPatentDetail' : 'LegalExpiringPatentDetail', params: { patentId: item.id } })"
+            @click="goDetail(item.id)"
           >
             <div class="expiry-item__urgency" :class="`urgency--${item.urgency}`">
               <span class="urgency-dot" />
@@ -180,7 +180,7 @@
               v-for="item in selectedMonthItems"
               :key="item.id"
               class="ycal-detail-item"
-              @click="router.push({ name: props.deptId ? 'BizExpiringPatentDetail' : 'LegalExpiringPatentDetail', params: { patentId: item.id } })"
+              @click="goDetail(item.id)"
             >
               <span class="urgency-dot" :class="`urgency--${item.urgency}`" />
               <div class="ycal-detail-item__info">
@@ -199,12 +199,15 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const props = defineProps<{ deptId?: number }>()
 const { deptId } = props
 
 const router = useRouter()
+const route  = useRoute()
+const base   = computed(() => route.path.startsWith('/biz') ? '/biz' : '/legal')
+function goDetail(id: number) { router.push(`${base.value}/patents/${id}`) }
 
 // ── 뷰 모드 ─────────────────────────────────────────
 const view             = ref<'timeline' | 'calendar'>('timeline')
@@ -212,14 +215,14 @@ const activePeriod     = ref('1y')
 const selectedBarPeriod = ref('1y')
 
 // ── 색상 ────────────────────────────────────────────
-const techColors = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6']
+const techColors = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#ABACED']
 
 const periodColors = [
-  { label: '3개월 이내', color: '#ef4444' },
-  { label: '6개월 이내', color: '#f59e0b' },
-  { label: '1년 이내',   color: '#6366f1' },
-  { label: '3년 이내',   color: '#0ea5e9' },
-  { label: '5년 이내',   color: '#10b981' },
+  { label: '3개월 이내', color: '#E88989' },
+  { label: '6개월 이내', color: '#FFBC5E' },
+  { label: '1년 이내',   color: '#ABACED' },
+  { label: '3년 이내',   color: '#84DBED' },
+  { label: '5년 이내',   color: '#67E2AB' },
 ]
 
 // ── 기간 필터 ────────────────────────────────────────
@@ -238,11 +241,11 @@ const selectedBarLabel   = computed(() => periods.find(p => p.value === selected
 
 // ── 기간별 막대 차트 ─────────────────────────────────
 const periodBarData = [
-  { value: '3m', label: '3개월', count: 8,   color: '#ef4444' },
-  { value: '6m', label: '6개월', count: 15,  color: '#f59e0b' },
-  { value: '1y', label: '1년',   count: 38,  color: '#6366f1' },
-  { value: '3y', label: '3년',   count: 92,  color: '#0ea5e9' },
-  { value: '5y', label: '5년',   count: 147, color: '#10b981' },
+  { value: '3m', label: '3개월', count: 8,   color: '#E88989' },
+  { value: '6m', label: '6개월', count: 15,  color: '#FFBC5E' },
+  { value: '1y', label: '1년',   count: 38,  color: '#ABACED' },
+  { value: '3y', label: '3년',   count: 92,  color: '#84DBED' },
+  { value: '5y', label: '5년',   count: 147, color: '#67E2AB' },
 ]
 const maxPeriod = Math.max(...periodBarData.map(p => p.count))
 function periodBarH(count: number) {
@@ -283,7 +286,7 @@ const filteredItems = computed(() =>
 
 // ── 기술분야별 스택 바 ───────────────────────────────
 const heatmapFields = ['반도체', '배터리', 'AI/SW', '소재']
-const fieldColors   = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b']
+const fieldColors   = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED']
 
 const heatmapData: Record<string, Record<string, number>> = {
   '반도체': { '3m': 5,  '6m': 9,  '1y': 18, '3y': 38, '5y': 58 },
@@ -520,11 +523,11 @@ const selectedMonthItems = computed(() =>
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
 }
 .urgency--critical .urgency-dot,
-.urgency-dot--critical { background: var(--color-danger-light); box-shadow: 0 0 5px rgba(239,68,68,.6); }
+.urgency-dot--critical { background: #E88989; box-shadow: 0 0 5px rgba(232,137,137,.6); }
 .urgency--warn    .urgency-dot,
-.urgency-dot--warn    { background: var(--color-warn); }
+.urgency-dot--warn    { background: #FFBC5E; }
 .urgency--normal  .urgency-dot,
-.urgency-dot--normal  { background: var(--color-text-subtle); }
+.urgency-dot--normal  { background: #ABACED; }
 
 .expiry-item__info { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .expiry-item__title {
@@ -540,9 +543,9 @@ const selectedMonthItems = computed(() =>
 
 .expiry-item__date { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .expiry-item__dday { font-size: 14px; font-weight: 800; margin: 0; }
-.dday--critical { color: var(--color-danger); }
-.dday--warn     { color: var(--color-warn-dark); }
-.dday--normal   { color: var(--color-primary); }
+.dday--critical { color: #E88989; }
+.dday--warn     { color: #FFBC5E; }
+.dday--normal   { color: #ABACED; }
 .expiry-item__expiry-date { font-size: 11.5px; color: var(--color-text-subtle); margin: 0; }
 
 .expiry-item__arrow { color: var(--c-slate-300); transition: color .12s; }

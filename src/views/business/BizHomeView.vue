@@ -67,7 +67,7 @@
             v-for="item in pendingItems.slice(0, 3)"
             :key="item.id"
             class="pending-item"
-            @click="router.push(`/patents/${item.id}`)"
+            @click="router.push(`/biz/patents/${item.id}`)"
           >
             <div class="pending-item__dot" />
             <span class="pending-item__title">{{ item.title }}</span>

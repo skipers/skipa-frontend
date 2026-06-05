@@ -446,7 +446,7 @@ const progressSegments = [
   { label: '요청 완료',  color: '#6366f1' },
   { label: '지연',       color: '#ef4444' },
   { label: '회신 완료',  color: '#22c55e' },
-  { label: '미확인 회신', color: '#f59e0b' },
+  { label: '미확인 회신', color: '#e29578' },
 ]
 
 // ── 전체/일부 체크 ───────────────────────────────────
@@ -634,7 +634,7 @@ async function handleSend() {
   }
 }
 
-function goDetail(id: number) { router.push(`/legal/patent-search/${id}`) }
+function goDetail(id: number) { router.push(`/legal/patents/${id}`) }
 
 onMounted(() => {
   const tab      = route.query.tab      as string | undefined

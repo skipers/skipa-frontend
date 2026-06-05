@@ -64,6 +64,12 @@ const routes: RouteRecordRaw[] = [
         props: (route) => ({ patentId: Number(route.params.patentId) }),
       },
       {
+        path: 'patents/:patentId',
+        name: 'LegalPatentDetailDirect',
+        component: () => import('@/views/common/PatentDetailView.vue'),
+        props: (route) => ({ patentId: Number(route.params.patentId) }),
+      },
+      {
         path: 'patents/new',
         name: 'LegalPatentRegister',
         component: () => import('@/views/legal/LegalPatentRegisterView.vue'),
@@ -120,6 +126,12 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'patent-search/:patentId',
         name: 'BizPatentDetail',
+        component: () => import('@/views/common/PatentDetailView.vue'),
+        props: (route) => ({ patentId: Number(route.params.patentId) }),
+      },
+      {
+        path: 'patents/:patentId',
+        name: 'BizPatentDetailDirect',
         component: () => import('@/views/common/PatentDetailView.vue'),
         props: (route) => ({ patentId: Number(route.params.patentId) }),
       },

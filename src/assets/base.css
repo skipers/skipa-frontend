@@ -121,9 +121,17 @@
   --color-warn-dark: var(--c-amber-700);   /* #b45309 */
   --color-warn-bg:   var(--c-amber-100);   /* #fffbeb */
 
+  /* ── Chart palette ────────────────────────────────── */
+  --chart-1: #ABACED;
+  --chart-2: #67E2AB;
+  --chart-3: #FFBC5E;
+  --chart-4: #84DBED;
+  --chart-5: #E88989;
+  --chart-6: #ABACED;
+
   /* 재평가 결정 */
-  --color-keep:    var(--color-success);   /* #22c55e — 유지 */
-  --color-dispose: var(--c-red-400);       /* #f87171 — 포기 */
+  --color-keep:    #ABACED;   /* 유지 */
+  --color-dispose: #FFBC5E;   /* 포기 */
 
   /* tooltip */
   --color-tooltip-bg:      var(--c-slate-900);   /* #0f172a */

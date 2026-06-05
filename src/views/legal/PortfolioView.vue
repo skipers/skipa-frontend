@@ -305,8 +305,8 @@
 import { computed, ref } from 'vue'
 
 // ── 색상 팔레트 ──────────────────────────────────────
-const techColors = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#ef4444','#06b6d4']
-const trendColors = ['#6366f1','#22c55e','#f59e0b']
+const techColors  = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#6366f1', '#ABACED', '#67E2AB']
+const trendColors = ['#ABACED', '#67E2AB', '#FFBC5E']
 
 // ── 요약 카운트 ──────────────────────────────────────
 const summaryCounts = [
@@ -507,11 +507,11 @@ const donutSegments = computed(() => {
 
 // ── 가치 등급 ────────────────────────────────────────
 const gradeItems = [
-  { grade: 'S', label: '핵심 특허',  count: 28,  bg: '#fefce8', color: '#ca8a04' },
-  { grade: 'A', label: '고가치',     count: 62,  bg: '#f0fdf4', color: '#16a34a' },
-  { grade: 'B', label: '보통',       count: 89,  bg: '#eff6ff', color: '#2563eb' },
-  { grade: 'C', label: '낮은 가치',  count: 45,  bg: '#fef2f2', color: '#dc2626' },
-  { grade: 'D', label: '포기 권장',  count: 23,  bg: '#f8fafc', color: '#94a3b8' },
+  { grade: 'S', label: '핵심 특허',  count: 28,  bg: '#f0f0fa', color: '#ABACED' },
+  { grade: 'A', label: '고가치',     count: 62,  bg: '#edfdf6', color: '#67E2AB' },
+  { grade: 'B', label: '보통',       count: 89,  bg: '#fff8ed', color: '#FFBC5E' },
+  { grade: 'C', label: '낮은 가치',  count: 45,  bg: '#eaf8fd', color: '#84DBED' },
+  { grade: 'D', label: '포기 권장',  count: 23,  bg: '#fdf0f0', color: '#E88989' },
 ]
 
 // ── AI 인사이트 ──────────────────────────────────────

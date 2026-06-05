@@ -306,7 +306,7 @@ function deptPct(d: { assigned: number; decided: number }) {
 }
 
 // ── 기술 분야 ─────────────────────────────────────────
-const techColors = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6']
+const techColors = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#ABACED']
 const techFieldItems = computed(() => distribution.value?.byTechField ?? [])
 function techPct(count: number) {
   const max = Math.max(...techFieldItems.value.map(i => i.count), 1)
