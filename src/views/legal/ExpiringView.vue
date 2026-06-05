@@ -236,8 +236,8 @@ const periods = [
 
 const periodDays: Record<string, number> = { '3m': 90, '6m': 180, '1y': 365, '3y': 1095, '5y': 1825 }
 
-const activePeriodLabel  = computed(() => periods.find(p => p.value === activePeriod.value)?.label + ' 이내' ?? '')
-const selectedBarLabel   = computed(() => periods.find(p => p.value === selectedBarPeriod.value)?.label + ' 이내' ?? '')
+const activePeriodLabel  = computed(() => (periods.find(p => p.value === activePeriod.value)?.label ?? '') + ' 이내')
+const selectedBarLabel   = computed(() => (periods.find(p => p.value === selectedBarPeriod.value)?.label ?? '') + ' 이내')
 
 // ── 기간별 막대 차트 ─────────────────────────────────
 const periodBarData = [

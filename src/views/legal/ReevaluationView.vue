@@ -574,6 +574,7 @@ async function fetchList(p = 1) {
       requested:  Math.round(res.totalItems * 0.45),
       overdue:    Math.round(res.totalItems * 0.08),
       done:       Math.round(res.totalItems * 0.35),
+      unread:     0,
     }
   } catch {
     let pool = activeDept.value === null
