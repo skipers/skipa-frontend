@@ -86,7 +86,125 @@
       <!-- ── 섹션 본문 ── -->
       <div class="sections-body">
 
-        <!-- ── 섹션 1: 특허 원문 ── -->
+        <!-- ── 섹션 1: 유지/포기 의견 제출 ── -->
+        <section id="section-opinion" data-section="opinion" class="content-section">
+          <div class="section-header">
+            <h2 class="section-heading">유지/포기 의견 제출</h2>
+          </div>
+
+          <!-- 사업부 -->
+          <template v-if="isBusiness">
+            <div v-if="submittedOpinion" class="opinion-done">
+              <div class="opinion-done__header">
+                <div class="opinion-done__badge" :class="`opinion-done__badge--${submittedOpinion.decision.toLowerCase()}`">
+                  {{ submittedOpinion.decision === 'KEEP' ? '유지' : '포기' }}
+                </div>
+                <div>
+                  <p class="opinion-done__label">제출 완료</p>
+                  <p class="opinion-done__date">{{ formatDate(submittedOpinion.submittedAt) }} 제출</p>
+                </div>
+              </div>
+              <div v-if="submittedOpinion.comment" class="opinion-done__comment">
+                <p class="opinion-done__comment-label">제출 의견</p>
+                <p class="opinion-done__comment-text">{{ submittedOpinion.comment }}</p>
+              </div>
+              <div class="opinion-done__notice">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                이미 제출된 의견은 수정할 수 없습니다. 변경이 필요한 경우 Legal팀에 문의하세요.
+              </div>
+            </div>
+
+            <div v-else-if="opinionAssigned" class="opinion-form">
+              <p class="opinion-form__desc">이번 분기 재평가 요청에 대한 의견을 제출해 주세요.</p>
+
+              <div class="radio-group">
+                <label
+                  v-for="opt in opinionOptions"
+                  :key="opt.value"
+                  class="radio-card"
+                  :class="[`radio-card--${opt.value.toLowerCase()}`, { 'radio-card--selected': opinionForm.decision === opt.value }]"
+                >
+                  <input type="radio" :value="opt.value" v-model="opinionForm.decision" class="radio-input" />
+                  <span class="radio-indicator"></span>
+                  <span class="radio-card__label">{{ opt.label }}</span>
+                </label>
+              </div>
+
+              <div class="opinion-textarea-wrap">
+                <label class="field__label">검토 의견</label>
+                <textarea
+                  v-model="opinionForm.comment"
+                  class="opinion-textarea"
+                  placeholder="유지 또는 포기 결정에 대한 상세 의견을 입력하세요..."
+                  rows="4"
+                />
+                <p class="field__hint">* 유지/포기 선택은 필수, 의견 작성은 선택입니다.</p>
+              </div>
+
+              <button
+                class="btn-submit-opinion"
+                :disabled="!opinionForm.decision || opinionSubmitting"
+                @click="submitOpinion"
+              >
+                <span v-if="opinionSubmitting" class="spinner-sm" />
+                의견 제출
+              </button>
+            </div>
+
+            <div v-else class="empty-section">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <p>이 특허에 대한 검토 요청이 아직 발송되지 않았습니다.</p>
+            </div>
+          </template>
+
+          <!-- Legal: 읽기 전용 -->
+          <template v-else-if="isLegal">
+            <div class="legal-opinion-view">
+              <div class="legal-opinion-view__header">
+                <h3 class="info-section__title" style="margin:0">사업부 제출 현황</h3>
+                <span class="similar-count">{{ patent.dept }}</span>
+              </div>
+
+              <template v-if="reevalRecord">
+                <div v-if="reevalRecord.decision" class="opinion-done">
+                  <div class="opinion-done__header">
+                    <div class="opinion-done__badge" :class="`opinion-done__badge--${reevalRecord.decision.toLowerCase()}`">
+                      {{ reevalRecord.decision === 'KEEP' ? '유지' : '포기' }}
+                    </div>
+                    <div>
+                      <p class="opinion-done__label">제출 완료</p>
+                      <p class="opinion-done__date">{{ formatDate(reevalRecord.decidedAt) }} 제출</p>
+                    </div>
+                  </div>
+                  <div class="opinion-done__comment">
+                    <p class="opinion-done__comment-label">제출 의견</p>
+                    <p class="opinion-done__comment-text">{{ aiComments.bizSubmit }}</p>
+                  </div>
+                </div>
+                <div v-else class="opinion-pending">
+                  <div class="opinion-pending__icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  </div>
+                  <div>
+                    <p class="opinion-pending__text">제출 대기 중</p>
+                    <p class="opinion-pending__sub">기한: {{ formatDate(reevalRecord.dueDate) }}</p>
+                  </div>
+                  <span v-if="reevalRecord.isOverdue" class="overdue-badge">기한 초과</span>
+                </div>
+              </template>
+
+              <div v-else class="empty-section">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                <p>검토 요청이 발송되지 않은 특허입니다.</p>
+              </div>
+            </div>
+          </template>
+
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- ── 섹션 2: 특허 원문 ── -->
         <section id="section-info" data-section="info" class="content-section">
           <div class="section-header">
             <h2 class="section-heading">특허 원문</h2>
@@ -333,123 +451,6 @@
           </div>
         </section>
 
-        <div class="section-divider"></div>
-
-        <!-- ── 섹션 5: 유지/포기 의견 제출 ── -->
-        <section id="section-opinion" data-section="opinion" class="content-section">
-          <div class="section-header">
-            <h2 class="section-heading">유지/포기 의견 제출</h2>
-          </div>
-
-          <!-- 사업부 -->
-          <template v-if="isBusiness">
-            <div v-if="submittedOpinion" class="opinion-done">
-              <div class="opinion-done__header">
-                <div class="opinion-done__badge" :class="`opinion-done__badge--${submittedOpinion.decision.toLowerCase()}`">
-                  {{ submittedOpinion.decision === 'KEEP' ? '유지' : '포기' }}
-                </div>
-                <div>
-                  <p class="opinion-done__label">제출 완료</p>
-                  <p class="opinion-done__date">{{ formatDate(submittedOpinion.submittedAt) }} 제출</p>
-                </div>
-              </div>
-              <div v-if="submittedOpinion.comment" class="opinion-done__comment">
-                <p class="opinion-done__comment-label">제출 의견</p>
-                <p class="opinion-done__comment-text">{{ submittedOpinion.comment }}</p>
-              </div>
-              <div class="opinion-done__notice">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                이미 제출된 의견은 수정할 수 없습니다. 변경이 필요한 경우 Legal팀에 문의하세요.
-              </div>
-            </div>
-
-            <div v-else-if="opinionAssigned" class="opinion-form">
-              <p class="opinion-form__desc">이번 분기 재평가 요청에 대한 의견을 제출해 주세요.</p>
-
-              <div class="radio-group">
-                <label
-                  v-for="opt in opinionOptions"
-                  :key="opt.value"
-                  class="radio-card"
-                  :class="[`radio-card--${opt.value.toLowerCase()}`, { 'radio-card--selected': opinionForm.decision === opt.value }]"
-                >
-                  <input type="radio" :value="opt.value" v-model="opinionForm.decision" class="radio-input" />
-                  <span class="radio-indicator"></span>
-                  <span class="radio-card__label">{{ opt.label }}</span>
-                </label>
-              </div>
-
-              <div class="opinion-textarea-wrap">
-                <label class="field__label">검토 의견</label>
-                <textarea
-                  v-model="opinionForm.comment"
-                  class="opinion-textarea"
-                  placeholder="유지 또는 포기 결정에 대한 상세 의견을 입력하세요..."
-                  rows="4"
-                />
-                <p class="field__hint">* 유지/포기 선택은 필수, 의견 작성은 선택입니다.</p>
-              </div>
-
-              <button
-                class="btn-submit-opinion"
-                :disabled="!opinionForm.decision || opinionSubmitting"
-                @click="submitOpinion"
-              >
-                <span v-if="opinionSubmitting" class="spinner-sm" />
-                의견 제출
-              </button>
-            </div>
-
-            <div v-else class="empty-section">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-              <p>이 특허에 대한 검토 요청이 아직 발송되지 않았습니다.</p>
-            </div>
-          </template>
-
-          <!-- Legal: 읽기 전용 -->
-          <template v-else-if="isLegal">
-            <div class="legal-opinion-view">
-              <div class="legal-opinion-view__header">
-                <h3 class="info-section__title" style="margin:0">사업부 제출 현황</h3>
-                <span class="similar-count">{{ patent.dept }}</span>
-              </div>
-
-              <template v-if="reevalRecord">
-                <div v-if="reevalRecord.decision" class="opinion-done">
-                  <div class="opinion-done__header">
-                    <div class="opinion-done__badge" :class="`opinion-done__badge--${reevalRecord.decision.toLowerCase()}`">
-                      {{ reevalRecord.decision === 'KEEP' ? '유지' : '포기' }}
-                    </div>
-                    <div>
-                      <p class="opinion-done__label">제출 완료</p>
-                      <p class="opinion-done__date">{{ formatDate(reevalRecord.decidedAt) }} 제출</p>
-                    </div>
-                  </div>
-                  <div class="opinion-done__comment">
-                    <p class="opinion-done__comment-label">제출 의견</p>
-                    <p class="opinion-done__comment-text">{{ aiComments.bizSubmit }}</p>
-                  </div>
-                </div>
-                <div v-else class="opinion-pending">
-                  <div class="opinion-pending__icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  </div>
-                  <div>
-                    <p class="opinion-pending__text">제출 대기 중</p>
-                    <p class="opinion-pending__sub">기한: {{ formatDate(reevalRecord.dueDate) }}</p>
-                  </div>
-                  <span v-if="reevalRecord.isOverdue" class="overdue-badge">기한 초과</span>
-                </div>
-              </template>
-
-              <div v-else class="empty-section">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
-                <p>검토 요청이 발송되지 않은 특허입니다.</p>
-              </div>
-            </div>
-          </template>
-
-        </section>
 
       </div><!-- /sections-body -->
 
@@ -617,11 +618,11 @@ const tabsEl   = ref<HTMLElement | null>(null)
 const TOPBAR_H = 60
 
 const tabs = [
+  { key: 'opinion',  label: '유지/포기 의견 제출' },
   { key: 'info',     label: '특허 원문' },
   { key: 'report',   label: 'AI 평가 보고서' },
   { key: 'similar',  label: '유사 특허 분석' },
   { key: 'projects', label: '사내 프로젝트 연관 정보' },
-  { key: 'opinion',  label: '유지/포기 의견 제출' },
 ]
 
 function scrollToSection(key: string) {

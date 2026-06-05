@@ -87,7 +87,6 @@
       <div class="chart-card">
         <div class="chart-card__header">
           <h3 class="chart-card__title">기술 분야별 분포</h3>
-          <p class="chart-card__sub">전체 {{ totalPatents }}건</p>
         </div>
         <div class="donut-wrap">
           <svg class="donut-svg" viewBox="0 0 120 120">
@@ -124,7 +123,6 @@
       <div class="chart-card">
         <div class="chart-card__header">
           <h3 class="chart-card__title">국가별 분포</h3>
-          <p class="chart-card__sub">전체 {{ totalCountry }}건</p>
         </div>
         <div class="donut-wrap">
           <svg class="donut-svg" viewBox="0 0 120 120">
@@ -161,7 +159,6 @@
       <div class="chart-card">
         <div class="chart-card__header">
           <h3 class="chart-card__title">사업부별 분포</h3>
-          <p class="chart-card__sub">전체 {{ totalPatents }}건</p>
         </div>
         <div class="donut-wrap">
           <svg class="donut-svg" viewBox="0 0 120 120">
