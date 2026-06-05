@@ -47,6 +47,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/legal/ExpiringView.vue'),
       },
       {
+        path: 'expiring/:patentId',
+        name: 'LegalExpiringPatentDetail',
+        component: () => import('@/views/common/PatentDetailView.vue'),
+        props: (route) => ({ patentId: Number(route.params.patentId) }),
+      },
+      {
         path: 'patent-search',
         name: 'LegalPatentSearch',
         component: () => import('@/views/common/PatentSearchView.vue'),
@@ -99,6 +105,12 @@ const routes: RouteRecordRaw[] = [
         path: 'expiring',
         name: 'BizExpiring',
         component: () => import('@/views/business/BizExpiringView.vue'),
+      },
+      {
+        path: 'expiring/:patentId',
+        name: 'BizExpiringPatentDetail',
+        component: () => import('@/views/common/PatentDetailView.vue'),
+        props: (route) => ({ patentId: Number(route.params.patentId) }),
       },
       {
         path: 'patent-search',

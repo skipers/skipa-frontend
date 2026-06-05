@@ -98,7 +98,7 @@
             v-for="item in filteredItems"
             :key="item.id"
             class="expiry-item"
-            @click="router.push(`/patents/${item.id}`)"
+            @click="router.push({ name: props.deptId ? 'BizExpiringPatentDetail' : 'LegalExpiringPatentDetail', params: { patentId: item.id } })"
           >
             <div class="expiry-item__urgency" :class="`urgency--${item.urgency}`">
               <span class="urgency-dot" />
@@ -180,7 +180,7 @@
               v-for="item in selectedMonthItems"
               :key="item.id"
               class="ycal-detail-item"
-              @click="router.push(`/patents/${item.id}`)"
+              @click="router.push({ name: props.deptId ? 'BizExpiringPatentDetail' : 'LegalExpiringPatentDetail', params: { patentId: item.id } })"
             >
               <span class="urgency-dot" :class="`urgency--${item.urgency}`" />
               <div class="ycal-detail-item__info">
