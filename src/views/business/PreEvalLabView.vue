@@ -139,8 +139,8 @@ const targetCountries = ref('')
 // ── 상태 ─────────────────────────────────────────────
 const evaluation       = ref<EvaluationResult | null>(null)
 const history          = ref<EvaluationHistoryItem[]>(loadHistory())
-const selectedHistoryId = ref<string | null>(null)
-const drawerOpen       = ref(false)
+const selectedHistoryId   = ref<string | null>(null)
+const historyDropdownOpen = ref(false)
 
 const chatbotOpen     = ref(false)
 const chatbotExpanded = ref(false)
@@ -281,7 +281,7 @@ function resetAssessment() {
   targetCountries.value = ''
   evaluation.value = null
   selectedHistoryId.value = null
-  drawerOpen.value = false
+  historyDropdownOpen.value = false
   chatInput.value = ''
   chatbotOpen.value = false
   chatbotExpanded.value = false
@@ -296,6 +296,11 @@ function resetAssessment() {
 function selectHistory(id: string) {
   selectedHistoryId.value = id
   evaluation.value = null
+}
+
+function selectHistoryFromDropdown(id: string) {
+  selectHistory(id)
+  historyDropdownOpen.value = false
 }
 
 function addClaimInput() { claimInputs.value.push('') }
@@ -354,46 +359,6 @@ onBeforeUnmount(() => {
   <div class="lab-page" :style="{ '--chat-width': chatPanelWidth }">
 
     <!-- ══════════════════════════════════════════════
-         평가 이력 드로어 (페이지 왼쪽 바깥에 숨겨짐)
-    ══════════════════════════════════════════════ -->
-    <aside class="history-drawer" :class="{ 'history-drawer--open': drawerOpen }">
-
-      <div class="drawer-header">
-        <span class="drawer-title">
-          <svg class="drawer-title__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-          </svg>
-          평가 이력
-        </span>
-        <button class="drawer-close" type="button" @click="drawerOpen = false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-            <path d="M18 6 6 18M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-
-      <ul class="drawer-list">
-        <li
-          v-for="item in history"
-          :key="item.id"
-          class="drawer-item"
-          :class="{ 'drawer-item--active': selectedHistoryId === item.id }"
-          @click="selectHistory(item.id)"
-        >
-          <p class="drawer-item__name">{{ item.patentName }}</p>
-          <div class="drawer-item__meta">
-            <span class="drawer-item__date">{{ formatDate(item.evaluatedAt) }}</span>
-            <span class="grade-pill" :class="`grade-pill--${item.evaluation.grade.toLowerCase()}`">
-              {{ item.evaluation.grade }}
-            </span>
-          </div>
-        </li>
-        <li v-if="history.length === 0" class="drawer-empty">평가 이력이 없습니다.</li>
-      </ul>
-
-    </aside>
-
-    <!-- ══════════════════════════════════════════════
          메인 콘텐츠
     ══════════════════════════════════════════════ -->
     <div class="lab-main">
@@ -404,25 +369,53 @@ onBeforeUnmount(() => {
           <p class="top-bar__title">사전 평가 Lab</p>
           <p class="top-bar__sub">출원 전 발명을 AI로 사전 진단합니다.</p>
         </div>
-        <button class="btn-outline" type="button" @click="resetAssessment">+ 새 평가 시작</button>
+
+        <!-- 평가 이력 드롭다운 -->
+        <div class="history-dropdown" :class="{ 'history-dropdown--open': historyDropdownOpen }">
+          <button class="btn-history" type="button" @click="historyDropdownOpen = !historyDropdownOpen">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            평가 이력
+            <span class="history-count">{{ history.length }}</span>
+            <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+
+          <div class="history-dropdown__menu">
+            <ul class="dropdown-list">
+              <li
+                v-for="item in history"
+                :key="item.id"
+                class="dropdown-item"
+                :class="{ 'dropdown-item--active': selectedHistoryId === item.id }"
+                @click="selectHistoryFromDropdown(item.id)"
+              >
+                <p class="dropdown-item__name">{{ item.patentName }}</p>
+                <div class="dropdown-item__meta">
+                  <span class="dropdown-item__date">{{ formatDate(item.evaluatedAt) }}</span>
+                  <span class="grade-pill" :class="`grade-pill--${item.evaluation.grade.toLowerCase()}`">
+                    {{ item.evaluation.grade }}
+                  </span>
+                </div>
+              </li>
+              <li v-if="history.length === 0" class="dropdown-empty">평가 이력이 없습니다.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 드롭다운 외부 클릭 닫기 -->
+        <div v-if="historyDropdownOpen" class="dropdown-backdrop" @click="historyDropdownOpen = false" />
       </div>
+
 
       <!-- 2열 그리드 -->
       <main class="lab-grid">
 
         <!-- 입력폼 -->
         <section class="panel form-panel">
-          <!-- 사이드바 토글과 동일 스타일의 드로어 토글 버튼 -->
-          <button class="drawer-edge-toggle" type="button" @click="drawerOpen = !drawerOpen">
-            <svg
-              width="14" height="14" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2.5"
-              :style="{ transform: drawerOpen ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.25s' }"
-            >
-              <path d="M15 18l-6-6 6-6"/>
-            </svg>
-          </button>
-          <!-- 읽기 전용 뷰 (히스토리 선택 시) -->
+            <!-- 읽기 전용 뷰 (히스토리 선택 시) -->
           <template v-if="selectedHistoryItem">
             <div class="readonly-header">
               <button class="btn-back" type="button" @click="resetAssessment">
@@ -635,119 +628,11 @@ onBeforeUnmount(() => {
   --accent-hover:  #4f46e5;
   --accent-soft:   rgba(99, 102, 241, 0.12);
   --navy:          #0f172a;
-  --drawer-w:      260px;
   --chat-width:    0px;
 
   position: relative;
-  display: flex;
-  align-items: stretch;
   background: #f5f4f0;
   font-family: 'Pretendard', sans-serif;
-}
-
-/* ══════════════════════════════════════════════════
-   평가 이력 드로어
-══════════════════════════════════════════════════ */
-.history-drawer {
-  width: 0;
-  flex-shrink: 0;
-  background: #fff;
-  overflow: hidden;
-  transition: width 0.3s ease, box-shadow 0.3s ease;
-  display: flex;
-  flex-direction: column;
-}
-.history-drawer--open {
-  width: var(--drawer-w);
-  border-right: 1px solid #e2e8f0;
-  box-shadow: 4px 0 20px rgba(15, 23, 42, 0.08);
-}
-
-/* 드로어 헤더 */
-.drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 16px 14px;
-  border-bottom: 1px solid #f1f5f9;
-  flex-shrink: 0;
-}
-
-.drawer-title {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #0f172a;
-}
-.drawer-title__icon {
-  width: 15px; height: 15px;
-  color: var(--accent);
-}
-
-.drawer-close {
-  width: 28px; height: 28px;
-  border-radius: 7px;
-  border: none; background: none;
-  cursor: pointer; color: #94a3b8;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.13s, color 0.13s;
-}
-.drawer-close:hover { background: #f1f5f9; color: #475569; }
-.drawer-close svg { width: 14px; height: 14px; }
-
-/* 드로어 리스트 */
-.drawer-list {
-  flex: 1;
-  overflow-y: auto;
-  list-style: none;
-  margin: 0;
-  padding: 6px 0;
-}
-.drawer-list::-webkit-scrollbar { width: 4px; }
-.drawer-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
-
-.drawer-item {
-  padding: 12px 16px;
-  cursor: pointer;
-  border-bottom: 1px solid #f8fafc;
-  transition: background 0.12s;
-}
-.drawer-item:last-child { border-bottom: none; }
-.drawer-item:hover { background: #f8fafc; }
-.drawer-item--active {
-  background: #eef2ff;
-  border-left: 3px solid var(--accent);
-  padding-left: 13px;
-}
-
-.drawer-item__name {
-  font-size: 13px;
-  font-weight: 600;
-  color: #0f172a;
-  margin: 0 0 7px;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.drawer-item--active .drawer-item__name { color: #4f46e5; }
-
-.drawer-item__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.drawer-item__date { font-size: 11.5px; color: #94a3b8; }
-
-.drawer-empty {
-  padding: 40px 20px;
-  text-align: center;
-  font-size: 13px;
-  color: #94a3b8;
 }
 
 /* 등급 뱃지 */
@@ -769,32 +654,126 @@ onBeforeUnmount(() => {
    메인 콘텐츠 영역
 ══════════════════════════════════════════════════ */
 .lab-main {
-  flex: 1;
-  min-width: 0;
   padding-right: var(--chat-width);
   transition: padding-right 0.3s ease;
 }
 
 /* ── 상단 바 ──────────────────────────────────────── */
 .top-bar {
+  position: relative;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 20px;
 }
 .top-bar__title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
 .top-bar__sub   { font-size: 12px; color: #94a3b8; margin: 0; }
 
-.btn-outline {
-  height: 38px; padding: 0 16px;
-  border: 1.5px solid var(--accent); border-radius: 10px;
-  background: #fff; color: var(--accent);
-  font-size: 13px; font-weight: 700; font-family: inherit;
+/* ── 평가 이력 드롭다운 ──────────────────────────── */
+.history-dropdown { }
+
+.btn-history {
+  display: flex; align-items: center; gap: 7px;
+  width: 100%; height: 38px; padding: 0 14px;
+  border: 1.5px solid #e2e8f0; border-radius: 10px;
+  background: #fff; color: #475569;
+  font-size: 13px; font-weight: 600; font-family: inherit;
   cursor: pointer; white-space: nowrap;
-  transition: background 0.15s, color 0.15s;
+  box-sizing: border-box;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
-.btn-outline:hover { background: var(--accent); color: #fff; }
+.btn-history:hover { border-color: var(--accent); color: var(--accent); }
+.history-dropdown--open .btn-history {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.history-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  background: var(--accent-soft); color: var(--accent);
+  font-size: 11px; font-weight: 700; border-radius: 9px;
+}
+
+.chevron-icon {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+.history-dropdown--open .chevron-icon { transform: rotate(180deg); }
+
+.history-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  width: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+  z-index: 100;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.history-dropdown--open .history-dropdown__menu {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.dropdown-list {
+  list-style: none; margin: 0; padding: 6px 0;
+  max-height: 480px; overflow-y: auto;
+}
+.dropdown-list::-webkit-scrollbar { width: 4px; }
+.dropdown-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+
+.dropdown-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #f8fafc;
+  transition: background 0.12s;
+}
+.dropdown-item:last-child { border-bottom: none; }
+.dropdown-item:hover { background: #f8fafc; }
+.dropdown-item--active {
+  background: #eef2ff;
+  border-left: 3px solid var(--accent);
+  padding-left: 13px;
+}
+
+.dropdown-item__name {
+  font-size: 13px; font-weight: 600; color: #0f172a;
+  margin: 0 0 6px; line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dropdown-item--active .dropdown-item__name { color: #4f46e5; }
+
+.dropdown-item__meta {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 8px;
+}
+.dropdown-item__date { font-size: 11.5px; color: #94a3b8; }
+
+.dropdown-empty {
+  padding: 32px 20px;
+  text-align: center;
+  font-size: 13px; color: #94a3b8;
+}
+
+.dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
 
 /* ── 그리드 ───────────────────────────────────────── */
 .lab-grid {
@@ -810,26 +789,9 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 20px;
 }
-.form-panel   { position: relative; padding: 28px 24px; }
+.form-panel   { padding: 28px 24px; }
 .result-panel { padding: 28px 24px; min-height: 640px; }
 
-/* 사이드바 토글과 동일한 드로어 엣지 토글 버튼 */
-.drawer-edge-toggle {
-  position: absolute;
-  left: -12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 24px; height: 24px;
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.5);
-  z-index: 35;
-  transition: background 0.15s, color 0.15s;
-}
-.drawer-edge-toggle:hover { background: #334155; color: #fff; }
 
 /* ── 폼 ───────────────────────────────────────────── */
 .panel-title { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 22px; }
@@ -1114,6 +1076,7 @@ onBeforeUnmount(() => {
   transition: background 0.13s;
 }
 .chat-composer button:hover { background: #1e293b; }
+
 
 @keyframes bounce {
   0%, 80%, 100% { transform: translateY(0); opacity: 0.55; }

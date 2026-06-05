@@ -1,6 +1,6 @@
 <template>
   <div class="app-shell">
-    <aside class="sidebar" :class="{ 'sidebar--collapsed': collapsed }">
+    <aside class="sidebar">
       <div class="sidebar__inner">
 
         <div class="sidebar__logo">
@@ -11,70 +11,49 @@
               <circle cx="14" cy="14" r="2" fill="currentColor"/>
             </svg>
           </span>
-          <transition name="fade-slide">
-            <span v-if="!collapsed" class="sidebar__logo-text">SKIPA</span>
-          </transition>
+            <span class="sidebar__logo-text">SKIPA</span>
         </div>
 
-        <transition name="fade-slide">
-          <div v-if="!collapsed" class="sidebar__role-badge">
-            <span class="sidebar__role-dot sidebar__role-dot--biz" />
-            {{ auth.user?.name ?? '사업부' }}
-          </div>
-        </transition>
+        <div class="sidebar__role-badge">
+          <span class="sidebar__role-dot sidebar__role-dot--biz" />
+          {{ auth.user?.name ?? '사업부' }}
+        </div>
 
         <nav class="sidebar__nav">
-          <p class="sidebar__nav-label" v-if="!collapsed">메뉴</p>
+          <p class="sidebar__nav-label">메뉴</p>
           <RouterLink
             v-for="item in navItems"
             :key="item.name"
             :to="item.to"
             class="nav-item"
             :class="{ 'nav-item--active': isActive(item.to) }"
-            :title="collapsed ? item.label : undefined"
           >
             <span class="nav-item__icon" v-html="item.icon" />
-            <transition name="fade-slide">
-              <span v-if="!collapsed" class="nav-item__label">{{ item.label }}</span>
-            </transition>
+            <span class="nav-item__label">{{ item.label }}</span>
           </RouterLink>
         </nav>
 
         <div class="sidebar__bottom">
-          <div class="sidebar__user" :class="{ 'sidebar__user--compact': collapsed }">
+          <div class="sidebar__user">
             <div class="sidebar__avatar sidebar__avatar--biz">
               {{ avatarInitial }}
             </div>
-            <transition name="fade-slide">
-              <div v-if="!collapsed" class="sidebar__user-info">
-                <p class="sidebar__user-name">{{ auth.user?.name ?? '사업부' }}</p>
-                <p class="sidebar__user-role">{{ auth.user?.email ?? '' }}</p>
-              </div>
-            </transition>
+            <div class="sidebar__user-info">
+              <p class="sidebar__user-name">{{ auth.user?.name ?? '사업부' }}</p>
+              <p class="sidebar__user-role">{{ auth.user?.email ?? '' }}</p>
+            </div>
           </div>
 
-          <button class="sidebar__logout" @click="handleLogout" :title="collapsed ? '로그아웃' : undefined">
+          <button class="sidebar__logout" @click="handleLogout">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
-            <transition name="fade-slide">
-              <span v-if="!collapsed">로그아웃</span>
-            </transition>
+            <span>로그아웃</span>
           </button>
         </div>
       </div>
-
-      <button class="sidebar__toggle" @click="collapsed = !collapsed">
-        <svg
-          width="14" height="14"
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-          :style="{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.25s' }"
-        >
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-      </button>
     </aside>
 
     <div class="main-area">
@@ -100,15 +79,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const collapsed = ref(false)
-
 const avatarInitial = computed(() => (auth.user?.name ?? 'B').charAt(0))
 
 const navItems = [
@@ -195,10 +172,8 @@ async function handleLogout() {
   position: sticky;
   top: 0;
   height: 100vh;
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
-.sidebar--collapsed { width: 68px; }
 
 .sidebar__inner {
   display: flex;
@@ -331,7 +306,6 @@ async function handleLogout() {
   overflow: hidden;
   white-space: nowrap;
 }
-.sidebar__user--compact { padding: 10px 8px; justify-content: center; }
 
 .sidebar__avatar {
   width: 32px; height: 32px;
@@ -373,24 +347,6 @@ async function handleLogout() {
 }
 .sidebar__logout:hover { background: rgba(239, 68, 68, 0.12); color: var(--c-red-400); }
 
-.sidebar__toggle {
-  position: absolute;
-  right: -12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 24px; height: 24px;
-  background: var(--color-navy-hover);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: rgba(255,255,255,0.5);
-  z-index: 10;
-  transition: background 0.15s, color 0.15s;
-}
-.sidebar__toggle:hover { background: var(--c-slate-750); color: var(--color-surface); }
 
 .main-area { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
@@ -443,8 +399,4 @@ async function handleLogout() {
 
 .page-content { flex: 1; padding: 32px; overflow-y: auto; }
 
-.fade-slide-enter-active { transition: opacity 0.18s, transform 0.18s; }
-.fade-slide-leave-active { transition: opacity 0.1s, transform 0.1s; position: absolute; }
-.fade-slide-enter-from { opacity: 0; transform: translateX(-6px); }
-.fade-slide-leave-to { opacity: 0; transform: translateX(-4px); }
 </style>
