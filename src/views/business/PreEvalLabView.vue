@@ -477,7 +477,15 @@ onBeforeUnmount(() => {
               </label>
 
               <div class="claim-group">
-                <span class="field__label">청구항</span>
+                <div class="claim-header">
+                  <span class="field__label">청구항</span>
+                  <button class="claim-btn claim-btn--add" type="button" @click="addClaimInput">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    추가
+                  </button>
+                </div>
                 <div class="claim-list">
                   <div v-for="(_, index) in claimInputs" :key="index" class="claim-row">
                     <textarea
@@ -487,17 +495,13 @@ onBeforeUnmount(() => {
                       placeholder="청구항 내용을 입력하세요."
                     />
                     <button
-                      class="claim-btn"
+                      v-if="claimInputs.length > 1"
+                      class="claim-btn claim-btn--remove"
                       type="button"
-                      @click="index === claimInputs.length - 1 ? addClaimInput() : removeClaimInput(index)"
+                      @click="removeClaimInput(index)"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <template v-if="index === claimInputs.length - 1">
-                          <path d="M12 5v14M5 12h14"/>
-                        </template>
-                        <template v-else>
-                          <path d="M18 6 6 18M6 6l12 12"/>
-                        </template>
+                        <path d="M18 6 6 18M6 6l12 12"/>
                       </svg>
                     </button>
                   </div>
@@ -838,21 +842,33 @@ onBeforeUnmount(() => {
 .claim-textarea::placeholder { color: #94a3b8; font-size: 13px; }
 .field textarea { resize: vertical; min-height: 96px; }
 
-.claim-group { display: flex; flex-direction: column; gap: 8px; }
-.claim-list  { display: flex; flex-direction: column; gap: 8px; }
-.claim-row   { display: flex; align-items: flex-start; gap: 8px; }
+.claim-group  { display: flex; flex-direction: column; gap: 8px; }
+.claim-header { display: flex; align-items: center; gap: 8px; }
+.claim-list   { display: flex; flex-direction: column; gap: 8px; }
+.claim-row    { display: flex; align-items: flex-start; gap: 8px; }
 .claim-textarea { min-height: 64px; resize: vertical; }
 
-.claim-btn {
-  flex-shrink: 0; width: 34px; height: 34px; margin-top: 1px;
-  border: 1.5px solid #e2e8f0; border-radius: 9px;
-  background: #f8fafc; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  color: #64748b;
-  transition: border-color 0.13s, color 0.13s, background 0.13s;
+.claim-btn--add {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 3px 9px; border-radius: 6px;
+  border: 1.5px solid var(--accent, #6366f1);
+  background: transparent; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--accent, #6366f1);
+  transition: background 0.13s, color 0.13s;
 }
-.claim-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-.claim-btn svg { width: 16px; height: 16px; }
+.claim-btn--add:hover { background: var(--accent-soft, #eef2ff); }
+.claim-btn--add svg { width: 11px; height: 11px; }
+
+.claim-btn--remove {
+  flex-shrink: 0; width: 28px; height: 28px; margin-top: 4px;
+  border: none; border-radius: 6px;
+  background: transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: #94a3b8;
+  transition: color 0.13s, background 0.13s;
+}
+.claim-btn--remove:hover { color: #ef4444; background: #fef2f2; }
+.claim-btn--remove svg { width: 14px; height: 14px; }
 
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
