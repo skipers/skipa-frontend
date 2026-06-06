@@ -104,7 +104,7 @@ const avatarInitial = computed(() => {
   return name.charAt(0)
 })
 
-const navItems = [
+const navItems: { name: string; to: string; label: string; icon: string; badge?: string }[] = [
   {
     name: 'LegalHome',
     to: '/legal/home',
