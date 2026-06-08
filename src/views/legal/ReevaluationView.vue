@@ -342,7 +342,7 @@
                     <strong>{{ unassignedCount }}건</strong>
                   </div>
                   <div class="send-summary__row send-summary__row--warn" v-if="alreadyRequestedCount > 0">
-                    <span>⚠️ 요청 완료·지연·회신 완료 (제외)</span>
+                    <span>⚠️ 요청 완료·회신 완료 (제외)</span>
                     <strong>{{ alreadyRequestedCount }}건</strong>
                   </div>
                 </div>

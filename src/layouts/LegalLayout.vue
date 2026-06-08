@@ -482,7 +482,6 @@ async function handleLogout() {
 .page-content {
   flex: 1;
   padding: 32px;
-  overflow-y: auto;
 }
 
 </style>

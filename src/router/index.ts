@@ -103,6 +103,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/business/MyPatentsView.vue'),
       },
       {
+        path: 'history',
+        name: 'SubmissionHistory',
+        component: () => import('@/views/business/SubmissionHistoryView.vue'),
+      },
+      {
         path: 'pre-eval-lab',
         name: 'PreEvalLab',
         component: () => import('@/views/business/PreEvalLabView.vue'),

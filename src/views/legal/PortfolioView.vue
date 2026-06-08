@@ -17,16 +17,28 @@
         <h2 class="page-header__title">포트폴리오 분석</h2>
         <p class="page-header__desc">보유 특허의 기술 분야, 국가, 가치 등급 분포를 분석합니다</p>
       </div>
-      <div class="header-summary">
-        <div class="summary-chip" v-for="s in summaryCounts" :key="s.label">
-          <span class="summary-chip__value">{{ s.value }}</span>
-          <span class="summary-chip__label">{{ s.label }}</span>
-        </div>
-      </div>
     </div>
 
-    <!-- 상단: 가치 등급 분포 + AI 인사이트 -->
+    <!-- 상단: AI 인사이트 + 가치 등급 분포 -->
     <div class="bottom-row">
+
+      <!-- 요약 인사이트 카드 -->
+      <div class="chart-card chart-card--insight">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">
+            <span class="ai-dot" />
+            AI 포트폴리오 인사이트
+          </h3>
+        </div>
+        <div class="insight-list">
+          <div v-for="ins in insights" :key="ins.text" class="insight-item" :class="`insight-item--${ins.type}`">
+            <div class="insight-item__icon">
+              <span v-html="ins.icon" />
+            </div>
+            <p class="insight-item__text">{{ ins.text }}</p>
+          </div>
+        </div>
+      </div>
 
       <!-- 가치 평가 등급 분포 -->
       <div class="chart-card">
@@ -57,24 +69,6 @@
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
           등급은 AI가 기술성·권리성·사업성을 종합하여 산출한 점수 기준입니다
-        </div>
-      </div>
-
-      <!-- 요약 인사이트 카드 -->
-      <div class="chart-card chart-card--insight">
-        <div class="chart-card__header">
-          <h3 class="chart-card__title">
-            <span class="ai-dot" />
-            AI 포트폴리오 인사이트
-          </h3>
-        </div>
-        <div class="insight-list">
-          <div v-for="ins in insights" :key="ins.text" class="insight-item" :class="`insight-item--${ins.type}`">
-            <div class="insight-item__icon">
-              <span v-html="ins.icon" />
-            </div>
-            <p class="insight-item__text">{{ ins.text }}</p>
-          </div>
         </div>
       </div>
 

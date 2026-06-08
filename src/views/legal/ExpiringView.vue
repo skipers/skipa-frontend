@@ -38,13 +38,13 @@
           <div
             v-for="p in periodBarData" :key="p.label"
             class="period-bar-col"
-            :class="{ 'period-bar-col--selected': selectedBarPeriod === p.value }"
-            @click="selectedBarPeriod = p.value"
+            :class="{ 'period-bar-col--selected': activeFilter === p.value }"
+            @click="activeFilter = p.value"
           >
             <div class="period-bar-wrap">
               <div
                 class="period-bar"
-                :style="{ height: periodBarH(p.count) + 'px', background: p.color, opacity: selectedBarPeriod === p.value ? 1 : 0.55 }"
+                :style="{ height: periodBarH(p.count) + 'px', background: p.color, opacity: activeFilter === p.value ? 1 : 0.55 }"
               />
             </div>
             <p class="period-bar-label">{{ p.label }}</p>
@@ -68,7 +68,7 @@
               :key="f"
               class="field-stack-seg"
               :style="{ width: fieldStackPct(f) + '%', background: fieldColors[i] }"
-              :title="`${f}: ${heatmapData[f]?.[selectedBarPeriod] ?? 0}건 (${fieldStackPct(f)}%)`"
+              :title="`${f}: ${heatmapData[f]?.[heatmapKey] ?? 0}건 (${fieldStackPct(f)}%)`"
             >
               <span v-if="fieldStackPct(f) >= 8" class="field-stack-seg__label">{{ fieldStackPct(f) }}%</span>
             </div>
@@ -80,17 +80,6 @@
       <div class="table-card">
         <div class="table-card__header">
           <h3 class="table-card__title">만료 예정 목록</h3>
-          <div class="period-filter">
-            <button
-              v-for="p in periods" :key="p.value"
-              class="period-btn"
-              :class="{ 'period-btn--active': activePeriod === p.value }"
-              @click="activePeriod = p.value"
-            >
-              {{ p.label }}
-              <span class="period-btn__count">{{ expiringByPeriod[p.value] ?? 0 }}</span>
-            </button>
-          </div>
           <p class="table-card__count">{{ filteredItems.length }}건</p>
         </div>
         <div class="expiry-list">
@@ -210,9 +199,8 @@ const base   = computed(() => route.path.startsWith('/biz') ? '/biz' : '/legal')
 function goDetail(id: number) { router.push(`${base.value}/patents/${id}`) }
 
 // ── 뷰 모드 ─────────────────────────────────────────
-const view             = ref<'timeline' | 'calendar'>('timeline')
-const activePeriod     = ref('1y')
-const selectedBarPeriod = ref('1y')
+const view         = ref<'timeline' | 'calendar'>('timeline')
+const activeFilter = ref<'all' | '3m' | '6m' | '1y' | '3y' | '5y'>('all')
 
 // ── 색상 ────────────────────────────────────────────
 const techColors = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#ABACED']
@@ -225,27 +213,21 @@ const periodColors = [
   { label: '5년 이내',   color: '#67E2AB' },
 ]
 
-// ── 기간 필터 ────────────────────────────────────────
-const periods = [
-  { value: '3m', label: '3개월' },
-  { value: '6m', label: '6개월' },
-  { value: '1y', label: '1년' },
-  { value: '3y', label: '3년' },
-  { value: '5y', label: '5년' },
-]
-
 const periodDays: Record<string, number> = { '3m': 90, '6m': 180, '1y': 365, '3y': 1095, '5y': 1825 }
 
-const activePeriodLabel  = computed(() => periods.find(p => p.value === activePeriod.value)?.label + ' 이내' ?? '')
-const selectedBarLabel   = computed(() => periods.find(p => p.value === selectedBarPeriod.value)?.label + ' 이내' ?? '')
+const selectedBarLabel = computed(() => {
+  if (activeFilter.value === 'all') return '전체'
+  return (periodBarData.find(p => p.value === activeFilter.value)?.label ?? '') + ' 이내'
+})
 
 // ── 기간별 막대 차트 ─────────────────────────────────
 const periodBarData = [
-  { value: '3m', label: '3개월', count: 8,   color: '#E88989' },
-  { value: '6m', label: '6개월', count: 15,  color: '#FFBC5E' },
-  { value: '1y', label: '1년',   count: 38,  color: '#ABACED' },
-  { value: '3y', label: '3년',   count: 92,  color: '#84DBED' },
-  { value: '5y', label: '5년',   count: 147, color: '#67E2AB' },
+  { value: 'all', label: '전체',  count: 247, color: '#94a3b8' },
+  { value: '3m',  label: '3개월', count: 8,   color: '#E88989' },
+  { value: '6m',  label: '6개월', count: 15,  color: '#FFBC5E' },
+  { value: '1y',  label: '1년',   count: 38,  color: '#ABACED' },
+  { value: '3y',  label: '3년',   count: 92,  color: '#84DBED' },
+  { value: '5y',  label: '5년',   count: 147, color: '#67E2AB' },
 ]
 const maxPeriod = Math.max(...periodBarData.map(p => p.count))
 function periodBarH(count: number) {
@@ -272,17 +254,12 @@ const scopedItems = computed(() =>
   props.deptId ? allItems.filter(i => i.deptId === props.deptId) : allItems
 )
 
-const expiringByPeriod = computed(() => {
-  const base = props.deptId ? scopedItems.value : allItems
-  return Object.fromEntries(
-    Object.entries(periodDays).map(([k, days]) => [k, base.filter(i => i.dday <= days).length])
-  )
-})
-
-const filteredItems = computed(() =>
-  scopedItems.value.filter(i => i.dday <= (periodDays[activePeriod.value] ?? 365))
+const filteredItems = computed(() => {
+  if (activeFilter.value === 'all') return [...scopedItems.value].sort((a, b) => a.dday - b.dday)
+  return scopedItems.value
+    .filter(i => i.dday <= (periodDays[activeFilter.value] ?? 365))
     .sort((a, b) => a.dday - b.dday)
-)
+})
 
 // ── 기술분야별 스택 바 ───────────────────────────────
 const heatmapFields = ['반도체', '배터리', 'AI/SW', '소재']
@@ -295,13 +272,14 @@ const heatmapData: Record<string, Record<string, number>> = {
   '소재':   { '3m': 1,  '6m': 0,  '1y': 6,  '3y': 18, '5y': 28 },
 }
 
+const heatmapKey = computed(() => activeFilter.value === 'all' ? '5y' : activeFilter.value)
 const fieldStackTotal = computed(() =>
-  heatmapFields.reduce((sum, f) => sum + (heatmapData[f]?.[selectedBarPeriod.value] ?? 0), 0)
+  heatmapFields.reduce((sum, f) => sum + (heatmapData[f]?.[heatmapKey.value] ?? 0), 0)
 )
 function fieldStackPct(field: string) {
   const total = fieldStackTotal.value
   if (!total) return 0
-  return Math.round((heatmapData[field]?.[selectedBarPeriod.value] ?? 0) / total * 100)
+  return Math.round((heatmapData[field]?.[heatmapKey.value] ?? 0) / total * 100)
 }
 
 function formatDate(d: string) { return d.replace(/-/g, '.') }
@@ -388,28 +366,6 @@ const selectedMonthItems = computed(() =>
 }
 .view-toggle button.active { background: var(--color-text); color: var(--color-surface); }
 
-/* ── 기간 필터 ───────────────────────────────────── */
-.period-filter { display: flex; gap: 8px; flex-wrap: wrap; }
-
-.period-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 8px 16px;
-  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 20px;
-  font-size: 13px; font-weight: 500; font-family: inherit; color: var(--c-slate-600);
-  cursor: pointer; transition: background .13s, border-color .13s, color .13s;
-}
-.period-btn:hover { background: var(--color-surface-hover); }
-.period-btn--active { background: var(--color-text); border-color: var(--color-text); color: var(--color-surface); }
-
-.period-btn__count {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 20px; height: 18px; padding: 0 5px;
-  background: rgba(255,255,255,.2);
-  border-radius: 9px; font-size: 11px; font-weight: 700;
-}
-.period-btn:not(.period-btn--active) .period-btn__count {
-  background: var(--color-surface-muted); color: var(--color-text-muted);
-}
 
 /* ── 차트 카드 ────────────────────────────────────── */
 .chart-card {
