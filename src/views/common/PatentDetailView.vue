@@ -130,19 +130,6 @@
                   <th>공고번호(일자)</th>
                   <td>{{ patentBiblio.annNum }}</td>
                 </tr>
-                <tr><th>국제출원번호(일자)</th><td></td></tr>
-                <tr><th>국제공개번호(일자)</th><td></td></tr>
-                <tr><th>우선권정보</th><td></td></tr>
-                <tr>
-                  <th>법적상태</th>
-                  <td>{{ patentBiblio.legalStatus }}</td>
-                </tr>
-                <tr><th>심사진행상태</th><td>{{ patentBiblio.examStatus }}</td></tr>
-                <tr><th>심판사항</th><td></td></tr>
-                <tr><th>구분</th><td>{{ patentBiblio.classification }}</td></tr>
-                <tr><th>원출원번호(일자)</th><td></td></tr>
-                <tr><th>관련 출원번호</th><td></td></tr>
-                <tr><th>심사청구여부(일자)</th><td>{{ patentBiblio.examinationRequested }}</td></tr>
                 <tr><th>심사청구항수</th><td>{{ patentBiblio.claimsCount }}</td></tr>
                 <tr>
                   <th>만료일</th>
@@ -153,7 +140,7 @@
           </div>
 
           <div class="info-section">
-            <h3 class="info-section__title">키워드 (AI 추출)</h3>
+            <h3 class="info-section__title">키워드</h3>
             <div class="kw-chip-row">
               <span v-for="kw in patent.tags" :key="kw" class="kw-chip"># {{ kw }}</span>
             </div>
@@ -164,18 +151,9 @@
             <p class="info-text">{{ detailExtras.summary }}</p>
           </div>
 
-          <div class="info-section" style="margin-bottom:0">
-            <h3 class="info-section__title">청구항</h3>
-            <ol class="claims-list">
-              <li v-for="(claim, i) in detailExtras.claims" :key="i" class="claims-list__item">
-                <span class="claim-num">{{ i + 1 }}.</span>
-                <span>{{ claim }}</span>
-              </li>
-            </ol>
-          </div>
         </section>
 
-        <div class="section-divider"></div>
+        <div v-if="isOwnDept" class="section-divider"></div>
 
         <!-- ── 섹션 2: AI 평가 보고서 ── -->
         <section v-if="isOwnDept" id="section-report" data-section="report" class="content-section">
@@ -185,121 +163,232 @@
 
           <template v-if="patent.grade">
 
-            <!-- ① 종합 점수 카드 -->
-            <div class="rpt-score-cards">
-              <div class="rpt-score-card" style="--rpt-card-color:#0f172a">
-                <div class="rpt-score-card__label">종합</div>
-                <div class="rpt-score-card__value">65<span class="rpt-score-card__denom"> / 100</span></div>
-                <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" style="width:65%"></div></div>
-              </div>
-              <div class="rpt-score-card" style="--rpt-card-color:#16a34a">
-                <div class="rpt-score-card__label">기술성</div>
-                <div class="rpt-score-card__value">65<span class="rpt-score-card__denom"> / 100</span></div>
-                <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" style="width:65%"></div></div>
-              </div>
-              <div class="rpt-score-card" style="--rpt-card-color:#b45309">
-                <div class="rpt-score-card__label">권리성</div>
-                <div class="rpt-score-card__value">66<span class="rpt-score-card__denom"> / 100</span></div>
-                <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" style="width:66%"></div></div>
-              </div>
-              <div class="rpt-score-card" style="--rpt-card-color:#dc2626">
-                <div class="rpt-score-card__label">시장성 및 사업성</div>
-                <div class="rpt-score-card__value">60<span class="rpt-score-card__denom"> / 100</span></div>
-                <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" style="width:60%"></div></div>
-              </div>
-            </div>
-
-            <!-- ② 종합 의견 -->
-            <div class="rpt-subsection">
-              <p class="rpt-subsection-title">종합 의견</p>
-              <div class="rpt-opinion-cats">
-                <div class="rpt-opinion-cat">
-                  <p class="rpt-opinion-cat__label">기술성</p>
-                  <p class="rpt-opinion-cat__text">메시지 지향 미들웨어 병목 모니터링 특허의 종합 점수는 65/100으로 보통 수준입니다. 기술성(65/100)은 토폴로지 기반 동적 상태 갱신 구조의 혁신성(4/5)과 높은 모방 난이도(4/5)가 강점이나, 대형 경쟁사 대비 낮은 시장 점유율로 대체기술 경쟁성(2/5)이 약점으로 작용합니다. 동일 IPC 분야(H04L, G06F) 내 자사 점유율은 1.17%에 불과해 경쟁 우위 확보가 어려운 구조입니다.</p>
+            <!-- 1. 평가 요약 -->
+            <div class="rpt-part">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">01</span>평가 요약</h3>
+              <div class="rpt-score-cards">
+                <div class="rpt-score-card" style="--rpt-card-color:#111827">
+                  <div class="rpt-score-card__label">종합</div>
+                  <div class="rpt-score-card__value">{{ totalScore }}<span class="rpt-score-card__denom"> / 100</span></div>
+                  <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" :style="{ width: totalScore + '%' }"></div></div>
                 </div>
-                <div class="rpt-opinion-cat">
-                  <p class="rpt-opinion-cat__label">권리성</p>
-                  <p class="rpt-opinion-cat__text">권리성(66/100)은 출원인 1명·심판이력 0건으로 권리행사 제한 가능성(5/5)이 최고점을 기록했으며, 핵심 기능 중심의 간결한 청구항 구성(4/5)도 긍정적입니다. 반면 해외출원이 없어 글로벌 보호 범위가 부재하고, 독립항 일부가 실시예 수준으로 기재되어 권리 범위가 좁아질 우려가 있습니다. 심사관 인용 선행기술 3건 존재로 무효 가능성도 완전히 배제하기 어렵습니다.</p>
+                <div class="rpt-score-card" style="--rpt-card-color:#1a6e3c">
+                  <div class="rpt-score-card__label">기술성</div>
+                  <div class="rpt-score-card__value">{{ aiScores.tech }}<span class="rpt-score-card__denom"> / 100</span></div>
+                  <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" :style="{ width: aiScores.tech + '%' }"></div></div>
                 </div>
-                <div class="rpt-opinion-cat">
-                  <p class="rpt-opinion-cat__label">시장성 및 사업성</p>
-                  <p class="rpt-opinion-cat__text">시장성 및 사업성(60/100)은 KOSIS 기준 전자부품·컴퓨터·통신장비제조업 5년 평균 성장률 8.32%가 긍정적 신호이나, KIPRIS IPC 출원 증가율 -78.1%로 특허출원 활성도(1/5)가 최저점입니다. 마이크로서비스 아키텍처를 운영하는 기업 고객 대상 실시간 병목 시각화 기능의 운영 효율성 기여도는 높게 평가됩니다. 전반적으로 기술적 완성도는 준수하나 시장 경쟁성 강화와 글로벌 권리 범위 보강이 시급합니다.</p>
+                <div class="rpt-score-card" style="--rpt-card-color:#7a6a00">
+                  <div class="rpt-score-card__label">권리성</div>
+                  <div class="rpt-score-card__value">{{ aiScores.rights }}<span class="rpt-score-card__denom"> / 100</span></div>
+                  <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" :style="{ width: aiScores.rights + '%' }"></div></div>
                 </div>
+                <div class="rpt-score-card" style="--rpt-card-color:#8b1a1a">
+                  <div class="rpt-score-card__label">시장성 및 사업성</div>
+                  <div class="rpt-score-card__value">{{ aiScores.biz }}<span class="rpt-score-card__denom"> / 100</span></div>
+                  <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" :style="{ width: aiScores.biz + '%' }"></div></div>
+                </div>
+              </div>
+              <div class="rpt-opinion-box">
+                <p>{{ aiComments.tech }}</p>
+                <p>{{ aiComments.rights }}</p>
+                <p>{{ aiComments.biz }}</p>
               </div>
             </div>
 
-            <!-- ③ 부록 -->
-            <details class="rpt-appendix">
-              <summary class="rpt-appendix__summary">
-                평가 항목 세부 내역
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="rpt-appendix__chevron"><path d="M6 9l6 6 6-6"/></svg>
-              </summary>
-              <div class="rpt-appendix__body">
+            <!-- 2. 평가 기준별 상세 점수 -->
+            <div class="rpt-part">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">02</span>평가 기준별 상세 점수</h3>
 
-                <div v-for="block in REPORT_EVAL_BLOCKS" :key="block.key" class="rpt-eval-block">
-                  <div class="rpt-eval-block-header">
-                    <span class="rpt-eval-block-title">{{ block.title }}</span>
-                    <span class="rpt-eval-block-score">{{ block.score }} / 100</span>
+              <!-- ① 점수 + 요약 한 행씩 -->
+              <div class="rpt-criteria-list">
+                <div v-for="(block, bi) in REPORT_EVAL_BLOCKS" :key="block.key" class="rpt-criteria-row">
+                  <div class="rpt-criteria-score"
+                    :style="bi === 0 ? '--rc-color:#1a6e3c' : bi === 1 ? '--rc-color:#7a6a00' : '--rc-color:#8b1a1a'">
+                    <div class="rpt-criteria-score__label">{{ block.title }}</div>
+                    <div class="rpt-criteria-score__value">{{ block.score }}<span>/100</span></div>
+                    <div class="rpt-criteria-score__bar">
+                      <div class="rpt-criteria-score__bar-fill" :style="{ width: block.score + '%' }"></div>
+                    </div>
                   </div>
-                  <div class="rpt-table-wrap">
-                    <table class="rpt-eval-table">
-                      <thead>
-                        <tr>
-                          <th style="width:180px">평가 항목</th>
-                          <th style="width:72px">점수</th>
-                          <th style="width:110px">산출 방식</th>
-                          <th>판단 요지</th>
-                          <th style="width:36px"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <template v-for="item in block.items" :key="item.id">
-                          <tr class="rpt-data-row" @click="reportOpenRows[item.id] = !reportOpenRows[item.id]">
-                            <td class="rpt-item-name">{{ item.name }}</td>
-                            <td><span :class="['rpt-score-pill', 'rpt-score-' + item.score]">{{ item.score }}/5</span></td>
-                            <td class="rpt-method">{{ item.method }}</td>
-                            <td class="rpt-summary">{{ item.summary }}</td>
-                            <td>
-                              <button class="rpt-toggle-btn" :class="{ open: reportOpenRows[item.id] }" type="button">▶</button>
-                            </td>
-                          </tr>
-                          <tr v-show="reportOpenRows[item.id]" class="rpt-detail-row">
-                            <td colspan="5">
-                              <div class="rpt-detail-content">
-                                <div class="rpt-detail-label">판단 근거</div>
-                                <div class="rpt-detail-text">{{ item.grounds }}</div>
-                                <div class="rpt-detail-label">출처</div>
-                                <div class="rpt-detail-text">{{ item.sources }}</div>
-                              </div>
-                            </td>
-                          </tr>
-                        </template>
-                      </tbody>
-                    </table>
-                  </div>
+                  <p class="rpt-criteria-text">{{
+                    bi === 0 ? aiComments.tech : bi === 1 ? aiComments.rights : aiComments.biz
+                  }}</p>
                 </div>
-
-                <div class="rpt-subsection">
-                  <p class="rpt-subsection-title">추가 확인 필요 사항</p>
-                  <p class="rpt-subsection-desc">점수가 낮은 평가 항목에서 자동 추출했습니다. 사업부 자체 자료와의 교차 검토를 권장합니다.</p>
-                  <div v-for="item in REPORT_CONFIRM_ITEMS" :key="item.title" class="rpt-confirm-item">
-                    <div class="rpt-confirm-item-title">{{ item.title }}<span>{{ item.meta }}</span></div>
-                    <div class="rpt-confirm-item-desc">{{ item.desc }}</div>
-                  </div>
-                </div>
-
-                <div class="rpt-subsection rpt-subsection--last">
-                  <p class="rpt-subsection-title">참고문헌</p>
-                  <ol class="rpt-ref-list">
-                    <li v-for="(ref, i) in REPORT_REFS" :key="i">
-                      <span class="rpt-ref-num">[{{ i + 1 }}]</span>
-                      <span>{{ ref }}</span>
-                    </li>
-                  </ol>
-                </div>
-
               </div>
-            </details>
+
+              <!-- ③ 평가 항목 세부 내역 (토글) -->
+              <details class="rpt-appendix">
+                <summary class="rpt-appendix__summary">
+                  평가 항목 세부 내역
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="rpt-appendix__chevron"><path d="M6 9l6 6 6-6"/></svg>
+                </summary>
+                <div class="rpt-appendix__body">
+                  <div v-for="block in REPORT_EVAL_BLOCKS" :key="block.key" class="rpt-eval-block">
+                    <div class="rpt-eval-block-header">
+                      <span class="rpt-eval-block-title">{{ block.title }}</span>
+                      <span class="rpt-eval-block-score">{{ block.score }} / 100</span>
+                    </div>
+                    <div class="rpt-table-wrap">
+                      <table class="rpt-eval-table">
+                        <thead>
+                          <tr>
+                            <th style="width:180px">평가 항목</th>
+                            <th style="width:72px">점수</th>
+                            <th style="width:110px">산출 방식</th>
+                            <th>판단 요지</th>
+                            <th style="width:36px"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <template v-for="item in block.items" :key="item.id">
+                            <tr class="rpt-data-row" @click="reportOpenRows[item.id] = !reportOpenRows[item.id]">
+                              <td class="rpt-item-name">{{ item.name }}</td>
+                              <td><span :class="['rpt-score-pill', 'rpt-score-' + item.score]">{{ item.score }}/5</span></td>
+                              <td class="rpt-method">{{ item.method }}</td>
+                              <td class="rpt-summary">{{ item.summary }}</td>
+                              <td>
+                                <button class="rpt-toggle-btn" :class="{ open: reportOpenRows[item.id] }" type="button">▶</button>
+                              </td>
+                            </tr>
+                            <tr v-show="reportOpenRows[item.id]" class="rpt-detail-row">
+                              <td colspan="5">
+                                <div class="rpt-detail-content">
+                                  <div class="rpt-detail-label">판단 근거</div>
+                                  <div class="rpt-detail-text">{{ item.grounds }}</div>
+                                  <div class="rpt-detail-label">출처</div>
+                                  <div class="rpt-detail-text">{{ item.sources }}</div>
+                                </div>
+                              </td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+
+            <!-- 3. 사내 프로젝트 활용 현황 -->
+            <div class="rpt-part">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">03</span>사내 프로젝트 활용 현황</h3>
+
+              <table class="rpt-info-table">
+                <tbody>
+                  <tr><th>사업화 여부</th><td>진행 중</td></tr>
+                  <tr><th>적용 사업·서비스</th><td>스마트 팩토리 시스템 통합 미들웨어 솔루션</td></tr>
+                  <tr><th>사업 적용 이력</th><td>2025년 이후 고객 사례와 함께 적용되고 있는 것으로 보임</td></tr>
+                  <tr><th>고객·파트너</th><td>반도체 소재 제조 업체 S사</td></tr>
+                  <tr><th>사업화 신호</th><td>고객 사례, 수상·인증</td></tr>
+                </tbody>
+              </table>
+
+              <div class="rpt-project-card">
+                <div class="rpt-project-card__name">요약 설명</div>
+                <p class="rpt-project-card__desc" style="margin-bottom:0">
+                  RAG 검색 결과, 이 특허와 연결되는 사내 활용 영역은 '스마트 팩토리 시스템 통합 미들웨어 솔루션'이며 사업화 상태는 '진행 중'입니다. iFacts DiFlow는 스마트 팩토리 시스템의 통합을 위한 미들웨어 솔루션으로, 자동화와 지능화를 통해 생산 프로세스를 최적화하고 효율성을 향상시킵니다. 현재 고객 사례를 통해 사업화가 진행 중입니다. 사업 적용 이력은 '2025년 이후 고객 사례와 함께 적용되고 있는 것으로 보임', 고객·파트너는 '반도체 소재 제조 업체 S사'로 확인됩니다. 사업화 신호는 고객 사례, 수상·인증입니다.
+                </p>
+              </div>
+
+              <div class="rpt-project-card">
+                <div class="rpt-project-card__name">근거 자료</div>
+                <ol class="rpt-evidence-list">
+                  <li v-for="(ev, i) in MOCK_PROJECT_EVIDENCE" :key="i">
+                    <a class="rpt-evidence-link" :href="ev.url" target="_blank" rel="noopener">{{ ev.title }}</a>
+                  </li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- 4. 유사 특허 분석 -->
+            <div class="rpt-part">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">04</span>유사 특허 분석</h3>
+
+              <!-- 통계 -->
+              <div class="rpt-stat-row">
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#2563eb">{{ MOCK_SIMILAR_PATENTS.length }}</span><span class="rpt-stat-label">분석 대상</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#166534">6</span><span class="rpt-stat-label">등록/유지</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#6b7280">1</span><span class="rpt-stat-label">공개/심사중</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#374151">3</span><span class="rpt-stat-label">거절/소멸</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#854d0e">2.2</span><span class="rpt-stat-label">평균 피인용수</span></div>
+              </div>
+
+              <!-- 요약 (통계 바로 아래) -->
+              <div class="rpt-opinion-box">
+                <p>KIPRIS 유사도 상위 {{ MOCK_SIMILAR_PATENTS.length }}건 중 등록/유지 6건, 공개/심사중 1건, 거절/소멸 3건으로 나타납니다. 분석 대상 특허는 '실시간 병목 자동 분석 방법'과 '차량 네트워크에서 ASIL에 기초한 통신 방법'과 같은 비교 특허와 네트워크 시스템의 병목 구간 모니터링에서 기술적 겹침이 나타납니다. 그러나 메시지 지향 미들웨어에서의 병목 모니터링에 집중한다는 점에서 차별화됩니다.</p>
+              </div>
+
+              <!-- 상위 3개 상세 카드 (유사도 내림차순 이미 정렬됨) -->
+              <div v-for="(s, si) in [...MOCK_SIMILAR_PATENTS].sort((a,b) => b.similarityScore - a.similarityScore).slice(0, 3)" :key="s.id" class="rpt-similar-card">
+                <div class="rpt-similar-card__top">
+                  <div class="rpt-similar-card__info">
+                    <div class="rpt-similar-card__name">#{{ si + 1 }} {{ s.title }}</div>
+                    <div class="rpt-similar-card__meta">
+                      <span>{{ s.applicant }}</span>
+                      <span :class="['rpt-status-badge', s.status === '유지' ? 'rpt-status--keep' : s.status === '소멸' ? 'rpt-status--expired' : 'rpt-status--open']">{{ s.status }}</span>
+                      <span>출원번호 {{ s.applicationNumber }}</span>
+                      <span>피인용 {{ s.citations }}</span>
+                    </div>
+                  </div>
+                  <span class="rpt-similar-score-badge">유사도 {{ s.similarityScore }}</span>
+                </div>
+                <p class="rpt-similar-card__desc">{{ s.desc }}</p>
+                <div v-if="s.detail" class="rpt-similar-card__detail">
+                  <p v-for="(line, li) in s.detail.split('\n')" :key="li">{{ line }}</p>
+                </div>
+              </div>
+
+              <!-- 전체 목록 테이블 (유사도 내림차순) -->
+              <div class="rpt-table-wrap" style="margin-top:20px">
+                <table class="rpt-eval-table">
+                  <thead>
+                    <tr>
+                      <th style="width:140px">출원번호</th>
+                      <th>특허명</th>
+                      <th style="width:160px">출원인</th>
+                      <th style="width:68px">출원연도</th>
+                      <th style="width:72px">유사도</th>
+                      <th style="width:68px">피인용수</th>
+                      <th style="width:60px">상태</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="s in [...MOCK_SIMILAR_PATENTS].sort((a,b) => b.similarityScore - a.similarityScore)" :key="s.id">
+                      <td><span class="mono text-muted-sm">{{ s.applicationNumber }}</span></td>
+                      <td class="rpt-item-name">{{ s.title }}</td>
+                      <td><span class="similar-applicant">{{ s.applicant }}</span></td>
+                      <td class="rpt-method">{{ s.year }}</td>
+                      <td class="rpt-method" style="font-weight:600">{{ s.similarityScore }}</td>
+                      <td class="rpt-method">{{ s.citations }}</td>
+                      <td>
+                        <span :class="['rpt-status-badge', s.status === '유지' ? 'rpt-status--keep' : s.status === '소멸' ? 'rpt-status--expired' : 'rpt-status--open']">{{ s.status }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 5. 추가 확인 필요 사항 -->
+            <div class="rpt-part">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">05</span>추가 확인 필요 사항</h3>
+              <p class="rpt-subsection-desc">점수가 낮은 평가 항목에서 자동 추출했습니다. 사업부 자체 자료와의 교차 검토를 권장합니다.</p>
+              <div v-for="item in REPORT_CONFIRM_ITEMS" :key="item.title" class="rpt-confirm-item">
+                <div class="rpt-confirm-item-title">{{ item.title }}<span>{{ item.meta }}</span></div>
+                <div class="rpt-confirm-item-desc">{{ item.desc }}</div>
+              </div>
+            </div>
+
+            <!-- 6. 참고문헌 -->
+            <div class="rpt-part rpt-part--last">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">06</span>참고문헌</h3>
+              <ol class="rpt-ref-list">
+                <li v-for="(ref, i) in REPORT_REFS" :key="i">
+                  <span class="rpt-ref-num">[{{ i + 1 }}]</span>
+                  <span>{{ ref }}</span>
+                </li>
+              </ol>
+            </div>
 
           </template>
 
@@ -309,78 +398,10 @@
           </div>
         </section>
 
-        <div v-if="isOwnDept" class="section-divider"></div>
-
-        <!-- ── 섹션 3: 유사 특허 분석 ── -->
-        <section id="section-similar" data-section="similar" class="content-section">
-          <div class="section-header">
-            <h2 class="section-heading">유사 특허 분석</h2>
-            <span class="similar-count">{{ MOCK_SIMILAR_PATENTS.length }}건 검색됨</span>
-          </div>
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th style="width:140px">유사도 점수</th>
-                  <th style="width:180px">출원번호</th>
-                  <th>특허명</th>
-                  <th>출원인</th>
-                  <th style="width:100px">출원일</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="s in MOCK_SIMILAR_PATENTS" :key="s.id">
-                  <td>
-                    <div class="similarity-cell">
-                      <span class="similarity-score" :class="similarityClass(s.similarityScore)">{{ s.similarityScore }}%</span>
-                      <div class="mini-gauge">
-                        <div class="mini-gauge__fill" :class="similarityClass(s.similarityScore)" :style="{ width: s.similarityScore + '%' }" />
-                      </div>
-                    </div>
-                  </td>
-                  <td><span class="mono text-muted-sm">{{ s.applicationNumber }}</span></td>
-                  <td><span class="similar-title">{{ s.title }}</span></td>
-                  <td><span class="similar-applicant">{{ s.applicant }}</span></td>
-                  <td><span class="text-muted-sm">{{ formatDate(s.applicationDate) }}</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <div v-if="isOwnDept" class="section-divider"></div>
-
-        <!-- ── 섹션 4: 사내 프로젝트 정보 ── -->
-        <section v-if="isOwnDept" id="section-projects" data-section="projects" class="content-section">
-          <div class="section-header">
-            <h2 class="section-heading">사내 프로젝트 정보</h2>
-            <span class="similar-count">{{ MOCK_RELATED_PROJECTS.length }}건</span>
-          </div>
-          <div class="project-cards">
-            <div v-for="proj in MOCK_RELATED_PROJECTS" :key="proj.id" class="project-card">
-              <div class="project-card__header">
-                <div class="project-card__title-row">
-                  <span class="project-card__icon">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-                  </span>
-                  <h4 class="project-card__name">{{ proj.projectName }}</h4>
-                </div>
-                <div class="project-card__meta">
-                  <span class="project-dept">{{ proj.department }}</span>
-                  <span class="relevance-badge" :class="`relevance-badge--${relevanceClass(proj.relevance)}`">
-                    연관도 {{ proj.relevance }}
-                  </span>
-                </div>
-              </div>
-              <p class="project-card__desc">{{ proj.description }}</p>
-            </div>
-          </div>
-        </section>
-
 
         <div class="section-divider"></div>
 
-        <!-- ── 섹션 5: 등록료 납부 내역 ── -->
+        <!-- ── 섹션 3: 등록료 납부 내역 ── -->
         <section id="section-fee" data-section="fee" class="content-section">
           <div class="section-header">
             <h2 class="section-heading">등록료 납부 내역</h2>
@@ -403,6 +424,31 @@
               </tr>
             </tbody>
           </table>
+
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- ── 섹션 4: 등록 이력 ── -->
+        <section id="section-history" data-section="history" class="content-section">
+          <div class="section-header">
+            <h2 class="section-heading">등록 이력</h2>
+          </div>
+          <div class="patent-timeline">
+            <div v-for="(ev, i) in patentHistory" :key="i" class="ptl-item">
+              <div class="ptl-left">
+                <span class="ptl-date">{{ formatDate(ev.date) }}</span>
+              </div>
+              <div class="ptl-center">
+                <div :class="['ptl-dot', `ptl-dot--${ev.variant}`]"></div>
+                <div v-if="i < patentHistory.length - 1" class="ptl-line"></div>
+              </div>
+              <div class="ptl-right">
+                <span :class="['ptl-badge', `ptl-badge--${ev.variant}`]">{{ ev.label }}</span>
+                <p class="ptl-desc">{{ ev.desc }}</p>
+              </div>
+            </div>
+          </div>
         </section>
 
         </div><!-- /sections-body -->
@@ -617,7 +663,7 @@ interface ChatMessage {
 }
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
 import {
-  MOCK_PATENTS, MOCK_REEVAL, MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS,
+  MOCK_PATENTS, MOCK_REEVAL, MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS, MOCK_PROJECT_EVIDENCE,
   PATENT_INVENTORS, TECH_FIELD_IPC, COUNTRY_LABEL, TECH_FIELD_SUMMARY,
   TECH_FIELD_CLAIMS, AI_REPORT_COMMENTS, AI_GRADE_SCORES, DEPT_MAP,
 } from '@/mocks/data'
@@ -669,29 +715,59 @@ const BIBLIO_CPC: Record<string, string[]> = {
 
 const FEE_SCHEDULES: Record<string, { quarter: string; amount: number; paid: string }[]> = {
   REGISTERED: [
-    { quarter: '제 1 - 3 년분',   amount: 630000,  paid: '2012-09-20' },
-    { quarter: '제 4 - 4 년분',   amount: 370000,  paid: '2015-08-24' },
-    { quarter: '제 5 - 5 년분',   amount: 370000,  paid: '2016-08-22' },
-    { quarter: '제 6 - 6 년분',   amount: 370000,  paid: '2017-08-24' },
-    { quarter: '제 7 - 7 년분',   amount: 670000,  paid: '2018-08-22' },
-    { quarter: '제 8 - 8 년분',   amount: 670000,  paid: '2019-08-26' },
-    { quarter: '제 9 - 9 년분',   amount: 670000,  paid: '2020-08-26' },
-    { quarter: '제 10 - 10 년분', amount: 1065000, paid: '2021-08-25' },
-    { quarter: '제 11 - 11 년분', amount: 1065000, paid: '2022-08-24' },
-    { quarter: '제 12 - 12 년분', amount: 951000,  paid: '2023-08-25' },
-    { quarter: '제 13 - 13 년분', amount: 1059000, paid: '2024-06-04' },
-    { quarter: '제 14 - 14 년분', amount: 1059000, paid: '2025-06-13' },
+    { quarter: '제  1 -  3 년분', amount:  630000, paid: '2012-09-20' },
+    { quarter: '제  4 -  6 년분', amount: 1110000, paid: '2015-08-24' },
+    { quarter: '제  7 -  9 년분', amount: 2010000, paid: '2018-08-22' },
+    { quarter: '제 10 - 12 년분', amount: 3195000, paid: '2021-08-25' },
+    { quarter: '제 13 - 15 년분', amount: 3177000, paid: '2024-06-04' },
   ],
   EXPIRED: [
-    { quarter: '제 1 - 3 년분',   amount: 630000,  paid: '2012-09-20' },
-    { quarter: '제 4 - 4 년분',   amount: 370000,  paid: '2015-08-24' },
-    { quarter: '제 5 - 5 년분',   amount: 370000,  paid: '2016-08-22' },
+    { quarter: '제  1 -  3 년분', amount:  630000, paid: '2012-09-20' },
+    { quarter: '제  4 -  6 년분', amount: 1110000, paid: '2015-08-24' },
   ],
 }
 
 const feeRecords = computed(() => {
   const status = patent.value?.status ?? ''
   return FEE_SCHEDULES[status] ?? FEE_SCHEDULES['REGISTERED']
+})
+
+type HistoryVariant = 'file' | 'pub' | 'reg' | 'keep' | 'dispose' | 'expire'
+const patentHistory = computed(() => {
+  const p = patent.value
+  if (!p) return []
+  type Event = { date: string; label: string; desc: string; variant: HistoryVariant }
+  const events: Event[] = []
+
+  events.push({ date: p.applicationDate, label: '출원', desc: `${p.title} 특허 출원`, variant: 'file' })
+
+  const pubDate = addMonths(p.applicationDate, 6)
+  events.push({ date: pubDate, label: '공개', desc: '특허 공개 (심사 진행 중)', variant: 'pub' })
+
+  const isActive = p.status === 'REGISTERED'
+  const isExpired = p.status === 'EXPIRED'
+  const isDisposed = p.status === 'DISPOSED'
+
+  if (isActive || isExpired || isDisposed) {
+    const regDate = addMonths(p.applicationDate, 18)
+    events.push({ date: regDate, label: '등록', desc: '특허권 설정 등록', variant: 'reg' })
+
+    for (const row of feeRecords.value) {
+      events.push({ date: row.paid, label: '유지', desc: `${row.quarter} 등록료 납부 — 권리 유지`, variant: 'keep' })
+    }
+
+    if (isExpired) {
+      const lastPaid = feeRecords.value.at(-1)?.paid ?? regDate
+      const expDate = addMonths(lastPaid, 12)
+      events.push({ date: expDate, label: '만료', desc: '등록료 미납으로 특허권 소멸', variant: 'expire' })
+    } else if (isDisposed) {
+      const lastPaid = feeRecords.value.at(-1)?.paid ?? regDate
+      const dispDate = addMonths(lastPaid, 3)
+      events.push({ date: dispDate, label: '포기', desc: '특허권 포기 신청 — 권리 소멸', variant: 'dispose' })
+    }
+  }
+
+  return events.sort((a, b) => a.date.localeCompare(b.date))
 })
 
 const patentBiblio = computed(() => {
@@ -801,13 +877,12 @@ const tabsEl   = ref<HTMLElement | null>(null)
 const TOPBAR_H = 60
 
 const ALL_TABS = [
-  { key: 'info',     label: '기본 정보' },
-  { key: 'report',   label: 'AI 평가 보고서' },
-  { key: 'similar',  label: '유사 특허 분석' },
-  { key: 'projects', label: '사내 프로젝트 정보' },
-  { key: 'fee',      label: '등록료 납부 내역' },
+  { key: 'info',    label: '기본 정보' },
+  { key: 'report',  label: 'AI 평가 보고서' },
+  { key: 'fee',     label: '등록료 납부 내역' },
+  { key: 'history', label: '등록 이력' },
 ]
-const RESTRICTED_TABS = new Set(['report', 'projects'])
+const RESTRICTED_TABS = new Set(['report'])
 
 const tabs = computed(() =>
   isOwnDept.value ? ALL_TABS : ALL_TABS.filter(t => !RESTRICTED_TABS.has(t.key))
@@ -1454,21 +1529,47 @@ const REPORT_REFS = [
 }
 .fee-table tbody tr:hover td { background: #f8fafc; }
 
-/* ── 청구항 ──────────────────────────────────────── */
-.claims-list {
-  list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: 14px;
+/* ── 등록 이력 타임라인 ── */
+.patent-timeline { display: flex; flex-direction: column; }
+.ptl-item { display: flex; gap: 0; min-height: 48px; }
+.ptl-left {
+  width: 100px; flex-shrink: 0;
+  padding-top: 2px; text-align: right; padding-right: 16px;
 }
-.claims-list__item {
-  display: flex; gap: 10px;
-  font-size: 13.5px; line-height: 1.8; color: #374151;
-  padding: 14px 16px;
-  background: #f8fafc; border-radius: 10px; border: 1px solid #f1f5f9;
+.ptl-date { font-size: 12px; color: #94a3b8; white-space: nowrap; }
+.ptl-center {
+  flex-shrink: 0; width: 20px;
+  display: flex; flex-direction: column; align-items: center;
 }
-.claim-num {
-  flex-shrink: 0; font-weight: 700; color: #4f46e5;
-  font-size: 13px; margin-top: 1px; min-width: 20px;
+.ptl-dot {
+  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid currentColor; background: #fff; margin-top: 3px;
 }
+.ptl-dot--file    { color: #6366f1; }
+.ptl-dot--pub     { color: #64748b; }
+.ptl-dot--reg     { color: #16a34a; background: #16a34a; }
+.ptl-dot--keep    { color: #0ea5e9; }
+.ptl-dot--dispose { color: #f59e0b; background: #f59e0b; }
+.ptl-dot--expire  { color: #ef4444; background: #ef4444; }
+.ptl-line {
+  flex: 1; width: 2px; background: #e2e8f0; margin: 4px 0;
+}
+.ptl-right {
+  padding: 0 0 20px 16px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.ptl-badge {
+  display: inline-block; font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px; width: fit-content;
+}
+.ptl-badge--file    { background: #ede9fe; color: #4f46e5; }
+.ptl-badge--pub     { background: #f1f5f9; color: #475569; }
+.ptl-badge--reg     { background: #dcfce7; color: #15803d; }
+.ptl-badge--keep    { background: #e0f2fe; color: #0369a1; }
+.ptl-badge--dispose { background: #fef3c7; color: #92400e; }
+.ptl-badge--expire  { background: #fee2e2; color: #b91c1c; }
+.ptl-desc { margin: 0; font-size: 13px; color: #334155; line-height: 1.5; }
+
 
 /* ── AI 평가 보고서 ──────────────────────────────── */
 .grade-card {
@@ -2032,4 +2133,130 @@ details[open] .rpt-appendix__chevron { transform: rotate(180deg); }
   font-size: 11px; font-weight: 500; color: #94a3b8;
   min-width: 34px; padding-top: 1px; flex-shrink: 0;
 }
+
+/* ── rpt-part: numbered section wrapper ── */
+.rpt-part {
+  margin-bottom: 48px;
+}
+.rpt-part--last { margin-bottom: 0; }
+.rpt-part-title {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 16px; font-weight: 700; color: #0f172a;
+  margin: 0 0 20px;
+}
+.rpt-part-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 6px;
+  background: #0f172a; color: #fff;
+  font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+}
+
+/* ── 01 평가 요약 ── */
+.rpt-opinion-box {
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 18px 20px; margin-top: 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.rpt-opinion-box p { margin: 0; font-size: 13px; color: #475569; line-height: 1.7; }
+
+/* ── 02 평가 기준별 상세 점수 ── */
+.rpt-criteria-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.rpt-criteria-row {
+  display: flex; gap: 20px; align-items: center;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+  padding: 16px 20px;
+}
+.rpt-criteria-score {
+  flex-shrink: 0; width: 130px;
+  border-right: 1px solid #e2e8f0; padding-right: 20px;
+}
+.rpt-criteria-score__label {
+  font-size: 12px; font-weight: 600; color: var(--rc-color); margin-bottom: 4px;
+}
+.rpt-criteria-score__value {
+  font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.1; margin-bottom: 8px;
+}
+.rpt-criteria-score__value span { font-size: 13px; font-weight: 400; color: #94a3b8; margin-left: 2px; }
+.rpt-criteria-score__bar {
+  height: 5px; background: #e2e8f0; border-radius: 99px; overflow: hidden;
+}
+.rpt-criteria-score__bar-fill {
+  height: 100%; background: var(--rc-color); border-radius: 99px;
+}
+.rpt-criteria-text {
+  margin: 0; font-size: 13px; color: #475569; line-height: 1.75; flex: 1;
+}
+
+
+/* ── 03 사내 프로젝트 ── */
+.rpt-info-table {
+  width: 100%; border-collapse: collapse; margin-bottom: 20px;
+  font-size: 13px;
+}
+.rpt-info-table th {
+  width: 140px; padding: 10px 14px;
+  background: #f8fafc; color: #64748b;
+  border: 1px solid #e2e8f0; font-weight: 600; text-align: left;
+  white-space: nowrap;
+}
+.rpt-info-table td {
+  padding: 10px 14px; border: 1px solid #e2e8f0; color: #0f172a;
+}
+.rpt-project-card {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 16px 18px; margin-bottom: 12px;
+}
+.rpt-project-card:last-of-type { margin-bottom: 0; }
+.rpt-project-card__name { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 10px; }
+.rpt-project-card__desc { font-size: 13px; color: #475569; line-height: 1.75; margin: 0; }
+.rpt-evidence-list {
+  margin: 0; padding-left: 18px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.rpt-evidence-list li { font-size: 13px; color: #475569; }
+.rpt-evidence-link {
+  color: #2563eb; text-decoration: none;
+}
+.rpt-evidence-link:hover { text-decoration: underline; }
+
+/* ── 04 유사 특허 분석 ── */
+.rpt-stat-row {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.rpt-stat {
+  flex: 1; min-width: 90px;
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 4px;
+}
+.rpt-stat-num { font-size: 22px; font-weight: 800; color: #0f172a; }
+.rpt-stat-label { font-size: 11.5px; color: #94a3b8; }
+.rpt-similar-card {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 16px 18px; margin-bottom: 12px;
+}
+.rpt-similar-card__top {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  margin-bottom: 10px;
+}
+.rpt-similar-card__name { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+.rpt-similar-card__meta { display: flex; gap: 10px; font-size: 12px; color: #64748b; flex-wrap: wrap; align-items: center; }
+.rpt-similar-card__desc { margin: 0 0 10px; font-size: 13px; color: #374151; line-height: 1.75; }
+.rpt-similar-card__detail {
+  padding-top: 10px; border-top: 1px solid #e2e8f0;
+  font-size: 12px; color: #64748b; line-height: 1.7;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.rpt-similar-card__detail p { margin: 0; }
+.rpt-similar-score-badge {
+  font-size: 12px; font-weight: 700; color: #dc2626;
+  background: #fef2f2; padding: 4px 12px; border-radius: 20px;
+  border: 1px solid #fecaca; flex-shrink: 0; white-space: nowrap;
+}
+.rpt-status-badge {
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+}
+.rpt-status--keep    { background: #dcfce7; color: #166534; }
+.rpt-status--expired { background: #f1f5f9; color: #475569; }
+.rpt-status--open    { background: #dbeafe; color: #1e40af; }
 </style>

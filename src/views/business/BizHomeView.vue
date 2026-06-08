@@ -56,7 +56,7 @@
             v-for="item in pendingItems"
             :key="item.id"
             class="pending-item"
-            @click="router.push(`/biz/patents/${item.id}`)"
+            @click="router.push(`/biz/review/${item.id}`)"
           >
             <div class="pending-item__dot" />
             <span class="pending-item__title">{{ item.title }}</span>
@@ -104,24 +104,84 @@
 
     </div>
 
-    <!-- 담당 특허 현황 -->
-    <div class="card">
-      <div class="card__header">
-        <h3 class="card__title">담당 특허 현황</h3>
-        <RouterLink to="/biz/patents" class="card__link">특허 관리</RouterLink>
-      </div>
-      <div class="patent-stats">
-        <div class="patent-stat" v-for="s in patentStatItems" :key="s.label">
-          <div class="patent-stat__meta">
-            <span class="patent-stat__dot" :style="{ background: s.color }" />
-            <span class="patent-stat__label">{{ s.label }}</span>
-            <span class="patent-stat__count" :style="{ color: s.color }">{{ s.count }}건</span>
-          </div>
-          <div class="patent-stat__bar-wrap">
-            <div class="patent-stat__bar" :style="{ width: s.pct + '%', background: s.color }" />
+    <hr class="section-divider"/>
+
+    <!-- 담당 특허 현황 + 연도별 추이 -->
+    <div class="charts-row">
+
+      <!-- 담당 특허 현황 (도넛) -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">담당 특허 현황</h3>
+          <RouterLink to="/biz/patents" class="card__link">특허 관리</RouterLink>
+        </div>
+        <div class="donut-wrap">
+          <svg class="patent-donut" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20"/>
+            <circle
+              v-for="(seg, i) in patentDonutSegs" :key="i"
+              cx="60" cy="60" r="50"
+              fill="none"
+              :stroke="patentStatItems[i].color"
+              stroke-width="20"
+              :stroke-dasharray="`${seg.dash} ${314 - seg.dash}`"
+              :stroke-dashoffset="seg.offset"
+              stroke-linecap="butt"
+            />
+            <text x="60" y="54" text-anchor="middle" font-size="16" font-weight="800" fill="#0f172a">{{ patentTotal }}</text>
+            <text x="60" y="70" text-anchor="middle" font-size="9" font-weight="600" fill="#475569">총 특허</text>
+          </svg>
+          <div class="patent-legend">
+            <div v-for="s in patentStatItems" :key="s.label" class="patent-legend-item">
+              <span class="patent-legend-dot" :style="{ background: s.color }"/>
+              <span class="patent-legend-label">{{ s.label }}</span>
+              <span class="patent-legend-count" :style="{ color: s.color }">{{ s.count }}건</span>
+              <span class="patent-legend-pct">{{ s.pct }}%</span>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- 연도별 출원·만료/포기 추이 -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">연도별 출원 · 만료/포기 추이</h3>
+          <div class="trend-legend">
+            <span class="trend-legend-item">
+              <span class="trend-dot" style="background:#ABACED"/>출원
+            </span>
+            <span class="trend-legend-item">
+              <span class="trend-dot" style="background:#E88989"/>만료/포기
+            </span>
+          </div>
+        </div>
+        <div class="trend-body">
+          <svg class="biz-trend-svg" :viewBox="`0 0 ${tW} ${tH}`">
+            <!-- 배경 격자 -->
+            <line v-for="n in 4" :key="n"
+              :x1="tPad.l" :y1="tPad.t + ((n - 1) / 3) * tPlotH"
+              :x2="tW - tPad.r" :y2="tPad.t + ((n - 1) / 3) * tPlotH"
+              stroke="#f1f5f9" stroke-width="1"/>
+            <!-- 출원 선 -->
+            <polyline :points="filedPoints" fill="none" stroke="#ABACED" stroke-width="2"
+              stroke-linejoin="round" stroke-linecap="round"/>
+            <!-- 만료/포기 선 -->
+            <polyline :points="expiredPoints" fill="none" stroke="#E88989" stroke-width="2"
+              stroke-linejoin="round" stroke-linecap="round"/>
+            <!-- 출원 점 -->
+            <circle v-for="(d, i) in bizTrendData" :key="`f${i}`"
+              :cx="tX(i)" :cy="tY(d.filed)" r="3.5" fill="#fff" stroke="#ABACED" stroke-width="2"/>
+            <!-- 만료/포기 점 -->
+            <circle v-for="(d, i) in bizTrendData" :key="`e${i}`"
+              :cx="tX(i)" :cy="tY(d.expired)" r="3.5" fill="#fff" stroke="#E88989" stroke-width="2"/>
+            <!-- X축 연도 라벨 -->
+            <text v-for="(d, i) in bizTrendData" :key="`lbl${i}`"
+              :x="tX(i)" :y="tH - 3"
+              text-anchor="middle" font-size="10" fill="#94a3b8" font-weight="500">{{ d.year }}</text>
+          </svg>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -175,10 +235,44 @@ const pendingItems = ref(
 const recentSubmissions = ref(RECENT_SUBMISSIONS)
 
 const patentStatItems = [
-  { label: '유지 중',   count: 6, color: '#22c55e', pct: 75 },
-  { label: '만료 예정', count: 1, color: '#f59e0b', pct: 12 },
-  { label: '포기/만료', count: 1, color: '#ef4444', pct: 13 },
+  { label: '유지 중',   count: 6, color: '#67E2AB', pct: 75 },
+  { label: '만료 예정', count: 1, color: '#FFBC5E', pct: 12 },
+  { label: '포기/만료', count: 1, color: '#E88989', pct: 13 },
 ]
+
+const patentTotal = patentStatItems.reduce((s, i) => s + i.count, 0)
+const patentDonutSegs = (() => {
+  const circ = 314
+  let offset = -circ / 4
+  return patentStatItems.map(item => {
+    const dash = Math.round((item.count / patentTotal) * circ)
+    const seg = { dash, offset }
+    offset -= dash
+    return seg
+  })
+})()
+
+// ── 연도별 추이 ──────────────────────────────────────
+const bizTrendData = [
+  { year: '2020', filed: 2, expired: 0 },
+  { year: '2021', filed: 3, expired: 1 },
+  { year: '2022', filed: 2, expired: 0 },
+  { year: '2023', filed: 4, expired: 1 },
+  { year: '2024', filed: 3, expired: 2 },
+  { year: '2025', filed: 2, expired: 1 },
+  { year: '2026', filed: 1, expired: 0 },
+]
+const tW = 540, tH = 130
+const tPad = { t: 28, b: 22, l: 18, r: 12 }
+const tPlotH = tH - tPad.t - tPad.b
+const tPlotW = tW - tPad.l - tPad.r
+const tMaxVal = Math.max(...bizTrendData.flatMap(d => [d.filed, d.expired]))
+
+function tX(i: number) { return tPad.l + (i / (bizTrendData.length - 1)) * tPlotW }
+function tY(v: number) { return tPad.t + (1 - v / tMaxVal) * tPlotH }
+
+const filedPoints  = bizTrendData.map((d, i) => `${tX(i)},${tY(d.filed)}`).join(' ')
+const expiredPoints = bizTrendData.map((d, i) => `${tX(i)},${tY(d.expired)}`).join(' ')
 
 function decisionLabel(d: string) {
   return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
@@ -495,31 +589,86 @@ onMounted(() => { loading.value = false })
 .decision-badge--sell    { background: #eef2ff; color: #4338ca; }
 .decision-badge--dispose { background: #fef2f2; color: #dc2626; }
 
-/* ── 담당 특허 현황 ──────────────────────────────────── */
-.patent-stats { display: flex; flex-direction: column; gap: 12px; }
+/* ── 구분선 ──────────────────────────────────────────── */
+.section-divider {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 0;
+}
 
-.patent-stat { display: flex; flex-direction: column; gap: 6px; }
+/* ── 하단 차트 2열 ───────────────────────────────────── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 16px;
+}
+@media (max-width: 760px) { .charts-row { grid-template-columns: 1fr; } }
 
-.patent-stat__meta {
+/* ── 담당 특허 도넛 ──────────────────────────────────── */
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.patent-donut {
+  width: 130px; height: 130px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+.patent-donut text {
+  transform: rotate(90deg);
+  transform-origin: 60px 60px;
+}
+
+.patent-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+.patent-legend-item {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 12.5px;
+}
+.patent-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.patent-legend-label { flex: 1; color: #374151; font-weight: 500; }
+.patent-legend-count { font-weight: 700; }
+.patent-legend-pct { color: #94a3b8; min-width: 30px; text-align: right; }
+
+/* ── 연도별 추이 꺾은선 ──────────────────────────────── */
+.trend-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.patent-stat__dot {
-  width: 8px; height: 8px;
+.biz-trend-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.trend-legend {
+  display: flex;
+  gap: 12px;
+}
+.trend-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: #64748b;
+}
+.trend-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
-}
-
-.patent-stat__label { font-size: 13px; color: #374151; font-weight: 500; flex: 1; }
-.patent-stat__count { font-size: 13px; font-weight: 700; }
-
-.patent-stat__bar-wrap {
-  height: 7px; background: #f1f5f9; border-radius: 4px; overflow: hidden;
-}
-.patent-stat__bar {
-  height: 100%; border-radius: 4px;
-  transition: width .7s cubic-bezier(.4,0,.2,1);
 }
 </style>

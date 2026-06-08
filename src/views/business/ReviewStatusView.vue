@@ -321,6 +321,7 @@ interface ReviewItem {
   decision:          string | null
   decidedAt:         string | null
   aiScore:           number | null
+  grade:             string | null
   tags:              string[]
 }
 
@@ -400,7 +401,7 @@ function formatDate(d?: string | null) {
   return d.slice(0, 10)
 }
 
-function goDetail(id: number) { router.push(`/biz/patents/${id}`) }
+function goDetail(id: number) { router.push(`/biz/review/${id}`) }
 
 // ── 데이터 로드 ──────────────────────────────────────
 function fetchList(_p = 1) {
@@ -930,4 +931,5 @@ onMounted(() => {
 .guide-panel-leave-active .gp-panel { animation: panelSlideOut .22s ease-in; }
 @keyframes panelSlideIn  { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes panelSlideOut { from { transform: translateX(0); }    to { transform: translateX(100%); } }
+
 </style>

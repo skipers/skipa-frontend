@@ -60,8 +60,12 @@
           <div class="skel skel--row" v-for="n in 4" :key="n" />
         </div>
         <div v-else class="reply-list">
-          <div v-if="recentReplies.length" class="reply-items">
-            <div v-for="r in recentReplies" :key="r.id" class="reply-item">
+          <TransitionGroup v-if="recentReplies.length" tag="div" name="reply-fade" class="reply-items">
+            <div
+              v-for="r in recentReplies" :key="r.id"
+              class="reply-item"
+              @click="openReply(r.id)"
+            >
               <div class="reply-item__left">
                 <div class="reply-item__avatar">{{ r.dept.charAt(0) }}</div>
                 <div>
@@ -73,7 +77,7 @@
                 {{ decisionLabel(r.decision) }}
               </span>
             </div>
-          </div>
+          </TransitionGroup>
           <div v-else class="card__empty">도착한 회신이 없습니다.</div>
         </div>
       </div>
@@ -188,8 +192,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useReadReplies } from '@/composables/useReadReplies'
 import { dashboardApi } from '@/api/misc'
 import type {
   DashboardSummary,
@@ -199,6 +204,8 @@ import type {
 } from '@/types'
 
 const auth = useAuthStore()
+const router = useRouter()
+const { readIds, markRead: markReplyRead } = useReadReplies()
 
 // ── 로딩 상태 ────────────────────────────────────────
 const loadingSummary = ref(true)
@@ -330,15 +337,22 @@ function expiryColor(quarter: string) {
 }
 
 // ── 최근 회신 (mock — 실제로는 /decisions?page=1&size=5) ──
-const recentReplies = ref([
+const allReplies = [
   { id: 1, patent: 'NF3 가스 이물질 제거 시스템', dept: '반도체 사업부', decision: 'KEEP' },
   { id: 2, patent: '플라즈마 식각 장치 및 제어 방법', dept: '반도체 사업부', decision: 'DISPOSE' },
   { id: 3, patent: '배터리 전극 코팅 균일도 향상', dept: '배터리 사업부', decision: 'KEEP' },
   { id: 4, patent: 'AI 기반 품질 검사 자동화', dept: 'AI 사업부', decision: 'DISPOSE' },
-])
+]
+
+const recentReplies = computed(() =>
+  allReplies.filter(r => !readIds.value.has(r.id))
+)
 
 function decisionLabel(d: string) {
   return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
+}
+function openReply(id: number) {
+  router.push(`/legal/reevaluation?tab=unread&open=${id}`)
 }
 
 // ── Mock fallback 데이터 ──────────────────────────────
@@ -808,12 +822,24 @@ onMounted(loadAll)
 /* ── 최근 회신 ───────────────────────────────────── */
 .reply-items { display: flex; flex-direction: column; gap: 0; }
 
+.reply-fade-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease, max-height 0.3s ease;
+  overflow: hidden;
+  max-height: 60px;
+}
+.reply-fade-leave-to {
+  opacity: 0;
+  transform: translateX(12px);
+  max-height: 0;
+}
+
 .reply-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   padding: 10px 0;
+  cursor: pointer;
   border-bottom: 1px solid var(--color-surface-hover);
 }
 .reply-item:last-child { border-bottom: none; }

@@ -98,6 +98,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/business/ReviewStatusView.vue'),
       },
       {
+        path: 'review/:patentId',
+        name: 'ReviewPatentDetail',
+        component: () => import('@/views/common/PatentDetailView.vue'),
+        props: (route) => ({ patentId: Number(route.params.patentId) }),
+      },
+      {
         path: 'patents',
         name: 'MyPatents',
         component: () => import('@/views/business/MyPatentsView.vue'),

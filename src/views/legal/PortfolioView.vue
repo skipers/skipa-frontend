@@ -19,6 +19,10 @@
       </div>
     </div>
 
+    <hr class="section-divider"/>
+
+    <p class="section-label">분포 현황</p>
+
     <!-- 상단: AI 인사이트 + 가치 등급 분포 -->
     <div class="bottom-row">
 
@@ -40,35 +44,36 @@
         </div>
       </div>
 
-      <!-- 가치 평가 등급 분포 -->
+      <!-- 가치 평가 등급 분포 (분야별 통합) -->
       <div class="chart-card">
         <div class="chart-card__header">
           <h3 class="chart-card__title">가치 평가 등급 분포</h3>
-          <p class="chart-card__sub">AI 평가 기준</p>
+          <span class="chart-card__sub">총 {{ selectedFieldData?.total }}건</span>
         </div>
-        <div class="grade-dist">
-          <div v-for="g in gradeItems" :key="g.grade" class="grade-dist-item">
-            <div class="grade-dist-item__header">
-              <div class="grade-badge" :style="{ background: g.bg, color: g.color }">
-                {{ g.grade }}
-              </div>
-              <span class="grade-dist-item__label">{{ g.label }}</span>
-              <span class="grade-dist-item__count" :style="{ color: g.color }">{{ g.count }}건</span>
-            </div>
-            <div class="grade-bar-wrap">
+        <div class="tg-field-tabs">
+          <button
+            v-for="f in allFieldDist"
+            :key="f.name"
+            class="tg-field-tab"
+            :class="{ 'tg-field-tab--active': selectedField === f.name }"
+            @click="selectedField = f.name"
+          >
+            {{ f.name }}
+          </button>
+        </div>
+        <div v-if="selectedFieldData" class="tg-detail">
+          <div v-for="g in (['S','A','B','C','D'] as const)" :key="g" class="tg-grade-row">
+            <div class="grade-badge" :style="{ background: gradeBgMap[g], color: gradeColorMap[g] }">{{ g }}</div>
+            <span class="tg-grade-label">{{ gradeLabel[g] }}</span>
+            <div class="tg-bar-wrap">
               <div
-                class="grade-bar"
-                :style="{ width: Math.round(g.count / totalPatents * 100) + '%', background: g.color }"
+                class="tg-bar"
+                :style="{ width: Math.round(selectedFieldData[g] / selectedFieldData.total * 100) + '%', background: gradeColorMap[g] }"
               />
             </div>
+            <span class="tg-grade-count">{{ selectedFieldData[g] }}건</span>
+            <span class="tg-grade-pct">{{ Math.round(selectedFieldData[g] / selectedFieldData.total * 100) }}%</span>
           </div>
-        </div>
-        <!-- 등급 설명 -->
-        <div class="grade-note">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          등급은 AI가 기술성·권리성·사업성을 종합하여 산출한 점수 기준입니다
         </div>
       </div>
 
@@ -187,49 +192,90 @@
 
     </div>
 
-    <!-- 연도별 출원·등록·만료 추이 (풀 width) -->
-    <div class="chart-card">
-      <div class="chart-card__header">
-        <h3 class="chart-card__title">연도별 출원 · 등록 · 만료 추이</h3>
-        <div class="chart-legend chart-legend--inline">
-          <div v-for="(s, i) in trendSeries" :key="s.key" class="legend-item">
-            <span class="legend-dot" :style="{ background: trendColors[i] }" />{{ s.label }}
+    <hr class="section-divider"/>
+
+    <p class="section-label">추이 분석</p>
+
+    <!-- 연도별 출원·등록·만료 추이 + 연차료 추이 -->
+    <div class="trend-annuity-row">
+
+      <!-- 연도별 출원·등록·만료 추이 -->
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">연도별 출원 · 등록 · 만료 추이</h3>
+          <div class="chart-legend chart-legend--inline">
+            <div v-for="(s, i) in trendSeries" :key="s.key" class="legend-item">
+              <span class="legend-dot" :style="{ background: trendColors[i] }" />{{ s.label }}
+            </div>
           </div>
         </div>
+        <svg class="trend-svg" :viewBox="`0 0 ${svgW} ${svgH}`">
+          <line
+            v-for="n in 4" :key="n"
+            :x1="pad.l" :y1="pad.t + ((n - 1) / 3) * plotH"
+            :x2="svgW - pad.r" :y2="pad.t + ((n - 1) / 3) * plotH"
+            stroke="#f1f5f9" stroke-width="1"
+          />
+          <polyline
+            v-for="(line, i) in trendLines"
+            :key="i"
+            :points="line.points"
+            fill="none"
+            :stroke="line.color"
+            stroke-width="1.8"
+            stroke-linejoin="round"
+            stroke-linecap="round"
+          />
+          <circle
+            v-for="dot in trendDots"
+            :key="dot.id"
+            :cx="dot.x" :cy="dot.y" r="3"
+            :fill="dot.color"
+            stroke="#fff" stroke-width="1.5"
+          />
+          <text
+            v-for="(d, i) in trendData"
+            :key="d.year"
+            :x="trendX(i)" :y="svgH - 4"
+            text-anchor="middle"
+            font-size="8" fill="#475569"
+          >{{ d.year }}</text>
+        </svg>
       </div>
-      <svg class="trend-svg" :viewBox="`0 0 ${svgW} ${svgH}`">
-        <line
-          v-for="n in 4" :key="n"
-          :x1="pad.l" :y1="pad.t + ((n - 1) / 3) * plotH"
-          :x2="svgW - pad.r" :y2="pad.t + ((n - 1) / 3) * plotH"
-          stroke="#f1f5f9" stroke-width="1"
-        />
-        <polyline
-          v-for="(line, i) in trendLines"
-          :key="i"
-          :points="line.points"
-          fill="none"
-          :stroke="line.color"
-          stroke-width="1.8"
-          stroke-linejoin="round"
-          stroke-linecap="round"
-        />
-        <circle
-          v-for="dot in trendDots"
-          :key="dot.id"
-          :cx="dot.x" :cy="dot.y" r="3"
-          :fill="dot.color"
-          stroke="#fff" stroke-width="1.5"
-        />
-        <text
-          v-for="(d, i) in trendData"
-          :key="d.year"
-          :x="trendX(i)" :y="svgH - 4"
-          text-anchor="middle"
-          font-size="8" fill="#475569"
-        >{{ d.year }}</text>
-      </svg>
+
+      <!-- 연차료 추이 -->
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">연차료 추이</h3>
+          <p class="chart-card__sub">단위: 억원</p>
+        </div>
+        <svg class="annuity-svg" :viewBox="`0 0 ${annW} ${annH}`">
+          <line v-for="n in 3" :key="n"
+            :x1="annPad.l" :y1="annPad.t + ((n - 1) / 2) * annPlotH"
+            :x2="annW - annPad.r" :y2="annPad.t + ((n - 1) / 2) * annPlotH"
+            stroke="#f1f5f9" stroke-width="1"
+          />
+          <rect
+            v-for="(d, i) in ANNUITY_DATA" :key="d.year"
+            :x="annBarX(i)" :y="annBarY(d.amount)"
+            :width="annBarW" :height="annBarH(d.amount)"
+            rx="3" ry="3"
+            :fill="i === ANNUITY_DATA.length - 1 ? '#a5b4fc' : '#6366f1'"
+          />
+          <text v-for="(d, i) in ANNUITY_DATA" :key="`amt-${i}`"
+            :x="annBarX(i) + annBarW / 2" :y="annBarY(d.amount) - 4"
+            text-anchor="middle" font-size="7.5" font-weight="700" fill="#475569"
+          >{{ (d.amount / 100000000).toFixed(1) }}</text>
+          <text v-for="(d, i) in ANNUITY_DATA" :key="`yr-${i}`"
+            :x="annBarX(i) + annBarW / 2" :y="annH - 2"
+            text-anchor="middle" font-size="8" fill="#64748b"
+          >{{ d.year }}</text>
+        </svg>
+        <p class="annuity-note">* 2026년은 상반기 기준 예상치</p>
+      </div>
+
     </div>
+
 
     <!-- 재평가 결정 분석: 연도별 + 사업부/기술분야별 -->
     <div class="decision-row">
@@ -294,6 +340,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { ANNUITY_DATA } from '@/mocks/data'
 
 // ── 색상 팔레트 ──────────────────────────────────────
 const techColors  = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#6366f1', '#ABACED', '#67E2AB']
@@ -505,6 +552,52 @@ const gradeItems = [
   { grade: 'D', label: '포기 권장',  count: 23,  bg: '#fdf0f0', color: '#E88989' },
 ]
 
+// ── 기술분야별 등급 분포 ──────────────────────────────
+const gradeColorMap: Record<string, string> = {
+  S: '#ABACED', A: '#67E2AB', B: '#FFBC5E', C: '#84DBED', D: '#E88989',
+}
+const gradeBgMap: Record<string, string> = {
+  S: '#f0f0fa', A: '#edfdf6', B: '#fff8ed', C: '#eaf8fd', D: '#fdf0f0',
+}
+const gradeLabel: Record<string, string> = {
+  S: '핵심 특허', A: '고가치', B: '보통', C: '낮은 가치', D: '포기 권장',
+}
+
+const techGradeDist = [
+  { name: '반도체', S: 12, A: 22, B: 30, C: 13, D: 5,  total: 82 },
+  { name: '배터리', S: 8,  A: 18, B: 20, C: 8,  D: 4,  total: 58 },
+  { name: '소재',   S: 4,  A: 12, B: 16, C: 7,  D: 3,  total: 42 },
+  { name: 'AI/SW',  S: 6,  A: 14, B: 10, C: 4,  D: 1,  total: 35 },
+  { name: '바이오', S: 2,  A: 5,  B: 8,  C: 2,  D: 1,  total: 18 },
+  { name: '기타',   S: 1,  A: 2,  B: 5,  C: 3,  D: 1,  total: 12 },
+]
+const allFieldDist = [
+  { name: '전체', S: 28, A: 62, B: 89, C: 45, D: 23, total: 247 },
+  ...techGradeDist,
+]
+
+const selectedField = ref('전체')
+const selectedFieldData = computed(() => allFieldDist.find(f => f.name === selectedField.value))
+
+// ── 연차료 추이 ──────────────────────────────────────
+const annW = 260, annH = 150
+const annPad = { t: 22, b: 24, l: 8, r: 8 }
+const annPlotH = annH - annPad.t - annPad.b
+const annPlotW = annW - annPad.l - annPad.r
+const annSlotW = annPlotW / ANNUITY_DATA.length
+const annBarW = annSlotW * 0.65
+const annMax = Math.max(...ANNUITY_DATA.map(d => d.amount))
+
+function annBarX(i: number) {
+  return annPad.l + i * annSlotW + (annSlotW - annBarW) / 2
+}
+function annBarY(amount: number) {
+  return annPad.t + (1 - amount / annMax) * annPlotH
+}
+function annBarH(amount: number) {
+  return (amount / annMax) * annPlotH
+}
+
 // ── AI 인사이트 ──────────────────────────────────────
 const insights = [
   {
@@ -608,7 +701,7 @@ const insights = [
 
 .bottom-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 2fr 3fr;
   gap: 16px;
 }
 @media (max-width: 720px) { .bottom-row { grid-template-columns: 1fr; } }
@@ -808,6 +901,107 @@ const insights = [
 .hbar-seg--keep    { background: var(--color-keep); }
 .hbar-seg--dispose { background: var(--color-dispose); }
 .hbar-item__pct { font-size: 12px; font-weight: 700; color: var(--color-text-muted); min-width: 36px; text-align: right; }
+
+/* ── 연도별 추이 + 연차료 ────────────────────────────── */
+.trend-annuity-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 860px) { .trend-annuity-row { grid-template-columns: 1fr; } }
+
+.tg-field-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tg-field-tab {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface-muted);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Pretendard', sans-serif;
+}
+.tg-field-tab:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.tg-field-tab--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.tg-detail { display: flex; flex-direction: column; gap: 12px; }
+
+.tg-grade-row { display: flex; align-items: center; gap: 12px; }
+
+.tg-grade-label {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  width: 68px;
+  flex-shrink: 0;
+}
+
+.tg-bar-wrap {
+  flex: 1;
+  height: 10px;
+  background: var(--color-surface-muted);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.tg-bar {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tg-grade-count {
+  font-size: 13px; font-weight: 700; color: var(--color-text);
+  min-width: 30px; text-align: right;
+}
+
+.tg-grade-pct {
+  font-size: 12px; color: var(--color-text-muted);
+  min-width: 34px; text-align: right;
+}
+
+/* ── 구분선 / 소제목 ─────────────────────────────────── */
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 0;
+}
+
+.section-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-text);
+  padding-left: 11px;
+  border-left: 3px solid var(--color-primary);
+}
+
+/* ── 연차료 추이 ─────────────────────────────────────── */
+.annuity-svg {
+  width: 100%;
+  height: auto;
+  max-height: 180px;
+  display: block;
+  overflow: visible;
+}
+
+.annuity-note {
+  font-size: 11px;
+  color: var(--color-text-subtle);
+  margin: 0;
+}
 
 /* ── 진행중 바 ───────────────────────────────────── */
 .decision-bar-stack--inprogress { opacity: 0.65; outline: 2px dashed var(--color-text-subtle); outline-offset: 2px; border-radius: 4px; }
