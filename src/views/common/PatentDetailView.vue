@@ -732,7 +732,7 @@ const feeRecords = computed(() => {
   return FEE_SCHEDULES[status] ?? FEE_SCHEDULES['REGISTERED']
 })
 
-type HistoryVariant = 'file' | 'pub' | 'reg' | 'keep' | 'dispose' | 'expire'
+type HistoryVariant = 'file' | 'pub' | 'reg' | 'rejected' | 'invalid' | 'expired' | 'withdraw' | 'abandon'
 const patentHistory = computed(() => {
   const p = patent.value
   if (!p) return []
@@ -742,29 +742,19 @@ const patentHistory = computed(() => {
   events.push({ date: p.applicationDate, label: '출원', desc: `${p.title} 특허 출원`, variant: 'file' })
 
   const pubDate = addMonths(p.applicationDate, 6)
-  events.push({ date: pubDate, label: '공개', desc: '특허 공개 (심사 진행 중)', variant: 'pub' })
+  events.push({ date: pubDate, label: '공개', desc: '신청한 기술 내용이 세상에 공개된 상태', variant: 'pub' })
 
-  const isActive = p.status === 'REGISTERED'
-  const isExpired = p.status === 'EXPIRED'
-  const isDisposed = p.status === 'ABANDONED'
+  const regDate = addMonths(p.applicationDate, 18)
 
-  if (isActive || isExpired || isDisposed) {
-    const regDate = addMonths(p.applicationDate, 18)
-    events.push({ date: regDate, label: '등록', desc: '특허권 설정 등록', variant: 'reg' })
-
-    for (const row of feeRecords.value) {
-      events.push({ date: row.paid, label: '유지', desc: `${row.quarter} 등록료 납부 — 권리 유지`, variant: 'keep' })
-    }
-
-    if (isExpired) {
-      const lastPaid = feeRecords.value[feeRecords.value.length - 1]?.paid ?? regDate
-      const expDate = addMonths(lastPaid, 12)
-      events.push({ date: expDate, label: '만료', desc: '등록료 미납으로 특허권 소멸', variant: 'expire' })
-    } else if (isDisposed) {
-      const lastPaid = feeRecords.value[feeRecords.value.length - 1]?.paid ?? regDate
-      const dispDate = addMonths(lastPaid, 3)
-      events.push({ date: dispDate, label: '포기', desc: '특허권 포기 신청 — 권리 소멸', variant: 'dispose' })
-    }
+  if (p.status === 'REGISTERED') {
+    events.push({ date: regDate, label: '등록', desc: '심사를 통과하여 권리가 정식으로 확정된 상태', variant: 'reg' })
+  } else if (p.status === 'EXPIRED') {
+    events.push({ date: regDate, label: '등록', desc: '심사를 통과하여 권리가 정식으로 확정된 상태', variant: 'reg' })
+    const expDate = addMonths(regDate, 36)
+    events.push({ date: expDate, label: '소멸', desc: '권리 기간 만료 또는 연차료 미납으로 권리가 사라진 상태', variant: 'expired' })
+  } else if (p.status === 'ABANDONED') {
+    const withdrawDate = addMonths(p.applicationDate, 12)
+    events.push({ date: withdrawDate, label: '취하', desc: '신청자 스스로 신청을 없던 일로 돌린 상태', variant: 'withdraw' })
   }
 
   return events.sort((a, b) => a.date.localeCompare(b.date))
@@ -1545,12 +1535,14 @@ const REPORT_REFS = [
   width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
   border: 2px solid currentColor; background: #fff; margin-top: 3px;
 }
-.ptl-dot--file    { color: #6366f1; }
-.ptl-dot--pub     { color: #64748b; }
-.ptl-dot--reg     { color: #16a34a; background: #16a34a; }
-.ptl-dot--keep    { color: #0ea5e9; }
-.ptl-dot--dispose { color: #f59e0b; background: #f59e0b; }
-.ptl-dot--expire  { color: #ef4444; background: #ef4444; }
+.ptl-dot--file     { color: #6366f1; }
+.ptl-dot--pub      { color: #6b7280; }
+.ptl-dot--reg      { color: #16a34a; background: #16a34a; }
+.ptl-dot--rejected { color: #dc2626; background: #dc2626; }
+.ptl-dot--invalid  { color: #ea580c; background: #ea580c; }
+.ptl-dot--expired  { color: #374151; background: #374151; }
+.ptl-dot--withdraw { color: #ca8a04; background: #ca8a04; }
+.ptl-dot--abandon  { color: #e11d48; background: #e11d48; }
 .ptl-line {
   flex: 1; width: 2px; background: #e2e8f0; margin: 4px 0;
 }
@@ -1562,12 +1554,14 @@ const REPORT_REFS = [
   display: inline-block; font-size: 11px; font-weight: 700;
   padding: 2px 8px; border-radius: 20px; width: fit-content;
 }
-.ptl-badge--file    { background: #ede9fe; color: #4f46e5; }
-.ptl-badge--pub     { background: #f1f5f9; color: #475569; }
-.ptl-badge--reg     { background: #dcfce7; color: #15803d; }
-.ptl-badge--keep    { background: #e0f2fe; color: #0369a1; }
-.ptl-badge--dispose { background: #fef3c7; color: #92400e; }
-.ptl-badge--expire  { background: #fee2e2; color: #b91c1c; }
+.ptl-badge--file     { background: #ede9fe; color: #4f46e5; }
+.ptl-badge--pub      { background: #f3f4f6; color: #4b5563; }
+.ptl-badge--reg      { background: #dcfce7; color: #15803d; }
+.ptl-badge--rejected { background: #fee2e2; color: #b91c1c; }
+.ptl-badge--invalid  { background: #ffedd5; color: #c2410c; }
+.ptl-badge--expired  { background: #e5e7eb; color: #374151; }
+.ptl-badge--withdraw { background: #fef9c3; color: #854d0e; }
+.ptl-badge--abandon  { background: #ffe4e6; color: #be123c; }
 .ptl-desc { margin: 0; font-size: 13px; color: #334155; line-height: 1.5; }
 
 
