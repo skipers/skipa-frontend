@@ -339,17 +339,17 @@
               </div>
 
               <!-- 전체 목록 테이블 (유사도 내림차순) -->
-              <div class="rpt-table-wrap" style="margin-top:20px">
+              <div class="rpt-table-wrap rpt-table-wrap--similar">
                 <table class="rpt-eval-table">
                   <thead>
                     <tr>
-                      <th style="width:140px">출원번호</th>
+                      <th style="width:150px">출원번호</th>
                       <th>특허명</th>
-                      <th style="width:160px">출원인</th>
-                      <th style="width:68px">출원연도</th>
-                      <th style="width:72px">유사도</th>
-                      <th style="width:68px">피인용수</th>
-                      <th style="width:60px">상태</th>
+                      <th style="width:150px">출원인</th>
+                      <th style="width:80px">출원연도</th>
+                      <th style="width:80px">유사도</th>
+                      <th style="width:80px">피인용수</th>
+                      <th style="width:70px">상태</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -795,17 +795,17 @@
                   <p v-for="(line, li) in s.detail.split('\n')" :key="li">{{ line }}</p>
                 </div>
               </div>
-              <div class="rpt-table-wrap" style="margin-top:20px">
+              <div class="rpt-table-wrap rpt-table-wrap--similar">
                 <table class="rpt-eval-table">
                   <thead>
                     <tr>
-                      <th style="width:140px">출원번호</th>
+                      <th style="width:150px">출원번호</th>
                       <th>특허명</th>
-                      <th style="width:130px">출원인</th>
-                      <th style="width:60px">연도</th>
-                      <th style="width:65px">유사도</th>
-                      <th style="width:55px">피인용</th>
-                      <th style="width:55px">상태</th>
+                      <th style="width:140px">출원인</th>
+                      <th style="width:80px">출원연도</th>
+                      <th style="width:80px">유사도</th>
+                      <th style="width:80px">피인용수</th>
+                      <th style="width:70px">상태</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1589,9 +1589,9 @@ const MOCK_EVAL_HISTORY: EvalHistoryItem[] = [
         ],
       },
       similarPatents: [
-        { id: 101, similarityScore: 38.83, applicationNumber: '1020170095218', title: '차량 네트워크에서 ASIL에 기초한 통신 방법 및 장치', applicant: '기아 주식회사 외', year: 2017, citations: 7, status: '유지', desc: '메시지 노드 간 전송 처리에서 기술적 겹침이 확인됩니다. 차량 네트워크 안전성 중점으로 목적은 다르나 청구항이 광범위합니다.', detail: '기술적 겹침: 메시지 노드 간 데이터 전송\n차이: 대상 MOM 병목 관리 vs 비교 차량 네트워크 안전성\n시사점: 차별화 포인트 보강 필요' },
-        { id: 102, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '병목 모니터링 방법에서 직접적 경쟁 관계에 있으나 서버 레벨 vs 미들웨어 레벨로 레이어가 다릅니다.', detail: '기술적 겹침: 병목 구간 탐지·분석\n차이: 서버 레벨 vs 미들웨어 레벨\n시사점: 기술적 차별화 명문화 권장' },
-        { id: 103, similarityScore: 38.52, applicationNumber: '1020170063049', title: '통신 시스템에서 네트워크 품질 관리를 위한 방법 및 장치', applicant: '삼성전자주식회사', year: 2017, citations: 5, status: '소멸', desc: '', detail: '' },
+        { id: 101, similarityScore: 38.83, applicationNumber: '1020170095218', title: '차량 네트워크에서 ASIL에 기초한 통신 방법 및 장치', applicant: '기아 주식회사 외 현대자동차주식회사', year: 2017, citations: 7, status: '유지', desc: '대상 특허는 메시지 지향 미들웨어에서의 병목 구간 모니터링 방법에 대한 혁신적 요소가 있음에도 불구하고 강력한 경쟁환경에서 기술적 보호의 필요성이 강조됩니다. 비교 특허는 차량 네트워크 내 통신 안정성에 중점을 두고 있으며 실질적인 등록 실적과 인용 횟수에서 경쟁력을 보여줍니다.', detail: '기술적으로 겹치는 부분: 두 기술 모두 메시지와 관련된 노드 간 데이터 전송을 여하히 다루는지에 집중합니다.\n기술적 차이: 대상 특허는 메시지 지향 미들웨어에서 병목 구간을 관리하는 데 중점을 두고, 비교 특허는 차량 네트워크의 메시지 무결성 및 안전성을 강조합니다.\n청구범위 관점: 비교 특허는 20개 청구항과 핵심 독립항들로 구성되어 있어 보호 범위가 명확하고 더 광범위합니다.\n유지 판단 시사점: 경쟁기술의 풍부함과 제한된 차별성으로 인해 포트폴리오 전략의 적극적 재검토 여지가 있습니다.' },
+        { id: 102, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '분석 대상 특허와 상세 비교 특허는 모두 병목 구간 모니터링 및 분석 방법에 대한 기술을 다룹니다. 개선된 모니터링 기능을 제공하기 때문에 유사하나, 기술적 차이점은 유지 가능성을 검토할 때 참고할 수 있는 요소로 보입니다.', detail: '기술적으로 겹치는 부분: 두 특허 모두 병목 구간 정보를 수집 및 분석하여 시스템 성능을 모니터링하고 개선하는 기능을 포함합니다.\n기술적 차이: 대상 특허는 미들웨어 레벨 모니터링, 비교 특허는 서버 레벨 성능 분석을 보다 중점적으로 수행합니다.\n청구범위 관점: 비교 특허는 11개 청구항을 보유하여 공식적인 청구 내용이 더 명확합니다.\n유지 판단 시사점: 등록된 비교 특허의 영향을 고려하여 차별화된 기술 요소를 명확히 해 둘 필요가 있습니다.' },
+        { id: 103, similarityScore: 38.52, applicationNumber: '1020170063049', title: '통신 시스템에서 네트워크 품질 관리를 위한 방법 및 장치', applicant: '삼성전자주식회사', year: 2017, citations: 5, status: '소멸', desc: '네트워크 품질 관리 방법에서 기술적 겹침이 있으나, 현재 소멸된 특허로 직접적인 권리 충돌 가능성은 낮습니다. 삼성전자의 높은 피인용수는 해당 분야 기술력을 방증하며 관련 출원 동향 모니터링이 필요합니다.', detail: '기술적으로 겹치는 부분: 네트워크 트래픽 품질을 측정하고 관리하는 기능에서 기술적 겹침이 확인됩니다.\n기술적 차이: 대상 특허는 MOM 레이어에서 메시지 큐 병목을 감지하는 반면, 비교 특허는 이동통신 네트워크의 QoS 파라미터를 관리하는 방식에 초점을 맞춥니다.\n청구범위 관점: 비교 특허는 현재 소멸 상태로 권리 행사가 불가능하여 직접적 법적 위협은 없습니다.\n유지 판단 시사점: 직접 경쟁 위협은 낮으나 삼성전자와 같은 대형 출원인이 해당 기술 분야에 존재함을 인지하고 기술 차별화 포인트를 명확히 유지하는 것이 중요합니다.' },
         { id: 104, similarityScore: 38.34, applicationNumber: '1020200173311', title: '차세대 배전지능화 시스템 검증장치', applicant: '한국전력공사', year: 2020, citations: 1, status: '유지', desc: '', detail: '' },
         { id: 105, similarityScore: 37.92, applicationNumber: '1020160076352', title: '분산시스템 호출 로그 기반 비즈니스 트랜잭션 실시간 추적 방법', applicant: '티쓰3큐 주식회사', year: 2016, citations: 3, status: '유지', desc: '', detail: '' },
         { id: 106, similarityScore: 37.15, applicationNumber: '1020180028210', title: '네트워크 토폴로지 구조 분석 방법', applicant: '국방과학연구소', year: 2018, citations: 0, status: '유지', desc: '', detail: '' },
@@ -1691,9 +1691,9 @@ const MOCK_EVAL_HISTORY: EvalHistoryItem[] = [
         ],
       },
       similarPatents: [
-        { id: 201, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '병목 모니터링 분야에서 직접적 경쟁 관계에 있는 특허입니다. 등록·유지 중이며 청구범위도 충분합니다.', detail: '기술적 겹침: 병목 구간 탐지·분석·모니터링\n차이: 서버 레벨 vs 미들웨어 레벨\n시사점: 기술적 차별화 명문화 필요' },
-        { id: 202, similarityScore: 37.92, applicationNumber: '1020160076352', title: '분산시스템 호출 로그 기반 비즈니스 트랜잭션 실시간 추적 방법', applicant: '티쓰3큐 주식회사', year: 2016, citations: 3, status: '유지', desc: '분산 시스템 트랜잭션 추적에서 기술적 겹침이 확인됩니다.', detail: '기술적 겹침: 분산 시스템 트랜잭션 모니터링\n차이: MOM 병목 vs 애플리케이션 로그 추적\n시사점: 미들웨어 특화 포지셔닝 강조 필요' },
-        { id: 203, similarityScore: 37.17, applicationNumber: '1020220155709', title: '프로그래밍 가능한 네트워크 가상화에서의 제어 트래픽 시계열 예측 기반 제어 채널 고립 방법', applicant: '고려대학교 산학협력단', year: 2022, citations: 0, status: '유지', desc: '', detail: '' },
+        { id: 201, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '분석 대상 특허와 상세 비교 특허는 모두 병목 구간 모니터링 및 분석 방법에 대한 기술을 다룹니다. 개선된 모니터링 기능을 제공하기 때문에 유사하나, 기술적 차이점은 유지 가능성을 검토할 때 참고할 수 있는 요소로 보입니다.', detail: '기술적으로 겹치는 부분: 두 특허 모두 병목 구간 정보를 수집 및 분석하여 시스템 성능을 모니터링하고 개선하는 기능을 포함합니다.\n기술적 차이: 대상 특허는 미들웨어 레벨 모니터링, 비교 특허는 서버 레벨 성능 분석을 보다 중점적으로 수행합니다.\n청구범위 관점: 비교 특허는 11개 청구항을 보유하여 공식적인 청구 내용이 더 명확합니다.\n유지 판단 시사점: 등록된 비교 특허의 영향을 고려하여 차별화된 기술 요소를 명확히 해 둘 필요가 있습니다.' },
+        { id: 202, similarityScore: 37.92, applicationNumber: '1020160076352', title: '분산시스템에서 애플리케이션 호출 로그를 이용한 비즈니스 트랜잭션의 실시간 추적 및 분석 방법, 그리고 그 시스템', applicant: '티쓰3큐 주식회사', year: 2016, citations: 3, status: '유지', desc: '두 특허 모두 분산 시스템에서 트랜잭션 흐름을 모니터링하고 성능 이슈를 추적하는 기능을 공유합니다. 접근 방식의 차이가 있어 직접 경쟁 관계는 아니지만, 기술적 겹침으로 인해 차별화 전략 수립이 필요합니다.', detail: '기술적으로 겹치는 부분: 두 특허 모두 분산 시스템에서 트랜잭션 흐름을 모니터링하고 성능 이슈를 추적하는 기능을 포함합니다.\n기술적 차이: 대상 특허는 미들웨어 레벨 병목 감지에 집중하는 반면, 비교 특허는 애플리케이션 호출 로그를 활용한 비즈니스 트랜잭션 추적에 초점을 맞춥니다.\n청구범위 관점: 비교 특허는 9개 청구항을 보유하며 서비스 호출 체인 분석에 특화된 권리 범위를 가집니다.\n유지 판단 시사점: 미들웨어 특화 포지셔닝을 명확히 하여 비교 특허와의 기술적 차별성을 문서화하는 것이 권장됩니다.' },
+        { id: 203, similarityScore: 37.17, applicationNumber: '1020220155709', title: '프로그래밍 가능한 네트워크 가상화에서의 제어 트래픽 시계열 예측 기반 제어 채널 고립 방법', applicant: '고려대학교 산학협력단', year: 2022, citations: 0, status: '유지', desc: 'SDN/NFV 기반 네트워크 가상화 환경에서 제어 트래픽 예측 기술이 포함되어 있어 네트워크 성능 관리 측면에서 기술적 겹침이 확인됩니다. 학술 출원으로 상업적 권리 행사 가능성은 낮으나 선행기술 참고 자료로서 의미가 있습니다.', detail: '기술적으로 겹치는 부분: 두 기술 모두 네트워크 상태를 시계열 데이터로 분석하여 트래픽 흐름의 이상 및 병목을 식별하는 접근 방식을 공유합니다.\n기술적 차이: 대상 특허는 미들웨어 레이어의 메시지 큐 병목 감지에 집중하는 반면, 비교 특허는 SDN 제어 채널을 시계열 예측으로 고립시키는 방법에 초점을 맞춥니다.\n청구범위 관점: 비교 특허는 최근 출원(2022년)으로 아직 등록 심사 중이며 청구범위가 확정되지 않아 권리 범위 예측이 어렵습니다.\n유지 판단 시사점: 학술기관 출원으로 직접적인 상업적 위협은 낮으나, 네트워크 트래픽 예측 기반 관리 기술의 최신 연구 동향을 반영하고 있어 기술 차별화 논리 보강에 활용할 수 있습니다.' },
         { id: 204, similarityScore: 37.15, applicationNumber: '1020180028210', title: '네트워크 토폴로지 구조 분석 방법', applicant: '국방과학연구소', year: 2018, citations: 0, status: '유지', desc: '', detail: '' },
         { id: 205, similarityScore: 36.93, applicationNumber: '1020240146212', title: '서비스 메시를 활용한 네트워크 트래픽 관리 방법, 장치 및 프로그램', applicant: '(주) 케이티클라우드', year: 2024, citations: 0, status: '공개', desc: '', detail: '' },
       ],
@@ -1789,9 +1789,9 @@ const MOCK_EVAL_HISTORY: EvalHistoryItem[] = [
         ],
       },
       similarPatents: [
-        { id: 301, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '병목 모니터링 분야에서 가장 직접적인 경쟁 특허입니다. 등록·유지 중이며 청구범위도 충분하여 포기 검토 필요성이 있습니다.', detail: '기술적 겹침: 병목 구간 탐지·분석\n차이: 서버 레벨 vs 미들웨어 레벨\n시사점: 청구범위 보완 없이는 포기 검토 필요' },
-        { id: 302, similarityScore: 37.15, applicationNumber: '1020180028210', title: '네트워크 토폴로지 구조 분석 방법', applicant: '국방과학연구소', year: 2018, citations: 0, status: '유지', desc: '토폴로지 구조 분석 측면에서 기술적 겹침이 있습니다.', detail: '기술적 겹침: 네트워크 토폴로지 분석\n차이: 군사용 vs 산업용 미들웨어\n시사점: 목적 특화성 차별화 문서화 필요' },
-        { id: 303, similarityScore: 37.04, applicationNumber: '1020150187276', title: '다종 네트워크 환경에서 동적 경로 상태를 측정하는 방법', applicant: '한국전자기술연구원', year: 2015, citations: 2, status: '소멸', desc: '', detail: '' },
+        { id: 301, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '분석 대상 특허와 상세 비교 특허는 모두 병목 구간 모니터링 및 분석 방법에 대한 기술을 다룹니다. 이 시점에서는 기술적 차별화 포인트가 미흡하여 청구범위 보완이 필요한 상태였습니다.', detail: '기술적으로 겹치는 부분: 두 특허 모두 병목 구간 정보를 수집 및 분석하여 시스템 성능을 모니터링하고 개선하는 기능을 포함합니다.\n기술적 차이: 대상 특허는 미들웨어 레벨 모니터링, 비교 특허는 서버 레벨 성능 분석을 보다 중점적으로 수행합니다.\n청구범위 관점: 비교 특허는 11개 청구항을 보유하여 공식적인 청구 내용이 더 명확하며, 당시 대상 특허의 청구범위 보완이 권고되었습니다.\n유지 판단 시사점: 청구범위 보완을 조건으로 유지를 검토하되, 차별화된 기술 요소 명문화가 시급한 상황이었습니다.' },
+        { id: 302, similarityScore: 37.15, applicationNumber: '1020180028210', title: '네트워크 토폴로지 구조 분석 방법', applicant: '국방과학연구소', year: 2018, citations: 0, status: '유지', desc: '네트워크 토폴로지 분석 측면에서 기술적 겹침이 존재합니다. 군사용 네트워크와 산업용 미들웨어라는 적용 도메인의 차이로 직접 경쟁 가능성은 낮으나 영역 모니터링이 필요합니다.', detail: '기술적으로 겹치는 부분: 두 특허 모두 네트워크 구조를 분석하여 성능에 영향을 미치는 요소를 파악하는 기능을 공유합니다.\n기술적 차이: 대상 특허는 MOM 미들웨어 병목 감지에 특화되어 있으며, 비교 특허는 군사 네트워크 토폴로지의 구조적 분석에 초점을 맞춥니다.\n청구범위 관점: 비교 특허는 7개 청구항으로 구성되며 군용 특화 적용 범위로 인해 산업용 특허와 직접 충돌은 제한적입니다.\n유지 판단 시사점: 도메인 차별화가 명확하므로 위협 수준은 낮으나, 네트워크 분석 방법 특허의 포괄적 영역을 인지하고 청구범위 보완을 검토할 필요가 있습니다.' },
+        { id: 303, similarityScore: 37.04, applicationNumber: '1020150187276', title: '다종 네트워크 환경에서 동적 경로 상태를 측정하는 방법', applicant: '한국전자기술연구원', year: 2015, citations: 2, status: '소멸', desc: '다종 네트워크 환경에서 경로 상태를 측정하는 방법이 포함되어 있어 네트워크 품질 모니터링 측면에서 기술적 겹침이 있습니다. 현재 소멸된 특허이므로 직접적인 권리 충돌 위험은 없습니다.', detail: '기술적으로 겹치는 부분: 두 기술 모두 네트워크 경로의 상태를 주기적으로 측정·수집하여 성능 이상을 감지하는 기능을 포함합니다.\n기술적 차이: 대상 특허는 미들웨어 레이어에서 메시지 큐 병목을 실시간 감지하는 반면, 비교 특허는 이기종 네트워크 환경에서 동적 경로 상태를 측정하는 방법에 집중합니다.\n청구범위 관점: 비교 특허는 소멸 상태(2015년 출원)로 현재 권리 행사가 불가하며, 피인용 2건은 해당 기술의 기초적 참고 가치를 방증합니다.\n유지 판단 시사점: 소멸 특허로 직접적 위협은 없으나, 다종 네트워크 경로 측정 방법론이 선행기술로 인용될 가능성이 있으므로 기술 차별화 포인트를 문서화해 두는 것이 권장됩니다.' },
         { id: 304, similarityScore: 36.83, applicationNumber: '1020170040115', title: '네트워크 자원을 고려한 가상 네트워크 관리장치 및 그 방법', applicant: '한국전자통신연구원', year: 2017, citations: 2, status: '소멸', desc: '', detail: '' },
       ],
       similarStats: { total: 4, registered: 2, pending: 0, rejectedExpired: 2, avgCitations: 1.5 },
@@ -2592,10 +2592,11 @@ function closeEvalReport() {
 /* ── AI 보고서 (rpt-*) ───────────────────────────── */
 .rpt-score-cards {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
 }
+@media (max-width: 680px) { .rpt-score-cards { grid-template-columns: repeat(2, 1fr); } }
 
 .rpt-score-card {
   background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
@@ -2629,11 +2630,13 @@ function closeEvalReport() {
 }
 
 .rpt-table-wrap { overflow-x: auto; }
+.rpt-table-wrap--similar { margin-top: 24px; position: relative; }
 
 .rpt-eval-table {
   width: 100%; border-collapse: collapse;
-  border: 1px solid #e2e8f0; border-top: none;
-  background: #fff; min-width: 560px;
+  table-layout: auto;
+  border: 1px solid #e2e8f0;
+  background: #fff; min-width: 700px;
 }
 .rpt-eval-table thead tr { background: #f8fafc; }
 .rpt-eval-table th {
@@ -2641,6 +2644,7 @@ function closeEvalReport() {
   font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.07em; color: #94a3b8;
   border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
 }
 .rpt-eval-table td {
   padding: 10px 14px; vertical-align: top;
@@ -2865,6 +2869,7 @@ details[open] .rpt-appendix__chevron { transform: rotate(180deg); }
   background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
   padding: 16px 18px; margin-bottom: 12px;
 }
+.rpt-opinion-box + .rpt-similar-card { margin-top: 20px; }
 .rpt-similar-card__top {
   display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
   margin-bottom: 10px;
@@ -2885,6 +2890,7 @@ details[open] .rpt-appendix__chevron { transform: rotate(180deg); }
 }
 .rpt-status-badge {
   font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+  white-space: nowrap;
 }
 .rpt-status--keep    { background: #dcfce7; color: #166534; }
 .rpt-status--expired { background: #f1f5f9; color: #475569; }
