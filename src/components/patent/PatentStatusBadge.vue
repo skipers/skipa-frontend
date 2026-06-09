@@ -13,9 +13,7 @@ const props = defineProps<{ status: string }>()
 const MAP: Record<string, { label: string; variant: string }> = {
   REGISTERED:      { label: '등록',      variant: 'green'  },
   ACTIVE:          { label: '등록',      variant: 'green'  },
-  EXPIRING_SOON:   { label: '만료 예정', variant: 'amber'  },
-  EXPIRING:        { label: '만료 예정', variant: 'amber'  },
-  EXPIRED:         { label: '만료',      variant: 'red'    },
+EXPIRED:         { label: '만료',      variant: 'red'    },
   ABANDONED:       { label: '포기',      variant: 'gray'   },
   PENDING:         { label: '심사 중',   variant: 'blue'   },
   GENERATING:      { label: 'AI 분석 중', variant: 'indigo' },

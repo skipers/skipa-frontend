@@ -131,7 +131,7 @@ const pageTitleMap: Record<string, string> = {
   '/biz/home': '홈',
   '/biz/review': '검토 현황',
   '/biz/patents': '담당 특허 관리',
-  '/biz/pre-eval-lab': '사전 평가 Lab',
+'/biz/pre-eval-lab': '사전 평가 Lab',
   '/biz/expiring': '만료 예정 관리',
   '/biz/patent-search': '특허 검색',
 }
@@ -397,6 +397,6 @@ async function handleLogout() {
 }
 .topbar__icon-btn:hover { background: var(--color-surface-muted); color: var(--color-text); }
 
-.page-content { flex: 1; padding: 32px; overflow-y: auto; }
+.page-content { flex: 1; padding: 32px; }
 
 </style>

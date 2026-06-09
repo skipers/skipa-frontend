@@ -342,7 +342,7 @@
                     <strong>{{ unassignedCount }}건</strong>
                   </div>
                   <div class="send-summary__row send-summary__row--warn" v-if="alreadyRequestedCount > 0">
-                    <span>⚠️ 요청 완료·지연·회신 완료 (제외)</span>
+                    <span>⚠️ 요청 완료·회신 완료 (제외)</span>
                     <strong>{{ alreadyRequestedCount }}건</strong>
                   </div>
                 </div>
@@ -373,11 +373,13 @@ import { useRouter, useRoute } from 'vue-router'
 import { patentsApi } from '@/api/patents'
 import { reviewRequestsApi } from '@/api/misc'
 import { usePagination } from '@/composables/usePagination'
+import { useReadReplies } from '@/composables/useReadReplies'
 import BasePagination from '@/components/ui/BasePagination.vue'
 import type { Department } from '@/types'
 
 const router = useRouter()
 const route  = useRoute()
+const { readIds, markRead } = useReadReplies()
 const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination()
 
 // ── 상태 ────────────────────────────────────────────
@@ -585,7 +587,7 @@ async function fetchList(p = 1) {
     if (activeDecision.value === 'KEEP')         pool = pool.filter(i => i.decision === 'KEEP')
     else if (activeDecision.value === 'DISPOSE') pool = pool.filter(i => i.decision === 'DISPOSE')
     const byDept = pool
-    const unreadItems = byDept.filter(i => i.reviewStatus === 'done' && i.decision)
+    const unreadItems = byDept.filter(i => i.reviewStatus === 'done' && i.decision && !readIds.value.has(i.id))
     const filtered =
       activeStatus.value === 'all'    ? byDept :
       activeStatus.value === 'unread' ? unreadItems :
@@ -674,16 +676,24 @@ async function handleSend() {
   }
 }
 
-function goDetail(id: number) { router.push(`/legal/patents/${id}`) }
+function goDetail(id: number) {
+  markRead(id)
+  router.push(`/legal/patents/${id}`)
+}
 
-onMounted(() => {
+onMounted(async () => {
   const tab      = route.query.tab      as string | undefined
   const dept     = route.query.dept     as string | undefined
   const decision = route.query.decision as string | undefined
+  const open     = route.query.open     as string | undefined
   if (tab)      activeStatus.value   = tab
   if (dept)     activeDept.value     = Number(dept)
   if (decision) activeDecision.value = decision
-  fetchList(1)
+  await fetchList(1)
+  if (open) {
+    await router.replace({ path: '/legal/reevaluation', query: tab ? { tab } : {} })
+    goDetail(Number(open))
+  }
 })
 </script>
 
