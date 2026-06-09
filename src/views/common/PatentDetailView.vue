@@ -429,31 +429,53 @@
 
         <div class="section-divider"></div>
 
-        <!-- ── 섹션 4: 등록 이력 ── -->
+        <!-- ── 섹션 4: 헹정 상태 ── -->
         <section id="section-history" data-section="history" class="content-section">
           <div class="section-header">
-            <h2 class="section-heading">등록 이력</h2>
+            <h2 class="section-heading">행정 상태</h2>
           </div>
           <div class="patent-timeline">
             <div v-for="(ev, i) in patentHistory" :key="i" class="ptl-item">
-              <div class="ptl-left">
-                <span class="ptl-date">{{ formatDate(ev.date) }}</span>
-              </div>
               <div class="ptl-center">
                 <div :class="['ptl-dot', `ptl-dot--${ev.variant}`]"></div>
                 <div v-if="i < patentHistory.length - 1" class="ptl-line"></div>
               </div>
               <div class="ptl-right">
                 <span :class="['ptl-badge', `ptl-badge--${ev.variant}`]">{{ ev.label }}</span>
-                <p class="ptl-desc">{{ ev.desc }}</p>
+                <span class="ptl-date">{{ formatDate(ev.date) }}</span>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <div v-if="isOwnDept" class="section-divider"></div>
+
+        <!-- ── 섹션 5: 평가이력 ── -->
+        <section v-if="isOwnDept" id="section-eval" data-section="eval" class="content-section">
+          <div class="section-header">
+            <h2 class="section-heading">평가이력</h2>
+          </div>
+          <div class="eval-history-list">
+            <div v-for="(item, idx) in MOCK_EVAL_HISTORY" :key="idx" class="eval-history-item">
+              <div class="eval-history-item__top">
+                <div class="eval-history-item__left">
+                  <span class="eval-history-item__date">{{ item.date }}</span>
+                  <div :class="['eval-grade-badge', `eval-grade-badge--${item.grade.toLowerCase()}`]">{{ item.grade }}</div>
+<span :class="['eval-decision-badge', item.decision === '유지' ? 'eval-decision-badge--keep' : 'eval-decision-badge--dispose']">{{ item.decision }}</span>
+                </div>
+                <button class="eval-report-btn" @click="openEvalReport(item.report)" type="button">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  보고서 보기
+                </button>
+              </div>
+              <p class="eval-history-item__opinion">{{ item.opinion }}</p>
             </div>
           </div>
         </section>
 
         </div><!-- /sections-body -->
 
-        <!-- ── 우측 패널 ── -->
+        <!-- ── 우측 사이드바 ── -->
         <aside class="detail-body__side">
 
           <template v-if="isOwnDept">
@@ -596,7 +618,272 @@
             </ul>
           </nav>
 
-        </aside>
+        </aside><!-- /detail-body__side -->
+
+        <!-- ── 평가 보고서 패널 (fixed overlay) ── -->
+        <aside class="eval-report-panel" :class="{ open: evalReportOpen }">
+          <div class="eval-report-shell">
+            <header class="eval-report-header">
+              <strong class="eval-report-title">{{ selectedEvalReport?.title }}</strong>
+              <button class="icon-button" type="button" @click="closeEvalReport">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M6 6l12 12M18 6 6 18"/>
+                </svg>
+              </button>
+            </header>
+
+            <div class="eval-report-body" v-if="selectedEvalReport">
+
+            <!-- 01 평가 요약 -->
+            <div class="erp-section">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">01</span>평가 요약</h3>
+              <div class="rpt-score-cards">
+                <div class="rpt-score-card" style="--rpt-card-color:#111827">
+                  <div class="rpt-score-card__label">종합</div>
+                  <div class="rpt-score-card__value">{{ evalPanelTotal }}<span class="rpt-score-card__denom"> / 100</span></div>
+                  <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" :style="{ width: evalPanelTotal + '%' }"></div></div>
+                </div>
+                <div class="rpt-score-card" style="--rpt-card-color:#1a6e3c">
+                  <div class="rpt-score-card__label">기술성</div>
+                  <div class="rpt-score-card__value">{{ selectedEvalReport.scores.tech }}<span class="rpt-score-card__denom"> / 100</span></div>
+                  <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" :style="{ width: selectedEvalReport.scores.tech + '%' }"></div></div>
+                </div>
+                <div class="rpt-score-card" style="--rpt-card-color:#7a6a00">
+                  <div class="rpt-score-card__label">권리성</div>
+                  <div class="rpt-score-card__value">{{ selectedEvalReport.scores.rights }}<span class="rpt-score-card__denom"> / 100</span></div>
+                  <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" :style="{ width: selectedEvalReport.scores.rights + '%' }"></div></div>
+                </div>
+                <div class="rpt-score-card" style="--rpt-card-color:#8b1a1a">
+                  <div class="rpt-score-card__label">시장성 및 사업성</div>
+                  <div class="rpt-score-card__value">{{ selectedEvalReport.scores.biz }}<span class="rpt-score-card__denom"> / 100</span></div>
+                  <div class="rpt-score-card__bar"><div class="rpt-score-card__bar-fill" :style="{ width: selectedEvalReport.scores.biz + '%' }"></div></div>
+                </div>
+              </div>
+              <div class="rpt-opinion-box">
+                <p>{{ selectedEvalReport.comments.tech }}</p>
+                <p>{{ selectedEvalReport.comments.rights }}</p>
+                <p>{{ selectedEvalReport.comments.biz }}</p>
+              </div>
+            </div>
+
+            <!-- 02 평가 기준별 상세 점수 -->
+            <div class="erp-section">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">02</span>평가 기준별 상세 점수</h3>
+              <div class="rpt-criteria-list">
+                <div v-for="(block, bi) in selectedEvalReport.evalBlocks" :key="block.key" class="rpt-criteria-row">
+                  <div class="rpt-criteria-score"
+                    :style="bi === 0 ? '--rc-color:#1a6e3c' : bi === 1 ? '--rc-color:#7a6a00' : '--rc-color:#8b1a1a'">
+                    <div class="rpt-criteria-score__label">{{ block.title }}</div>
+                    <div class="rpt-criteria-score__value">{{ block.score }}<span>/100</span></div>
+                    <div class="rpt-criteria-score__bar">
+                      <div class="rpt-criteria-score__bar-fill" :style="{ width: block.score + '%' }"></div>
+                    </div>
+                  </div>
+                  <p class="rpt-criteria-text">{{
+                    bi === 0 ? selectedEvalReport.comments.tech
+                    : bi === 1 ? selectedEvalReport.comments.rights
+                    : selectedEvalReport.comments.biz
+                  }}</p>
+                </div>
+              </div>
+              <details class="rpt-appendix">
+                <summary class="rpt-appendix__summary">
+                  평가 항목 세부 내역
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="rpt-appendix__chevron"><path d="M6 9l6 6 6-6"/></svg>
+                </summary>
+                <div class="rpt-appendix__body">
+                  <div v-for="block in selectedEvalReport.evalBlocks" :key="block.key" class="rpt-eval-block">
+                    <div class="rpt-eval-block-header">
+                      <span class="rpt-eval-block-title">{{ block.title }}</span>
+                      <span class="rpt-eval-block-score">{{ block.score }} / 100</span>
+                    </div>
+                    <div class="rpt-table-wrap">
+                      <table class="rpt-eval-table">
+                        <thead>
+                          <tr>
+                            <th style="width:180px">평가 항목</th>
+                            <th style="width:72px">점수</th>
+                            <th style="width:110px">산출 방식</th>
+                            <th>판단 요지</th>
+                            <th style="width:36px"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <template v-for="item in block.items" :key="item.id">
+                            <tr class="rpt-data-row" @click="reportOpenRows[item.id] = !reportOpenRows[item.id]">
+                              <td class="rpt-item-name">{{ item.name }}</td>
+                              <td><span :class="['rpt-score-pill', 'rpt-score-' + item.score]">{{ item.score }}/5</span></td>
+                              <td class="rpt-method">{{ item.method }}</td>
+                              <td class="rpt-summary">{{ item.summary }}</td>
+                              <td>
+                                <button class="rpt-toggle-btn" :class="{ open: reportOpenRows[item.id] }" type="button">▶</button>
+                              </td>
+                            </tr>
+                            <tr v-show="reportOpenRows[item.id]" class="rpt-detail-row">
+                              <td colspan="5">
+                                <div class="rpt-detail-content">
+                                  <div class="rpt-detail-label">판단 근거</div>
+                                  <div class="rpt-detail-text">{{ item.grounds }}</div>
+                                  <div class="rpt-detail-label">출처</div>
+                                  <div class="rpt-detail-text">{{ item.sources }}</div>
+                                </div>
+                              </td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+
+            <!-- 03 사내 프로젝트 활용 현황 -->
+            <div class="erp-section">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">03</span>사내 프로젝트 활용 현황</h3>
+              <table class="rpt-info-table">
+                <tbody>
+                  <tr><th>사업화 여부</th><td>{{ selectedEvalReport.project.commercialized }}</td></tr>
+                  <tr><th>적용 사업·서비스</th><td>{{ selectedEvalReport.project.service }}</td></tr>
+                  <tr><th>사업 적용 이력</th><td>{{ selectedEvalReport.project.history }}</td></tr>
+                  <tr><th>고객·파트너</th><td>{{ selectedEvalReport.project.customer }}</td></tr>
+                  <tr><th>사업화 신호</th><td>{{ selectedEvalReport.project.signal }}</td></tr>
+                </tbody>
+              </table>
+              <div class="rpt-project-card">
+                <div class="rpt-project-card__name">요약 설명</div>
+                <p class="rpt-project-card__desc" style="margin-bottom:0">{{ selectedEvalReport.project.summary }}</p>
+              </div>
+              <div class="rpt-project-card">
+                <div class="rpt-project-card__name">근거 자료</div>
+                <ol class="rpt-evidence-list">
+                  <li v-for="(ev, i) in selectedEvalReport.project.evidence" :key="i">
+                    <a class="rpt-evidence-link" :href="ev.url" target="_blank" rel="noopener">{{ ev.title }}</a>
+                  </li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- 04 유사 특허 분석 -->
+            <div class="erp-section">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">04</span>유사 특허 분석</h3>
+              <div class="rpt-stat-row">
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#2563eb">{{ selectedEvalReport.similarStats.total }}</span><span class="rpt-stat-label">분석 대상</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#166534">{{ selectedEvalReport.similarStats.registered }}</span><span class="rpt-stat-label">등록/유지</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#6b7280">{{ selectedEvalReport.similarStats.pending }}</span><span class="rpt-stat-label">공개/심사중</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#374151">{{ selectedEvalReport.similarStats.rejectedExpired }}</span><span class="rpt-stat-label">거절/소멸</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#854d0e">{{ selectedEvalReport.similarStats.avgCitations }}</span><span class="rpt-stat-label">평균 피인용수</span></div>
+              </div>
+              <div class="rpt-opinion-box">
+                <p>{{ selectedEvalReport.similarSummary }}</p>
+              </div>
+              <div v-for="(s, si) in [...selectedEvalReport.similarPatents].sort((a,b) => b.similarityScore - a.similarityScore).slice(0, 3)" :key="s.id" class="rpt-similar-card">
+                <div class="rpt-similar-card__top">
+                  <div class="rpt-similar-card__info">
+                    <div class="rpt-similar-card__name">#{{ si + 1 }} {{ s.title }}</div>
+                    <div class="rpt-similar-card__meta">
+                      <span>{{ s.applicant }}</span>
+                      <span :class="['rpt-status-badge', s.status === '유지' ? 'rpt-status--keep' : s.status === '소멸' ? 'rpt-status--expired' : 'rpt-status--open']">{{ s.status }}</span>
+                      <span>출원번호 {{ s.applicationNumber }}</span>
+                      <span>피인용 {{ s.citations }}</span>
+                    </div>
+                  </div>
+                  <span class="rpt-similar-score-badge">유사도 {{ s.similarityScore }}</span>
+                </div>
+                <p v-if="s.desc" class="rpt-similar-card__desc">{{ s.desc }}</p>
+                <div v-if="s.detail" class="rpt-similar-card__detail">
+                  <p v-for="(line, li) in s.detail.split('\n')" :key="li">{{ line }}</p>
+                </div>
+              </div>
+              <div class="rpt-table-wrap" style="margin-top:20px">
+                <table class="rpt-eval-table">
+                  <thead>
+                    <tr>
+                      <th style="width:140px">출원번호</th>
+                      <th>특허명</th>
+                      <th style="width:130px">출원인</th>
+                      <th style="width:60px">연도</th>
+                      <th style="width:65px">유사도</th>
+                      <th style="width:55px">피인용</th>
+                      <th style="width:55px">상태</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="s in [...selectedEvalReport.similarPatents].sort((a,b) => b.similarityScore - a.similarityScore)" :key="s.id">
+                      <td><span class="mono text-muted-sm">{{ s.applicationNumber }}</span></td>
+                      <td class="rpt-item-name">{{ s.title }}</td>
+                      <td><span class="similar-applicant">{{ s.applicant }}</span></td>
+                      <td class="rpt-method">{{ s.year }}</td>
+                      <td class="rpt-method" style="font-weight:600">{{ s.similarityScore }}</td>
+                      <td class="rpt-method">{{ s.citations }}</td>
+                      <td>
+                        <span :class="['rpt-status-badge', s.status === '유지' ? 'rpt-status--keep' : s.status === '소멸' ? 'rpt-status--expired' : 'rpt-status--open']">{{ s.status }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 05 추가 확인 필요 사항 -->
+            <div class="erp-section">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">05</span>추가 확인 필요 사항</h3>
+              <p class="rpt-subsection-desc">점수가 낮은 평가 항목에서 자동 추출했습니다. 사업부 자체 자료와의 교차 검토를 권장합니다.</p>
+              <div v-for="item in selectedEvalReport.confirmItems" :key="item.title" class="rpt-confirm-item">
+                <div class="rpt-confirm-item-title">{{ item.title }}<span>{{ item.meta }}</span></div>
+                <div class="rpt-confirm-item-desc">{{ item.desc }}</div>
+              </div>
+            </div>
+
+            <!-- 06 참고문헌 -->
+            <div class="erp-section">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">06</span>참고문헌</h3>
+              <ol class="rpt-ref-list">
+                <li v-for="(ref, i) in selectedEvalReport.refs" :key="i">
+                  <span class="rpt-ref-num">[{{ i + 1 }}]</span>
+                  <span>{{ ref }}</span>
+                </li>
+              </ol>
+            </div>
+
+            <!-- 07 등록료 납부 내역 -->
+            <div class="erp-section">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">07</span>등록료 납부 내역</h3>
+              <table class="fee-table">
+                <thead>
+                  <tr><th>분기</th><th>금액</th><th>납부일</th><th>상태</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in selectedEvalReport.feeRecords" :key="row.quarter">
+                    <td>{{ row.quarter }}</td>
+                    <td>{{ row.amount.toLocaleString() }} 원</td>
+                    <td>{{ formatDate(row.paid) }}</td>
+                    <td>납입</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 08 행정 상태 -->
+            <div class="erp-section">
+              <h3 class="rpt-part-title"><span class="rpt-part-num">08</span>행정 상태</h3>
+              <div class="patent-timeline">
+                <div v-for="(ev, i) in selectedEvalReport.history" :key="i" class="ptl-item">
+                  <div class="ptl-center">
+                    <div :class="['ptl-dot', `ptl-dot--${ev.variant}`]"></div>
+                    <div v-if="i < selectedEvalReport.history.length - 1" class="ptl-line"></div>
+                  </div>
+                  <div class="ptl-right">
+                    <span :class="['ptl-badge', `ptl-badge--${ev.variant}`]">{{ ev.label }}</span>
+                    <span class="ptl-date">{{ formatDate(ev.date) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            </div><!-- /eval-report-body -->
+          </div><!-- /eval-report-shell -->
+        </aside><!-- /eval-report-panel -->
 
       </div><!-- /detail-columns -->
 
@@ -666,6 +953,7 @@ import {
   MOCK_PATENTS, MOCK_REEVAL, MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS, MOCK_PROJECT_EVIDENCE,
   PATENT_INVENTORS, TECH_FIELD_IPC, COUNTRY_LABEL, TECH_FIELD_SUMMARY,
   TECH_FIELD_CLAIMS, AI_REPORT_COMMENTS, AI_GRADE_SCORES, DEPT_MAP,
+  type MockSimilarPatent,
 } from '@/mocks/data'
 
 const props = defineProps<{ patentId: number }>()
@@ -870,9 +1158,10 @@ const ALL_TABS = [
   { key: 'info',    label: '기본 정보' },
   { key: 'report',  label: 'AI 평가 보고서' },
   { key: 'fee',     label: '등록료 납부 내역' },
-  { key: 'history', label: '등록 이력' },
+  { key: 'history', label: '행정 상태' },
+  { key: 'eval',    label: '평가이력' },
 ]
-const RESTRICTED_TABS = new Set(['report'])
+const RESTRICTED_TABS = new Set(['report', 'eval'])
 
 const tabs = computed(() =>
   isOwnDept.value ? ALL_TABS : ALL_TABS.filter(t => !RESTRICTED_TABS.has(t.key))
@@ -1195,6 +1484,359 @@ const REPORT_REFS = [
   '제조 데이터 분석 기반 스마트 팩토리 구축 및 고도화 (skax.co.kr)',
   'KIPRIS 유사 특허 분석 결과: 10-2893083',
 ]
+
+// ── 평가이력 ─────────────────────────────────────────
+interface EvalFeeRecord   { quarter: string; amount: number; paid: string }
+interface EvalHistoryEvent { date: string; label: string; variant: HistoryVariant }
+interface EvalProjectInfo {
+  commercialized: string; service: string; history: string
+  customer: string; signal: string; summary: string
+  evidence: { title: string; url: string }[]
+}
+interface EvalSimilarStats {
+  total: number; registered: number; pending: number; rejectedExpired: number; avgCitations: number
+}
+interface EvalReport {
+  title: string
+  grade: 'S' | 'A' | 'B' | 'C'
+  scores: { tech: number; rights: number; biz: number }
+  comments: { tech: string; rights: string; biz: string }
+  evalBlocks: RptBlock[]
+  project: EvalProjectInfo
+  similarPatents: MockSimilarPatent[]
+  similarStats: EvalSimilarStats
+  similarSummary: string
+  confirmItems: { title: string; meta: string; desc: string }[]
+  refs: string[]
+  feeRecords: EvalFeeRecord[]
+  history: EvalHistoryEvent[]
+}
+interface EvalHistoryItem {
+  date: string
+  grade: 'S' | 'A' | 'B' | 'C'
+  score: number
+  decision: '유지' | '포기'
+  opinion: string
+  report: EvalReport
+}
+
+const MOCK_EVAL_HISTORY: EvalHistoryItem[] = [
+  // ── 2023년 3분기 (A / 82) ────────────────────────────
+  {
+    date: '2023.09.15', grade: 'A', score: 82, decision: '유지',
+    opinion: '기술성 및 권리성 모두 우수하여 유지 결정',
+    report: {
+      title: '2023년 3분기 평가 보고서',
+      grade: 'A',
+      scores: { tech: 84, rights: 81, biz: 79 },
+      comments: {
+        tech: '메시지 지향 미들웨어 기반의 토폴로지 모니터링 기술은 시장 내 차별화 요소가 명확하며, 모방 및 회피 설계 난이도가 높은 것으로 평가되었습니다.',
+        rights: '청구항 구성이 핵심 기능 중심으로 간결하게 작성되어 권리 행사 실효성이 높습니다. 다만 해외 출원 부재로 글로벌 보호 범위에 한계가 있습니다.',
+        biz: '스마트 팩토리 통합 미들웨어 솔루션으로의 사업화가 진행 중이며, 관련 시장 성장세와 함께 사업 가치가 확인됩니다.',
+      },
+      evalBlocks: [
+        {
+          key: 'tech', title: '기술성', score: 84,
+          items: [
+            { id: 'ep23-rt-1', name: '차별성 및 파급성', score: 4, method: 'LLM 분석',
+              summary: 'MOM 기반 토폴로지 모니터링은 차별성 명확하며 다중 산업 적용 가능.',
+              grounds: '메시지 지향 미들웨어 특화 병목 감지 구조는 경쟁사 대비 차별화 포인트가 분명하며, 제조·물류·통신 등 복수 산업 분야에 적용 가능한 파급성을 보유합니다.',
+              sources: 'ETRI 유선 네트워크 기술 동향; Oracle MOM 기술문서' },
+            { id: 'ep23-rt-2', name: '기술 모방 및 회피설계 난이도', score: 4, method: 'LLM 분석',
+              summary: '병목 감지 로직과 화면 연계 구조로 모방·회피설계 모두 어려움.',
+              grounds: '트랜잭션 실패 기반 병목 감지 로직과 토폴로지 화면 표시의 연계 구조는 구현 복잡성이 높아 회피 설계가 어렵습니다.',
+              sources: 'KIPRIS 등록특허 10-2893083' },
+          ],
+        },
+        {
+          key: 'rights', title: '권리성', score: 81,
+          items: [
+            { id: 'ep23-rr-1', name: '권리행사 제한 가능성', score: 5, method: '자동산출',
+              summary: '단독 출원인, 심판이력 0건으로 권리행사 제약 없음.',
+              grounds: '출원인 1명, 심판이력 0건. 공동출원에 의한 제한 또는 무효심판 등 제약 요소가 없습니다.',
+              sources: 'KIPRIS 자동산출' },
+            { id: 'ep23-rr-2', name: '권리의 구성요소', score: 4, method: 'LLM 분석',
+              summary: '핵심 기능 명확히 기재, 비본질적 요소 최소화.',
+              grounds: '모니터링 시스템의 핵심 기능이 명확하게 설명되어 있으며, 비본질적 구성요소가 거의 없습니다.',
+              sources: 'KIPRIS 등록특허 10-2893083' },
+          ],
+        },
+        {
+          key: 'market', title: '시장성 및 사업성', score: 79,
+          items: [
+            { id: 'ep23-rm-1', name: '매출 성장성', score: 4, method: '자동산출 (KOSIS)',
+              summary: '전자부품·통신장비 5년 평균 성장률 8.32%.',
+              grounds: '관련 제조 미들웨어 시장은 연 8% 이상의 성장세를 보이며 사업화 가치가 높습니다.',
+              sources: 'KOSIS 자동산출' },
+            { id: 'ep23-rm-2', name: '고객에 미치는 영향', score: 4, method: 'LLM 분석',
+              summary: '마이크로서비스 운영 기업에 실시간 병목 시각화로 직접 가치 제공.',
+              grounds: '토폴로지 기반 직관적 모니터링으로 운영 효율성 직접 개선. 실제 고객 사례가 확인됩니다.',
+              sources: '스마트제조혁신 생태계 고도화방안 (관계부처 합동)' },
+          ],
+        },
+      ],
+      project: {
+        commercialized: '진행 중',
+        service: '스마트 팩토리 시스템 통합 미들웨어 솔루션',
+        history: '2022년 이후 주요 고객 사례와 함께 적용 중',
+        customer: '반도체 소재 제조 업체 S사, 자동화 설비 업체 K사',
+        signal: '고객 사례, 수상·인증',
+        summary: '본 특허와 연결되는 사내 활용 영역은 스마트 팩토리 통합 미들웨어 솔루션이며 사업화 상태는 진행 중입니다. 2022년부터 실제 고객 사례에 적용되어 운영 효율 향상이 확인되었습니다.',
+        evidence: [
+          { title: '스마트 팩토리 구축을 위한 설비제어 데이터 표준화 및 통합 관제 플랫폼', url: '#' },
+          { title: '스마트 팩토리 시스템의 통합을 실현하는 미들웨어 솔루션', url: '#' },
+          { title: '제조 데이터 분석 기반 스마트 팩토리 구축 및 고도화', url: '#' },
+        ],
+      },
+      similarPatents: [
+        { id: 101, similarityScore: 38.83, applicationNumber: '1020170095218', title: '차량 네트워크에서 ASIL에 기초한 통신 방법 및 장치', applicant: '기아 주식회사 외', year: 2017, citations: 7, status: '유지', desc: '메시지 노드 간 전송 처리에서 기술적 겹침이 확인됩니다. 차량 네트워크 안전성 중점으로 목적은 다르나 청구항이 광범위합니다.', detail: '기술적 겹침: 메시지 노드 간 데이터 전송\n차이: 대상 MOM 병목 관리 vs 비교 차량 네트워크 안전성\n시사점: 차별화 포인트 보강 필요' },
+        { id: 102, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '병목 모니터링 방법에서 직접적 경쟁 관계에 있으나 서버 레벨 vs 미들웨어 레벨로 레이어가 다릅니다.', detail: '기술적 겹침: 병목 구간 탐지·분석\n차이: 서버 레벨 vs 미들웨어 레벨\n시사점: 기술적 차별화 명문화 권장' },
+        { id: 103, similarityScore: 38.52, applicationNumber: '1020170063049', title: '통신 시스템에서 네트워크 품질 관리를 위한 방법 및 장치', applicant: '삼성전자주식회사', year: 2017, citations: 5, status: '소멸', desc: '', detail: '' },
+        { id: 104, similarityScore: 38.34, applicationNumber: '1020200173311', title: '차세대 배전지능화 시스템 검증장치', applicant: '한국전력공사', year: 2020, citations: 1, status: '유지', desc: '', detail: '' },
+        { id: 105, similarityScore: 37.92, applicationNumber: '1020160076352', title: '분산시스템 호출 로그 기반 비즈니스 트랜잭션 실시간 추적 방법', applicant: '티쓰3큐 주식회사', year: 2016, citations: 3, status: '유지', desc: '', detail: '' },
+        { id: 106, similarityScore: 37.15, applicationNumber: '1020180028210', title: '네트워크 토폴로지 구조 분석 방법', applicant: '국방과학연구소', year: 2018, citations: 0, status: '유지', desc: '', detail: '' },
+        { id: 107, similarityScore: 37.04, applicationNumber: '1020150187276', title: '다종 네트워크 환경에서 동적 경로 상태를 측정하는 방법', applicant: '한국전자기술연구원', year: 2015, citations: 2, status: '소멸', desc: '', detail: '' },
+      ],
+      similarStats: { total: 7, registered: 5, pending: 0, rejectedExpired: 2, avgCitations: 2.9 },
+      similarSummary: 'KIPRIS 유사도 상위 7건 중 등록/유지 5건, 거절/소멸 2건입니다. 메시지 지향 미들웨어에서의 병목 모니터링에 집중한 점에서 경쟁 기술과 차별화됩니다.',
+      confirmItems: [
+        { title: '대체기술 및 경쟁성', meta: ' · 기술성 · 2/5', desc: '기아, 그린아일, 삼성전자 등 경쟁 출원인 점유율이 높습니다. 자사 차별화 포인트 구체화가 필요합니다.' },
+        { title: '권리의 충실성', meta: ' · 권리성 · 3/5', desc: '청구항 3개, 해외출원 없음. PCT 출원 등 글로벌 보호 범위 확대를 검토하십시오.' },
+      ],
+      refs: [
+        '메시지 지향 미들웨어(MOM) 개요 (Oracle 기술문서)',
+        'OSGi 기반 미들웨어의 개발에 관한 연구 (한국지식정보기술학회)',
+        '유선 네트워크 기술 동향 및 전망 (ETRI)',
+        '스마트제조혁신 생태계 고도화방안 (관계부처 합동)',
+        'KIPRIS 유사 특허 분석 결과: 10-2893083',
+      ],
+      feeRecords: [
+        { quarter: '제  1 -  3 년분', amount:  630000, paid: '2012-09-20' },
+        { quarter: '제  4 -  6 년분', amount: 1110000, paid: '2015-08-24' },
+        { quarter: '제  7 -  9 년분', amount: 2010000, paid: '2018-08-22' },
+        { quarter: '제 10 - 12 년분', amount: 3195000, paid: '2021-08-25' },
+      ],
+      history: [
+        { date: '2021-03-15', label: '출원', variant: 'file' },
+        { date: '2021-09-15', label: '공개', variant: 'pub' },
+        { date: '2022-09-15', label: '등록', variant: 'reg' },
+      ],
+    },
+  },
+
+  // ── 2022년 3분기 (B / 71) ────────────────────────────
+  {
+    date: '2022.09.20', grade: 'B', score: 71, decision: '유지',
+    opinion: '시장성 점수 다소 낮으나 핵심 기술 가치 인정',
+    report: {
+      title: '2022년 3분기 평가 보고서',
+      grade: 'B',
+      scores: { tech: 75, rights: 73, biz: 62 },
+      comments: {
+        tech: '병목 구간 자동 탐지 및 토폴로지 기반 시각화 기능은 산업 현장에서 실질적인 운영 효율 향상에 기여합니다.',
+        rights: '청구항 수 3개, 카테고리 3개로 구성되어 있으며 해외출원이 없습니다. 권리의 충실성 보완이 필요합니다.',
+        biz: '동일 IPC 분야 출원 증가율이 감소세를 보이고 있어 시장 성장성에 대한 지속적인 모니터링이 필요합니다.',
+      },
+      evalBlocks: [
+        {
+          key: 'tech', title: '기술성', score: 75,
+          items: [
+            { id: 'ep22-rt-1', name: '차별성 및 파급성', score: 3, method: 'LLM 분석',
+              summary: '단일 시장 적용 가능, 유사 솔루션 증가로 차별성 다소 약화.',
+              grounds: '토폴로지 기반 병목 감지 기능은 유효하나, 시장에 유사 모니터링 솔루션이 증가하여 차별성이 다소 약화되었습니다.',
+              sources: 'ETRI 유선 네트워크 기술 동향; Oracle MOM 기술문서' },
+            { id: 'ep22-rt-2', name: '혁신성 및 개척성', score: 4, method: 'LLM 분석',
+              summary: '토폴로지 기반 동적 갱신 구조는 여전히 기술적 개척성 인정.',
+              grounds: '정적 모니터링 대비 토폴로지 기반 동적 상태 갱신 구조는 기술적 개척성 측면에서 긍정적으로 평가됩니다.',
+              sources: 'OSGi 기반 미들웨어 연구 (한국지식정보기술학회)' },
+          ],
+        },
+        {
+          key: 'rights', title: '권리성', score: 73,
+          items: [
+            { id: 'ep22-rr-1', name: '권리의 충실성', score: 3, method: '자동산출',
+              summary: '청구항 3개, 카테고리 3개, 해외출원 없음.',
+              grounds: '청구항 수 3개로 구성되어 있으며 해외출원이 없어 글로벌 보호에 한계가 있습니다.',
+              sources: 'KIPRIS 자동산출' },
+            { id: 'ep22-rr-2', name: '무효 가능성', score: 3, method: 'LLM 분석',
+              summary: '선행기술 3건 존재로 무효 가능성 일부 잔존.',
+              grounds: '심사관 인용 선행기술 3건이 확인되어 무효 가능성을 완전히 배제하기 어렵습니다.',
+              sources: 'KIPRIS 등록특허 10-2893083' },
+          ],
+        },
+        {
+          key: 'market', title: '시장성 및 사업성', score: 62,
+          items: [
+            { id: 'ep22-rm-1', name: '특허출원 활성도', score: 1, method: '자동산출',
+              summary: 'IPC 출원 증가율 -78.1%, 시장 활성도 저하.',
+              grounds: '동일 IPC 분야 특허 출원이 급격히 감소하고 있어 시장 활성도가 낮습니다.',
+              sources: 'KIPRIS 자동산출' },
+            { id: 'ep22-rm-2', name: '고객에 미치는 영향', score: 3, method: 'LLM 분석',
+              summary: '운영 효율 개선 기여하나 고객 사례 증거 부족.',
+              grounds: '토폴로지 시각화로 운영 효율 개선에 기여하나, 당시 고객 사례 데이터가 충분하지 않습니다.',
+              sources: '스마트제조혁신 생태계 고도화방안 (관계부처 합동)' },
+          ],
+        },
+      ],
+      project: {
+        commercialized: '검토 중',
+        service: '스마트 팩토리 시스템 통합 미들웨어 솔루션 (PoC 단계)',
+        history: '2022년 1분기 PoC 진행, 고객 적용 검토 중',
+        customer: '반도체 소재 제조 업체 S사 (협의 중)',
+        signal: '내부 검토 문서',
+        summary: '2022년 당시 사업화는 PoC 단계였습니다. 스마트 팩토리 미들웨어 솔루션으로의 적용이 검토되었으나, 실제 고객 사례는 아직 확보되지 않은 상태였습니다.',
+        evidence: [
+          { title: '스마트 팩토리 구축을 위한 설비제어 데이터 표준화 및 통합 관제 플랫폼', url: '#' },
+          { title: '스마트 팩토리 시스템의 통합을 실현하는 미들웨어 솔루션', url: '#' },
+        ],
+      },
+      similarPatents: [
+        { id: 201, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '병목 모니터링 분야에서 직접적 경쟁 관계에 있는 특허입니다. 등록·유지 중이며 청구범위도 충분합니다.', detail: '기술적 겹침: 병목 구간 탐지·분석·모니터링\n차이: 서버 레벨 vs 미들웨어 레벨\n시사점: 기술적 차별화 명문화 필요' },
+        { id: 202, similarityScore: 37.92, applicationNumber: '1020160076352', title: '분산시스템 호출 로그 기반 비즈니스 트랜잭션 실시간 추적 방법', applicant: '티쓰3큐 주식회사', year: 2016, citations: 3, status: '유지', desc: '분산 시스템 트랜잭션 추적에서 기술적 겹침이 확인됩니다.', detail: '기술적 겹침: 분산 시스템 트랜잭션 모니터링\n차이: MOM 병목 vs 애플리케이션 로그 추적\n시사점: 미들웨어 특화 포지셔닝 강조 필요' },
+        { id: 203, similarityScore: 37.17, applicationNumber: '1020220155709', title: '프로그래밍 가능한 네트워크 가상화에서의 제어 트래픽 시계열 예측 기반 제어 채널 고립 방법', applicant: '고려대학교 산학협력단', year: 2022, citations: 0, status: '유지', desc: '', detail: '' },
+        { id: 204, similarityScore: 37.15, applicationNumber: '1020180028210', title: '네트워크 토폴로지 구조 분석 방법', applicant: '국방과학연구소', year: 2018, citations: 0, status: '유지', desc: '', detail: '' },
+        { id: 205, similarityScore: 36.93, applicationNumber: '1020240146212', title: '서비스 메시를 활용한 네트워크 트래픽 관리 방법, 장치 및 프로그램', applicant: '(주) 케이티클라우드', year: 2024, citations: 0, status: '공개', desc: '', detail: '' },
+      ],
+      similarStats: { total: 5, registered: 4, pending: 1, rejectedExpired: 0, avgCitations: 1.0 },
+      similarSummary: 'KIPRIS 유사도 상위 5건 중 등록/유지 4건, 공개/심사중 1건입니다. 미들웨어 특화 병목 모니터링이라는 차별점이 있으나 유사 기술이 증가하는 추세입니다.',
+      confirmItems: [
+        { title: '특허출원 활성도', meta: ' · 시장성 및 사업성 · 1/5', desc: 'IPC 분야 출원이 급감하고 있습니다. 시장 관심도 하락 여부를 추가 검토하십시오.' },
+        { title: '권리의 충실성', meta: ' · 권리성 · 3/5', desc: '해외출원이 없어 글로벌 보호 범위가 없습니다. PCT 출원 검토를 권장합니다.' },
+        { title: '고객에 미치는 영향', meta: ' · 시장성 · 3/5', desc: 'PoC 진행 중이나 고객 사례 확보가 필요합니다. 사업 적용 근거를 보강하십시오.' },
+      ],
+      refs: [
+        '메시지 지향 미들웨어(MOM) 개요 (Oracle 기술문서)',
+        'OSGi 기반 미들웨어의 개발에 관한 연구 (한국지식정보기술학회)',
+        'ETRI 유선 네트워크 기술 동향 및 전망 보고서',
+        'KIPRIS 유사 특허 분석 결과: 10-2893083',
+      ],
+      feeRecords: [
+        { quarter: '제  1 -  3 년분', amount:  630000, paid: '2012-09-20' },
+        { quarter: '제  4 -  6 년분', amount: 1110000, paid: '2015-08-24' },
+        { quarter: '제  7 -  9 년분', amount: 2010000, paid: '2018-08-22' },
+      ],
+      history: [
+        { date: '2021-03-15', label: '출원', variant: 'file' },
+        { date: '2021-09-15', label: '공개', variant: 'pub' },
+        { date: '2022-09-15', label: '등록', variant: 'reg' },
+      ],
+    },
+  },
+
+  // ── 2021년 3분기 (C / 58) ────────────────────────────
+  {
+    date: '2021.09.10', grade: 'C', score: 58, decision: '포기',
+    opinion: '유사 기술 다수 출현으로 차별성 상실',
+    report: {
+      title: '2021년 3분기 평가 보고서',
+      grade: 'C',
+      scores: { tech: 61, rights: 57, biz: 54 },
+      comments: {
+        tech: '유사한 모니터링 솔루션이 시장에 다수 출현하면서 본 기술만의 차별화 포인트가 약화되었습니다.',
+        rights: '청구항 범위가 협소하여 경쟁사의 변형 기술에 대한 대응이 어려운 상황입니다.',
+        biz: '동일 IPC 분야 경쟁 기술 증가로 시장 내 포지셔닝이 어려워지고 있습니다.',
+      },
+      evalBlocks: [
+        {
+          key: 'tech', title: '기술성', score: 61,
+          items: [
+            { id: 'ep21-rt-1', name: '차별성 및 파급성', score: 2, method: 'LLM 분석',
+              summary: '유사 솔루션 다수 출현, 차별화 포인트 약화.',
+              grounds: '유사한 모니터링 솔루션이 시장에 다수 출현하면서 본 기술만의 차별화 포인트가 명확하지 않습니다.',
+              sources: 'ETRI 유선 네트워크 기술 동향' },
+            { id: 'ep21-rt-2', name: '대체기술 및 경쟁성', score: 2, method: 'LLM 분석',
+              summary: '대형 경쟁사 점유율 압도적, 자사 시장 점유율 매우 낮음.',
+              grounds: '동일 IPC 분야 대형 경쟁 출원인의 합산 점유율이 높으며, 자사 시장 점유율이 매우 낮습니다.',
+              sources: 'KIPRIS IPC 표본 분석' },
+          ],
+        },
+        {
+          key: 'rights', title: '권리성', score: 57,
+          items: [
+            { id: 'ep21-rr-1', name: '권리의 충실성', score: 2, method: '자동산출',
+              summary: '청구항 3개, 해외출원 없음. 권리 보호 범위 협소.',
+              grounds: '청구항이 3개에 불과하고 해외출원이 없어 전반적인 권리 보호 범위가 협소합니다.',
+              sources: 'KIPRIS 자동산출' },
+            { id: 'ep21-rr-2', name: '회피설계 용이성', score: 2, method: 'LLM 분석',
+              summary: '한정적 구성요소로 회피설계 비교적 용이.',
+              grounds: '청구범위가 협소하여 경쟁사가 유사 기술을 개발할 때 청구범위 우회가 상대적으로 용이합니다.',
+              sources: 'KIPRIS 등록특허 10-2893083' },
+          ],
+        },
+        {
+          key: 'market', title: '시장성 및 사업성', score: 54,
+          items: [
+            { id: 'ep21-rm-1', name: '특허출원 활성도', score: 1, method: '자동산출',
+              summary: 'IPC 분야 출원 급감, 시장 관심도 하락.',
+              grounds: '동일 IPC 분야 출원이 지속 감소하고 있어 시장 활성도가 낮습니다.',
+              sources: 'KIPRIS 자동산출' },
+            { id: 'ep21-rm-2', name: '고객에 미치는 영향', score: 3, method: 'LLM 분석',
+              summary: '사업화 초기 단계로 고객 영향 아직 검증되지 않음.',
+              grounds: '사업화가 초기 기획 단계에 있어 실제 고객에게 미치는 영향이 아직 검증되지 않습니다.',
+              sources: '내부 기획 문서' },
+          ],
+        },
+      ],
+      project: {
+        commercialized: '기획 중',
+        service: '스마트 팩토리 미들웨어 솔루션 (기획 단계)',
+        history: '2021년 내부 검토 중, 외부 적용 이력 없음',
+        customer: '미정',
+        signal: '내부 기획 문서',
+        summary: '2021년 당시 본 특허의 사업화는 기획 단계에 머물러 있었습니다. 스마트 팩토리 미들웨어 솔루션으로의 적용이 검토되었으나, 실제 고객 적용 사례는 없었습니다.',
+        evidence: [
+          { title: '스마트 팩토리 구축을 위한 설비제어 데이터 표준화 및 통합 관제 플랫폼', url: '#' },
+        ],
+      },
+      similarPatents: [
+        { id: 301, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '병목 모니터링 분야에서 가장 직접적인 경쟁 특허입니다. 등록·유지 중이며 청구범위도 충분하여 포기 검토 필요성이 있습니다.', detail: '기술적 겹침: 병목 구간 탐지·분석\n차이: 서버 레벨 vs 미들웨어 레벨\n시사점: 청구범위 보완 없이는 포기 검토 필요' },
+        { id: 302, similarityScore: 37.15, applicationNumber: '1020180028210', title: '네트워크 토폴로지 구조 분석 방법', applicant: '국방과학연구소', year: 2018, citations: 0, status: '유지', desc: '토폴로지 구조 분석 측면에서 기술적 겹침이 있습니다.', detail: '기술적 겹침: 네트워크 토폴로지 분석\n차이: 군사용 vs 산업용 미들웨어\n시사점: 목적 특화성 차별화 문서화 필요' },
+        { id: 303, similarityScore: 37.04, applicationNumber: '1020150187276', title: '다종 네트워크 환경에서 동적 경로 상태를 측정하는 방법', applicant: '한국전자기술연구원', year: 2015, citations: 2, status: '소멸', desc: '', detail: '' },
+        { id: 304, similarityScore: 36.83, applicationNumber: '1020170040115', title: '네트워크 자원을 고려한 가상 네트워크 관리장치 및 그 방법', applicant: '한국전자통신연구원', year: 2017, citations: 2, status: '소멸', desc: '', detail: '' },
+      ],
+      similarStats: { total: 4, registered: 2, pending: 0, rejectedExpired: 2, avgCitations: 1.5 },
+      similarSummary: 'KIPRIS 유사도 상위 4건 분석 결과, 등록/유지 2건, 거절/소멸 2건입니다. 유사 기술이 다수 등록되어 있어 차별화 확보가 어렵습니다.',
+      confirmItems: [
+        { title: '차별성 및 파급성', meta: ' · 기술성 · 2/5', desc: '유사 솔루션이 이미 시장에 다수 존재합니다. 차별화 포인트 재정립이 필요합니다.' },
+        { title: '대체기술 및 경쟁성', meta: ' · 기술성 · 2/5', desc: '대형 경쟁사의 점유율이 높습니다. 자사 포지셔닝 전략을 재검토하십시오.' },
+        { title: '특허출원 활성도', meta: ' · 시장성 · 1/5', desc: '해당 기술 분야 출원이 급격히 감소하고 있습니다. 시장 관심도 재평가가 필요합니다.' },
+        { title: '회피설계 용이성', meta: ' · 권리성 · 2/5', desc: '청구범위가 협소하여 경쟁사 회피 설계가 용이합니다. 포기 또는 청구범위 보강을 검토하십시오.' },
+      ],
+      refs: [
+        'OSGi 기반 미들웨어의 개발에 관한 연구 (한국지식정보기술학회)',
+        'ETRI 유선 네트워크 기술 동향 및 전망 보고서',
+        'KIPRIS IPC 표본 분석 (H04L, G06F)',
+        'KIPRIS 유사 특허 분석 결과: 10-2893083',
+      ],
+      feeRecords: [
+        { quarter: '제  1 -  3 년분', amount:  630000, paid: '2012-09-20' },
+        { quarter: '제  4 -  6 년분', amount: 1110000, paid: '2015-08-24' },
+      ],
+      history: [
+        { date: '2021-03-15', label: '출원', variant: 'file' },
+        { date: '2021-09-15', label: '공개', variant: 'pub' },
+      ],
+    },
+  },
+]
+
+const evalReportOpen = ref(false)
+const selectedEvalReport = ref<EvalReport | null>(null)
+
+const evalPanelTotal = computed(() => {
+  if (!selectedEvalReport.value) return 0
+  const { tech, rights, biz } = selectedEvalReport.value.scores
+  return Math.round((tech + rights + biz) / 3)
+})
+
+function openEvalReport(report: EvalReport) {
+  selectedEvalReport.value = report
+  evalReportOpen.value = true
+}
+
+function closeEvalReport() {
+  evalReportOpen.value = false
+}
 </script>
 
 <style scoped>
@@ -1207,7 +1849,6 @@ const REPORT_REFS = [
   padding-right: var(--chat-width);
   transition: padding-right 0.3s ease;
 }
-
 /* ── 헤더 래퍼 (non-sticky) ─────────────────────────── */
 .detail-header { margin-bottom: 20px; }
 
@@ -1519,14 +2160,10 @@ const REPORT_REFS = [
 }
 .fee-table tbody tr:hover td { background: #f8fafc; }
 
-/* ── 등록 이력 타임라인 ── */
+/* ── 행정 상태 타임라인 ── */
 .patent-timeline { display: flex; flex-direction: column; }
-.ptl-item { display: flex; gap: 0; min-height: 48px; }
-.ptl-left {
-  width: 100px; flex-shrink: 0;
-  padding-top: 2px; text-align: right; padding-right: 16px;
-}
-.ptl-date { font-size: 12px; color: #94a3b8; white-space: nowrap; }
+.ptl-item { display: flex; gap: 0; min-height: 40px; }
+.ptl-date { font-size: 12px; color: #94a3b8; white-space: nowrap; align-self: center; }
 .ptl-center {
   flex-shrink: 0; width: 20px;
   display: flex; flex-direction: column; align-items: center;
@@ -1548,7 +2185,7 @@ const REPORT_REFS = [
 }
 .ptl-right {
   padding: 0 0 20px 16px;
-  display: flex; flex-direction: column; gap: 3px;
+  display: flex; flex-direction: row; align-items: center; gap: 10px;
 }
 .ptl-badge {
   display: inline-block; font-size: 11px; font-weight: 700;
@@ -1955,11 +2592,10 @@ const REPORT_REFS = [
 /* ── AI 보고서 (rpt-*) ───────────────────────────── */
 .rpt-score-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
 }
-@media (max-width: 680px) { .rpt-score-cards { grid-template-columns: repeat(2, 1fr); } }
 
 .rpt-score-card {
   background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
@@ -2253,4 +2889,107 @@ details[open] .rpt-appendix__chevron { transform: rotate(180deg); }
 .rpt-status--keep    { background: #dcfce7; color: #166534; }
 .rpt-status--expired { background: #f1f5f9; color: #475569; }
 .rpt-status--open    { background: #dbeafe; color: #1e40af; }
+
+/* ── 평가이력 ────────────────────────────────────── */
+.eval-history-list {
+  display: flex; flex-direction: column; gap: 12px;
+}
+.eval-history-item {
+  border: 1px solid #e2e8f0; border-radius: 12px;
+  padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;
+}
+.eval-history-item__top {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.eval-history-item__left {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.eval-history-item__date {
+  font-size: 12px; color: #94a3b8; white-space: nowrap;
+}
+.eval-grade-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 8px;
+  font-size: 13px; font-weight: 800; flex-shrink: 0;
+}
+.eval-grade-badge--s { background: linear-gradient(135deg,#dcfce7,#bbf7d0); color: #14532d; }
+.eval-grade-badge--a { background: linear-gradient(135deg,#dbeafe,#bfdbfe); color: #1e3a8a; }
+.eval-grade-badge--b { background: linear-gradient(135deg,#fff7ed,#fed7aa); color: #7c2d12; }
+.eval-grade-badge--c { background: linear-gradient(135deg,#f1f5f9,#e2e8f0); color: #475569; }
+.eval-history-item__score {
+  font-size: 15px; font-weight: 700; color: #0f172a;
+}
+.eval-score-denom { font-size: 12px; font-weight: 400; color: #94a3b8; }
+.eval-decision-badge {
+  font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px;
+}
+.eval-decision-badge--keep    { background: #dcfce7; color: #166534; }
+.eval-decision-badge--dispose { background: #fee2e2; color: #b91c1c; }
+.eval-history-item__opinion {
+  margin: 0; font-size: 13px; color: #475569; line-height: 1.55;
+}
+.eval-report-btn {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0;
+  background: #f8fafc; font-size: 12px; font-weight: 600; color: #374151;
+  cursor: pointer; transition: background 0.13s, border-color 0.13s;
+  font-family: inherit;
+}
+.eval-report-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+/* ── 평가 보고서 오버레이 패널 ──────────────────── */
+.eval-report-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 50vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-left: 1px solid #e2e8f0;
+  box-shadow: -8px 0 40px rgba(15,23,42,0.12);
+  z-index: 100;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  overflow: hidden;
+}
+.eval-report-panel.open {
+  transform: translateX(0);
+}
+.eval-report-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.eval-report-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  background: #fff;
+  z-index: 1;
+}
+.eval-report-header .icon-button {
+  color: #64748b;
+  background: transparent;
+}
+.eval-report-header .icon-button:hover { background: #f1f5f9; color: #0f172a; }
+.eval-report-title {
+  font-size: 13px; font-weight: 700; color: #0f172a;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.eval-report-body {
+  flex: 1; overflow-y: auto; padding: 0;
+}
+.erp-section {
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.erp-section:last-child { border-bottom: none; }
+.erp-section-title {
+  font-size: 13px; font-weight: 700; color: #0f172a;
+  margin: 0 0 16px; text-transform: uppercase; letter-spacing: 0.04em;
+}
 </style>
