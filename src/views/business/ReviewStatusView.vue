@@ -8,35 +8,52 @@
         <h2 class="page-header__title">
           검토 현황
           <button class="btn-guide-icon" type="button" aria-label="재평가 안내" @click="showGuide = true">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" overflow="visible">
               <circle cx="12" cy="12" r="10"/>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
+              <line x1="12" y1="17" x2="12.01" y2="17" stroke-linecap="round" stroke-width="2.5"/>
             </svg>
           </button>
         </h2>
         <p class="page-header__desc">이번 분기 재평가 요청받은 특허를 검토하고 의견을 제출하세요</p>
       </div>
+      <RouterLink to="/biz/history" class="btn-history">
+        과거 제출 이력
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </RouterLink>
     </div>
 
     <!-- 프로그레스 바 -->
     <div class="progress-section">
-      <div class="progress-section__header">
-        <span class="progress-section__text">
-          {{ quarterLabel }} 재평가 <strong>{{ totalCount }}건</strong> 중
-          <strong class="progress-section__done">{{ submittedCount }}건</strong> 제출 완료
-        </span>
-        <span class="progress-section__pct">{{ submitPct }}%</span>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" :style="{ width: submitPct + '%' }" />
-      </div>
-      <div class="progress-section__sub">
-        <span>제출 완료 {{ submittedCount }}건</span>
-        <span class="dot-sep">·</span>
-        <span>미제출 {{ pendingCount }}건</span>
-        <span class="dot-sep">·</span>
-        <span class="dday-text">D-{{ ddayValue }}</span>
+      <div class="progress-section__top">
+        <div class="dday-badge" :class="ddayValue <= 7 ? 'dday-badge--urgent' : ''">
+          <p class="dday-badge__label">제출 마감</p>
+          <p class="dday-badge__value">D-{{ ddayValue }}</p>
+        </div>
+        <div>
+          <div class="progress-section__header">
+            <span class="progress-section__text">
+              {{ quarterLabel }} 재평가 <strong>{{ totalCount }}건</strong> 중
+              <strong class="progress-section__done">{{ submittedCount }}건</strong> 제출 완료
+            </span>
+            <span class="progress-section__pct">{{ submitPct }}%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" :style="{ width: submitPct + '%' }" />
+          </div>
+          <div class="progress-section__sub">
+            <div class="submit-stat submit-stat--done">
+              <p class="submit-stat__num">{{ submittedCount }}</p>
+              <p class="submit-stat__label">제출 완료</p>
+            </div>
+            <div class="submit-stat submit-stat--pending">
+              <p class="submit-stat__num">{{ pendingCount }}</p>
+              <p class="submit-stat__label">미제출</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -76,11 +93,11 @@
         <table class="review-table">
           <thead>
             <tr>
-              <th>출원번호</th>
-              <th>특허명</th>
-              <th>AI 종합 점수</th>
-              <th>상태</th>
-              <th>제출일</th>
+              <th class="col-appno">출원번호</th>
+              <th class="col-title">특허명</th>
+              <th class="col-score">AI 종합 점수</th>
+              <th class="col-status">상태</th>
+              <th class="col-date">제출일</th>
             </tr>
           </thead>
           <tbody>
@@ -105,12 +122,10 @@
 
               <!-- AI 종합 점수 -->
               <td class="col-score">
-                <template v-if="item.aiScore !== null">
+                <template v-if="item.grade">
                   <div class="score-cell">
-                    <span class="score-num" :class="scoreClass(item.aiScore)">{{ item.aiScore }}</span>
-                    <div class="score-track">
-                      <div class="score-fill" :class="scoreClass(item.aiScore)" :style="{ width: item.aiScore + '%' }" />
-                    </div>
+                    <div class="score-grade" :class="`score-grade--${item.grade.toLowerCase()}`">{{ item.grade }}</div>
+                    <span class="score-num">{{ item.aiScore }}<span class="score-denom"> / 100</span></span>
                   </div>
                 </template>
                 <span v-else class="text-muted">—</span>
@@ -288,12 +303,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { usePagination } from '@/composables/usePagination'
 import BasePagination from '@/components/ui/BasePagination.vue'
 import { MOCK_PATENTS, MOCK_REEVAL } from '@/mocks/data'
 
 const router = useRouter()
+const route  = useRoute()
 const { page, totalPages, totalItems: totalCount, setPage, setTotal } = usePagination({ defaultSize: 15 })
 
 interface ReviewItem {
@@ -305,6 +321,7 @@ interface ReviewItem {
   decision:          string | null
   decidedAt:         string | null
   aiScore:           number | null
+  grade:             string | null
   tags:              string[]
 }
 
@@ -384,7 +401,7 @@ function formatDate(d?: string | null) {
   return d.slice(0, 10)
 }
 
-function goDetail(id: number) { router.push(`/biz/patents/${id}`) }
+function goDetail(id: number) { router.push(`/biz/review/${id}`) }
 
 // ── 데이터 로드 ──────────────────────────────────────
 function fetchList(_p = 1) {
@@ -392,7 +409,7 @@ function fetchList(_p = 1) {
   setPage(1)
 
   const items: ReviewItem[] = MOCK_REEVAL
-    .filter(r => r.deptId === 2)
+    .filter(r => r.deptId === 2 && r.isCurrent !== false)
     .map(r => {
       const patent = MOCK_PATENTS.find(p => p.id === r.patentId)!
       return {
@@ -404,6 +421,7 @@ function fetchList(_p = 1) {
         decision:          r.decision,
         decidedAt:         r.decidedAt,
         aiScore:           patent.grade ? GRADE_SCORE[patent.grade] ?? null : null,
+        grade:             patent.grade ?? null,
         tags:              patent.tags,
       }
     })
@@ -413,7 +431,11 @@ function fetchList(_p = 1) {
   loading.value = false
 }
 
-onMounted(() => fetchList(1))
+onMounted(() => {
+  const filter = route.query.filter
+  if (filter === 'pending' || filter === 'done') activeTab.value = filter
+  fetchList(1)
+})
 </script>
 
 <style scoped>
@@ -425,6 +447,35 @@ onMounted(() => fetchList(1))
 }
 
 /* ── 페이지 헤더 ─────────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.btn-history {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: border-color .13s, color .13s, background .13s;
+}
+.btn-history:hover {
+  border-color: #6366f1;
+  color: #4f46e5;
+  background: #f5f3ff;
+}
+
 .page-header__eyebrow {
   font-size: 12px; font-weight: 600;
   letter-spacing: .06em; text-transform: uppercase;
@@ -489,11 +540,46 @@ onMounted(() => fetchList(1))
 }
 
 .progress-section__sub {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 12px; color: #94a3b8;
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 14px;
 }
-.dot-sep { color: #cbd5e1; }
-.dday-text { color: #4338ca; font-weight: 600; }
+.submit-stat {
+  display: flex; align-items: baseline; gap: 6px;
+  padding: 8px 16px; border-radius: 10px;
+}
+.submit-stat--done    { background: #f0fdf4; }
+.submit-stat--pending { background: #fefce8; }
+.submit-stat__num {
+  font-size: 22px; font-weight: 800; margin: 0; line-height: 1;
+}
+.submit-stat--done    .submit-stat__num { color: #16a34a; }
+.submit-stat--pending .submit-stat__num { color: #ca8a04; }
+.submit-stat__label {
+  font-size: 12px; font-weight: 500; margin: 0;
+}
+.submit-stat--done    .submit-stat__label { color: #16a34a; }
+.submit-stat--pending .submit-stat__label { color: #ca8a04; }
+.progress-section__top {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+}
+.progress-section__top > div:last-child { flex: 1; }
+
+.dday-badge {
+  flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 14px 24px; border-radius: 14px;
+  background: #eef2ff; color: #4338ca;
+  min-width: 100px;
+}
+.dday-badge--urgent { background: #fef2f2; color: #dc2626; }
+.dday-badge__label {
+  font-size: 11px; font-weight: 600;
+  opacity: 0.7; margin: 0 0 4px; letter-spacing: 0.04em;
+}
+.dday-badge__value {
+  font-size: 28px; font-weight: 800;
+  margin: 0; letter-spacing: -0.02em; line-height: 1;
+}
 
 /* ── 탭 ─────────────────────────────────────────── */
 .tab-row {
@@ -566,10 +652,10 @@ onMounted(() => fetchList(1))
 
 /* 컬럼 너비 */
 .col-appno  { width: 16%; white-space: nowrap; }
-.col-title  { width: 40%; }
-.col-score  { width: 20%; }
-.col-status { width: 12%; }
-.col-date   { width: 12%; white-space: nowrap; }
+.col-title  { width: 36%; }
+.col-score  { width: 18%; }
+.col-status { width: 17%; }
+.col-date   { width: 13%; white-space: nowrap; }
 
 .mono {
   font-family: 'JetBrains Mono', monospace;
@@ -603,27 +689,23 @@ onMounted(() => fetchList(1))
 /* AI 종합 점수 */
 .score-cell {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  width: 100%;
+  align-items: center;
+  gap: 8px;
 }
+.score-grade {
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: 7px;
+  font-size: 14px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+}
+.score-grade--s { background: linear-gradient(135deg,#dcfce7,#bbf7d0); color: #14532d; }
+.score-grade--a { background: linear-gradient(135deg,#dbeafe,#bfdbfe); color: #1e3a8a; }
+.score-grade--b { background: linear-gradient(135deg,#fff7ed,#fed7aa); color: #7c2d12; }
+.score-grade--c { background: linear-gradient(135deg,#f1f5f9,#e2e8f0); color: #475569; }
 .score-num {
-  font-size: 13px; font-weight: 700;
+  font-size: 13px; font-weight: 700; color: #0f172a;
 }
-.score-track {
-  width: 100%;
-  height: 5px; background: #f1f5f9; border-radius: 3px; overflow: hidden;
-}
-.score-fill {
-  height: 100%; border-radius: 3px;
-  transition: width .4s ease;
-}
-.score-num.score--high,
-.score-num.score--mid,
-.score-num.score--low  { color: #2563eb; }
-.score-fill.score--high,
-.score-fill.score--mid,
-.score-fill.score--low  { background: #3b82f6; }
+.score-denom { font-size: 11px; font-weight: 400; color: #94a3b8; }
 
 /* 상태 배지 */
 .status-badge {
@@ -849,4 +931,5 @@ onMounted(() => fetchList(1))
 .guide-panel-leave-active .gp-panel { animation: panelSlideOut .22s ease-in; }
 @keyframes panelSlideIn  { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes panelSlideOut { from { transform: translateX(0); }    to { transform: translateX(100%); } }
+
 </style>

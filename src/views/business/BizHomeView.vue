@@ -3,94 +3,82 @@
 
     <!-- 인사 헤더 -->
     <div class="greeting">
-      <div>
-        <p class="greeting__eyebrow">{{ quarterLabel }} 검토 현황</p>
-        <h2 class="greeting__title">안녕하세요, <span>{{ auth.user?.name ?? '사업부' }}</span> 👋</h2>
-        <p class="greeting__desc">담당 특허의 유지/포기 의견을 제출해주세요</p>
-      </div>
-      <RouterLink to="/biz/review" class="btn-goto">
-        검토 현황 바로가기
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M5 12h14M12 5l7 7-7 7"/>
-        </svg>
-      </RouterLink>
+      <p class="greeting__eyebrow">{{ quarterLabel }} 검토 현황</p>
+      <h2 class="greeting__title">안녕하세요, <span>{{ auth.user?.name ?? '사업부' }}</span> 👋</h2>
+      <p class="greeting__desc">담당 특허의 유지/포기 의견을 제출해주세요</p>
     </div>
 
-    <!-- D-Day + 제출 현황 상단 행 -->
-    <div class="top-row">
-
-      <!-- D-Day 카드 -->
-      <div class="dday-card" :class="{ 'dday-card--urgent': ddayValue <= 7 }">
-        <div class="dday-card__label">제출 마감까지</div>
-        <div class="dday-card__main">
-          <span class="dday-card__prefix">D</span>
-          <span class="dday-card__num">{{ ddayValue <= 0 ? 'DAY' : `-${ddayValue}` }}</span>
+    <!-- 제출 현황 요약 -->
+    <div class="summary-card">
+      <div class="summary-dday" :class="{ 'summary-dday--urgent': ddayValue <= 7 }">
+        <p class="summary-dday__label">제출 마감까지</p>
+        <p class="summary-dday__val">{{ ddayValue <= 0 ? 'D-DAY' : `D-${ddayValue}` }}</p>
+        <p class="summary-dday__date">{{ deadlineStr }}</p>
+      </div>
+      <div class="summary-stats">
+        <div class="summary-stat">
+          <p class="summary-stat__num">{{ totalCount }}</p>
+          <p class="summary-stat__label">전체 담당</p>
         </div>
-        <p class="dday-card__date">{{ deadlineStr }}</p>
-        <div v-if="ddayValue <= 7 && ddayValue > 0" class="dday-card__warn">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          마감이 {{ ddayValue }}일 남았습니다
+        <div class="summary-divider" />
+        <div class="summary-stat summary-stat--done">
+          <p class="summary-stat__num">{{ submittedCount }}</p>
+          <p class="summary-stat__label">제출 완료</p>
+        </div>
+        <div class="summary-divider" />
+        <div class="summary-stat summary-stat--pending">
+          <p class="summary-stat__num">{{ pendingCount }}</p>
+          <p class="summary-stat__label">미제출</p>
         </div>
       </div>
-
-      <!-- 제출 현황 카드들 -->
-      <div class="status-cards">
-        <div class="status-card" v-for="s in statusCards" :key="s.label">
-          <div class="status-card__icon" :style="{ background: s.iconBg, color: s.iconColor }">
-            <span v-html="s.icon" />
-          </div>
-          <p class="status-card__value" :style="{ color: s.valueColor }">{{ s.value }}</p>
-          <p class="status-card__label">{{ s.label }}</p>
-        </div>
-      </div>
-
-      <!-- 제출 진행률 -->
-      <div class="submit-progress-card">
-        <div class="submit-progress-card__header">
-          <p class="submit-progress-card__title">이번 분기 제출 현황</p>
-          <span class="submit-progress-card__pct">{{ submitPct }}%</span>
+      <div class="summary-progress">
+        <div class="summary-progress__header">
+          <span class="summary-progress__label">이번 분기 제출률</span>
+          <span class="summary-progress__pct">{{ submitPct }}%</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill" :style="{ width: submitPct + '%' }" />
         </div>
-        <div class="submit-progress-card__detail">
-          <span>미제출 <strong>{{ pendingCount }}건</strong></span>
-          <span>제출 완료 <strong>{{ submittedCount }}건</strong></span>
-        </div>
+      </div>
+    </div>
 
-        <!-- 미제출 특허 미리보기 -->
-        <div v-if="pendingItems.length" class="pending-preview">
-          <p class="pending-preview__title">미제출 특허</p>
+    <!-- 메인 2열 -->
+    <div class="main-row">
+
+      <!-- 미제출 특허 -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">미제출 특허</h3>
+          <RouterLink to="/biz/review?filter=pending" class="card__link">전체 보기</RouterLink>
+        </div>
+        <div v-if="pendingItems.length" class="pending-list">
           <div
-            v-for="item in pendingItems.slice(0, 3)"
+            v-for="item in pendingItems"
             :key="item.id"
             class="pending-item"
-            @click="router.push(`/biz/patents/${item.id}`)"
+            @click="router.push(`/biz/review/${item.id}`)"
           >
             <div class="pending-item__dot" />
             <span class="pending-item__title">{{ item.title }}</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg class="pending-item__arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M9 18l6-6-6-6"/>
             </svg>
           </div>
-          <RouterLink v-if="pendingItems.length > 3" to="/biz/review" class="pending-more">
-            +{{ pendingItems.length - 3 }}건 더 보기
-          </RouterLink>
+        </div>
+        <div v-else class="card__empty card__empty--success">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <p>모든 특허 의견을 제출했습니다</p>
         </div>
       </div>
-
-    </div>
-
-    <!-- 최근 제출 이력 + 담당 특허 현황 -->
-    <div class="bottom-row">
 
       <!-- 최근 제출 이력 -->
       <div class="card">
         <div class="card__header">
           <h3 class="card__title">최근 제출 이력</h3>
-          <RouterLink to="/biz/patents" class="card__link">전체 이력</RouterLink>
+          <RouterLink to="/biz/history" class="card__link">전체 보기</RouterLink>
         </div>
         <div v-if="loading" class="card__skel">
           <div class="skel-row" v-for="n in 4" :key="n" />
@@ -103,7 +91,7 @@
               </div>
               <div>
                 <p class="submission-item__title">{{ s.patentTitle }}</p>
-                <p class="submission-item__date">{{ formatDate(s.decidedAt) }} 제출</p>
+                <p class="submission-item__date">{{ formatDate(s.decidedAt) }}</p>
               </div>
             </div>
             <span class="decision-badge" :class="`decision-badge--${s.decision.toLowerCase()}`">
@@ -114,37 +102,84 @@
         <div v-else class="card__empty">제출 이력이 없습니다.</div>
       </div>
 
-      <!-- 담당 특허 현황 -->
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- 담당 특허 현황 + 연도별 추이 -->
+    <div class="charts-row">
+
+      <!-- 담당 특허 현황 (도넛) -->
       <div class="card">
         <div class="card__header">
           <h3 class="card__title">담당 특허 현황</h3>
           <RouterLink to="/biz/patents" class="card__link">특허 관리</RouterLink>
         </div>
-        <div class="patent-stats">
-          <div class="patent-stat" v-for="s in patentStatItems" :key="s.label">
-            <div class="patent-stat__bar-wrap">
-              <div class="patent-stat__bar" :style="{ width: s.pct + '%', background: s.color }" />
-            </div>
-            <div class="patent-stat__info">
-              <span class="patent-stat__label">{{ s.label }}</span>
-              <span class="patent-stat__count" :style="{ color: s.color }">{{ s.count }}건</span>
+        <div class="donut-wrap">
+          <svg class="patent-donut" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20"/>
+            <circle
+              v-for="(seg, i) in patentDonutSegs" :key="i"
+              cx="60" cy="60" r="50"
+              fill="none"
+              :stroke="patentStatItems[i].color"
+              stroke-width="20"
+              :stroke-dasharray="`${seg.dash} ${314 - seg.dash}`"
+              :stroke-dashoffset="seg.offset"
+              stroke-linecap="butt"
+            />
+            <text x="60" y="54" text-anchor="middle" font-size="16" font-weight="800" fill="#0f172a">{{ patentTotal }}</text>
+            <text x="60" y="70" text-anchor="middle" font-size="9" font-weight="600" fill="#475569">총 특허</text>
+          </svg>
+          <div class="patent-legend">
+            <div v-for="s in patentStatItems" :key="s.label" class="patent-legend-item">
+              <span class="patent-legend-dot" :style="{ background: s.color }"/>
+              <span class="patent-legend-label">{{ s.label }}</span>
+              <span class="patent-legend-count" :style="{ color: s.color }">{{ s.count }}건</span>
+              <span class="patent-legend-pct">{{ s.pct }}%</span>
             </div>
           </div>
         </div>
-        <RouterLink to="/biz/pre-eval-lab" class="lab-promo">
-          <div class="lab-promo__icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2h-4m-6 0h6"/>
-            </svg>
+      </div>
+
+      <!-- 연도별 출원·만료/포기 추이 -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">연도별 출원 · 만료/포기 추이</h3>
+          <div class="trend-legend">
+            <span class="trend-legend-item">
+              <span class="trend-dot" style="background:#ABACED"/>출원
+            </span>
+            <span class="trend-legend-item">
+              <span class="trend-dot" style="background:#E88989"/>만료/포기
+            </span>
           </div>
-          <div>
-            <p class="lab-promo__title">사전 평가 Lab</p>
-            <p class="lab-promo__desc">특허 가치를 미리 AI로 평가해보세요</p>
-          </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0; color:#6366f1">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
+        </div>
+        <div class="trend-body">
+          <svg class="biz-trend-svg" :viewBox="`0 0 ${tW} ${tH}`">
+            <!-- 배경 격자 -->
+            <line v-for="n in 4" :key="n"
+              :x1="tPad.l" :y1="tPad.t + ((n - 1) / 3) * tPlotH"
+              :x2="tW - tPad.r" :y2="tPad.t + ((n - 1) / 3) * tPlotH"
+              stroke="#f1f5f9" stroke-width="1"/>
+            <!-- 출원 선 -->
+            <polyline :points="filedPoints" fill="none" stroke="#ABACED" stroke-width="2"
+              stroke-linejoin="round" stroke-linecap="round"/>
+            <!-- 만료/포기 선 -->
+            <polyline :points="expiredPoints" fill="none" stroke="#E88989" stroke-width="2"
+              stroke-linejoin="round" stroke-linecap="round"/>
+            <!-- 출원 점 -->
+            <circle v-for="(d, i) in bizTrendData" :key="`f${i}`"
+              :cx="tX(i)" :cy="tY(d.filed)" r="3.5" fill="#fff" stroke="#ABACED" stroke-width="2"/>
+            <!-- 만료/포기 점 -->
+            <circle v-for="(d, i) in bizTrendData" :key="`e${i}`"
+              :cx="tX(i)" :cy="tY(d.expired)" r="3.5" fill="#fff" stroke="#E88989" stroke-width="2"/>
+            <!-- X축 연도 라벨 -->
+            <text v-for="(d, i) in bizTrendData" :key="`lbl${i}`"
+              :x="tX(i)" :y="tH - 3"
+              text-anchor="middle" font-size="10" fill="#94a3b8" font-weight="500">{{ d.year }}</text>
           </svg>
-        </RouterLink>
+        </div>
       </div>
 
     </div>
@@ -162,18 +197,15 @@ const auth   = useAuthStore()
 const router = useRouter()
 const loading = ref(false)
 
-// ── 마감일 (mock: 분기 말 기준) ──────────────────────
 const deadline = computed(() => {
   const d = new Date()
   const q = Math.ceil((d.getMonth() + 1) / 3)
-  const month = q * 3
-  return new Date(d.getFullYear(), month, 0) // 분기 마지막 날
+  return new Date(d.getFullYear(), q * 3, 0)
 })
 
-const ddayValue = computed(() => {
-  const diff = Math.ceil((deadline.value.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-  return Math.max(0, diff)
-})
+const ddayValue = computed(() =>
+  Math.max(0, Math.ceil((deadline.value.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+)
 
 const deadlineStr = computed(() =>
   deadline.value.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -184,7 +216,6 @@ const quarterLabel = computed(() => {
   return `${d.getFullYear()}년 ${Math.ceil((d.getMonth() + 1) / 3)}분기`
 })
 
-// ── 제출 현황 (반도체사업부 기준: 6건 재평가, 3건 완료) ─
 const totalCount     = ref(6)
 const submittedCount = ref(3)
 const pendingCount   = computed(() => totalCount.value - submittedCount.value)
@@ -192,25 +223,6 @@ const submitPct      = computed(() =>
   totalCount.value ? Math.round((submittedCount.value / totalCount.value) * 100) : 0
 )
 
-const statusCards = computed(() => [
-  {
-    label: '전체 담당', value: totalCount.value,
-    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
-    iconBg: '#f1f5f9', iconColor: '#64748b', valueColor: '#0f172a',
-  },
-  {
-    label: '미제출', value: pendingCount.value,
-    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
-    iconBg: '#fffbeb', iconColor: '#f59e0b', valueColor: '#b45309',
-  },
-  {
-    label: '제출 완료', value: submittedCount.value,
-    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
-    iconBg: '#f0fdf4', iconColor: '#22c55e', valueColor: '#15803d',
-  },
-])
-
-// ── 미제출 특허 목록 (반도체사업부 미제출 3건) ─────────
 const pendingItems = ref(
   MOCK_REEVAL
     .filter(r => r.deptId === 2 && r.decision === null)
@@ -220,15 +232,47 @@ const pendingItems = ref(
     })
 )
 
-// ── 최근 제출 이력 ───────────────────────────────────
 const recentSubmissions = ref(RECENT_SUBMISSIONS)
 
-// ── 담당 특허 현황 (반도체사업부 8건) ────────────────
 const patentStatItems = [
-  { label: '유지 중',   count: 6, color: '#22c55e', pct: 75 },
-  { label: '만료 예정', count: 1, color: '#f59e0b', pct: 12 },
-  { label: '포기/만료', count: 1, color: '#ef4444', pct: 13 },
+  { label: '유지 중',   count: 6, color: '#67E2AB', pct: 75 },
+  { label: '만료 예정', count: 1, color: '#FFBC5E', pct: 12 },
+  { label: '포기/만료', count: 1, color: '#E88989', pct: 13 },
 ]
+
+const patentTotal = patentStatItems.reduce((s, i) => s + i.count, 0)
+const patentDonutSegs = (() => {
+  const circ = 314
+  let offset = -circ / 4
+  return patentStatItems.map(item => {
+    const dash = Math.round((item.count / patentTotal) * circ)
+    const seg = { dash, offset }
+    offset -= dash
+    return seg
+  })
+})()
+
+// ── 연도별 추이 ──────────────────────────────────────
+const bizTrendData = [
+  { year: '2020', filed: 2, expired: 0 },
+  { year: '2021', filed: 3, expired: 1 },
+  { year: '2022', filed: 2, expired: 0 },
+  { year: '2023', filed: 4, expired: 1 },
+  { year: '2024', filed: 3, expired: 2 },
+  { year: '2025', filed: 2, expired: 1 },
+  { year: '2026', filed: 1, expired: 0 },
+]
+const tW = 540, tH = 130
+const tPad = { t: 28, b: 22, l: 18, r: 12 }
+const tPlotH = tH - tPad.t - tPad.b
+const tPlotW = tW - tPad.l - tPad.r
+const tMaxVal = Math.max(...bizTrendData.flatMap(d => [d.filed, d.expired]))
+
+function tX(i: number) { return tPad.l + (i / (bizTrendData.length - 1)) * tPlotW }
+function tY(v: number) { return tPad.t + (1 - v / tMaxVal) * tPlotH }
+
+const filedPoints  = bizTrendData.map((d, i) => `${tX(i)},${tY(d.filed)}`).join(' ')
+const expiredPoints = bizTrendData.map((d, i) => `${tX(i)},${tY(d.expired)}`).join(' ')
 
 function decisionLabel(d: string) {
   return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
@@ -248,18 +292,12 @@ onMounted(() => { loading.value = false })
 .biz-home {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   font-family: 'Pretendard', sans-serif;
 }
 
-/* ── 인사 헤더 ─────────────────────────────────── */
-.greeting {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
+/* ── 인사 헤더 ───────────────────────────────────────── */
+.greeting { margin-bottom: 4px; }
 
 .greeting__eyebrow {
   font-size: 12px;
@@ -281,274 +319,181 @@ onMounted(() => { loading.value = false })
 
 .greeting__desc { font-size: 13.5px; color: #64748b; margin: 0; }
 
-.btn-goto {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: #0f172a;
-  color: #fff;
-  border-radius: 10px;
-  text-decoration: none;
-  font-size: 13.5px;
-  font-weight: 600;
-  transition: background .15s, transform .12s;
-  white-space: nowrap;
-}
-.btn-goto:hover { background: #1e293b; transform: translateY(-1px); }
-
-/* ── 상단 행 ─────────────────────────────────────── */
-.top-row {
-  display: grid;
-  grid-template-columns: 200px 1fr 280px;
-  gap: 16px;
-  align-items: stretch;
-}
-
-@media (max-width: 1000px) {
-  .top-row { grid-template-columns: 1fr 1fr; }
-}
-@media (max-width: 680px) {
-  .top-row { grid-template-columns: 1fr; }
-}
-
-/* ── D-Day 카드 ──────────────────────────────────── */
-.dday-card {
+/* ── 요약 카드 ────────────────────────────────────────── */
+.summary-card {
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  padding: 24px 20px;
+  border-radius: 16px;
+  padding: 22px 28px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.summary-dday {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   align-items: center;
   justify-content: center;
+  background: #eef2ff;
+  border-radius: 14px;
+  padding: 14px 36px;
   text-align: center;
-}
-
-.dday-card--urgent {
-  background: linear-gradient(145deg, #fff5f5, #fff);
-  border-color: #fecaca;
-}
-
-.dday-card__label {
-  font-size: 11.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: #94a3b8;
-}
-
-.dday-card__main {
-  display: flex;
-  align-items: baseline;
   gap: 2px;
 }
+.summary-dday--urgent { background: #fef2f2; }
 
-.dday-card__prefix {
-  font-size: 42px;
-  font-weight: 900;
-  color: #0f172a;
-  letter-spacing: -0.04em;
-  line-height: 1;
-}
-
-.dday-card__num {
-  font-size: 42px;
-  font-weight: 900;
-  color: #0f172a;
-  letter-spacing: -0.04em;
-  line-height: 1;
-}
-
-.dday-card--urgent .dday-card__num,
-.dday-card--urgent .dday-card__prefix { color: #dc2626; }
-
-.dday-card__date {
-  font-size: 12px;
-  color: #94a3b8;
+.summary-dday__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: #818cf8;
   margin: 0;
 }
+.summary-dday--urgent .summary-dday__label { color: #f87171; }
 
-.dday-card__warn {
+.summary-dday__val {
+  font-size: 30px;
+  font-weight: 900;
+  color: #4338ca;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin: 2px 0;
+}
+.summary-dday--urgent .summary-dday__val { color: #dc2626; }
+
+.summary-dday__date {
+  font-size: 10.5px;
+  color: #a5b4fc;
+  margin: 0;
+}
+.summary-dday--urgent .summary-dday__date { color: #fca5a5; }
+
+.summary-stats {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  background: #fef2f2;
-  color: #dc2626;
-  border-radius: 7px;
-  font-size: 11.5px;
-  font-weight: 600;
-  margin-top: 4px;
-}
-
-/* ── 상태 카드들 ─────────────────────────────────── */
-.status-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.status-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.status-card__icon {
-  width: 36px; height: 36px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
 }
 
-.status-card__value {
-  font-size: 22px;
-  font-weight: 800;
-  margin: 0;
-  letter-spacing: -0.03em;
-  line-height: 1;
-}
-
-.status-card__label {
-  font-size: 12px;
-  color: #64748b;
-  font-weight: 500;
-  margin: 0;
-  margin-left: auto;
-}
-
-/* ── 제출 진행률 카드 ────────────────────────────── */
-.submit-progress-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 20px;
+.summary-stat {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  justify-content: center;
+  align-items: center;
+  padding: 0 28px;
+}
+.summary-stat:first-child { padding-left: 0; }
+
+.summary-stat__num {
+  font-size: 34px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: 0 0 4px;
+}
+.summary-stat--done .summary-stat__num    { color: #16a34a; }
+.summary-stat--pending .summary-stat__num { color: #d97706; }
+
+.summary-stat__label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  margin: 0;
+  white-space: nowrap;
 }
 
-.submit-progress-card__header {
+.summary-divider {
+  width: 1px;
+  height: 40px;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.summary-progress {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-progress__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.submit-progress-card__title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
-.submit-progress-card__pct   { font-size: 15px; font-weight: 800; color: #6366f1; }
+.summary-progress__label { font-size: 12.5px; font-weight: 600; color: #475569; }
+.summary-progress__pct   { font-size: 15px; font-weight: 800; color: #4f46e5; }
 
 .progress-track {
-  height: 8px;
+  height: 10px;
   background: #f1f5f9;
-  border-radius: 4px;
+  border-radius: 5px;
   overflow: hidden;
 }
+
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #4f46e5, #818cf8);
-  border-radius: 4px;
+  border-radius: 5px;
   transition: width .6s cubic-bezier(.4,0,.2,1);
 }
 
-.submit-progress-card__detail {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12.5px;
-  color: #64748b;
-}
-.submit-progress-card__detail strong { color: #0f172a; font-weight: 700; }
-
-/* 미제출 미리보기 */
-.pending-preview {
-  border-top: 1px solid #f1f5f9;
-  padding-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pending-preview__title {
-  font-size: 11.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  color: #94a3b8;
-  margin: 0 0 4px;
-}
-
-.pending-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  background: #f8fafc;
-  border-radius: 7px;
-  cursor: pointer;
-  transition: background .12s;
-}
-.pending-item:hover { background: #f1f5f9; }
-
-.pending-item__dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: #f59e0b;
-  flex-shrink: 0;
-}
-
-.pending-item__title {
-  flex: 1;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: #374151;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pending-more {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #6366f1;
-  text-decoration: none;
-  padding: 4px 10px;
-  text-align: center;
-}
-
-/* ── 하단 행 ─────────────────────────────────────── */
-.bottom-row {
+/* ── 메인 2열 ─────────────────────────────────────────── */
+.main-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
+@media (max-width: 760px) { .main-row { grid-template-columns: 1fr; } }
 
-@media (max-width: 760px) { .bottom-row { grid-template-columns: 1fr; } }
-
-/* ── 공통 카드 ────────────────────────────────────── */
+/* ── 공통 카드 ────────────────────────────────────────── */
 .card {
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 20px;
+  border-radius: 16px;
+  padding: 20px 22px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.card__header { display: flex; align-items: center; justify-content: space-between; }
-.card__title  { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
-.card__link   { font-size: 12.5px; font-weight: 500; color: #6366f1; text-decoration: none; }
+.card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card__title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
+.card__link  { font-size: 12.5px; font-weight: 500; color: #6366f1; text-decoration: none; }
 .card__link:hover { color: #4338ca; }
-.card__empty  { font-size: 13px; color: #94a3b8; padding: 24px 0; text-align: center; }
-.card__skel   { display: flex; flex-direction: column; gap: 8px; }
+
+.card__count-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  background: #fef9c3;
+  color: #854d0e;
+  border-radius: 20px;
+}
+
+.card__empty {
+  font-size: 13px;
+  color: #94a3b8;
+  padding: 24px 0;
+  text-align: center;
+}
+.card__empty--success {
+  color: #22c55e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.card__empty--success p { margin: 0; color: #15803d; font-weight: 500; }
+
+.card__skel { display: flex; flex-direction: column; gap: 8px; }
 .skel-row {
   height: 40px; border-radius: 8px;
   background: linear-gradient(90deg, #f1f5f9 25%, #e8edf5 50%, #f1f5f9 75%);
@@ -557,7 +502,46 @@ onMounted(() => { loading.value = false })
 }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-/* ── 제출 이력 ────────────────────────────────────── */
+/* ── 미제출 특허 ─────────────────────────────────────── */
+.pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pending-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.pending-item:hover { background: #fef3c7; border-color: #fcd34d; }
+
+.pending-item__dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  flex-shrink: 0;
+}
+
+.pending-item__title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pending-item__arrow { color: #d97706; flex-shrink: 0; }
+
+/* ── 최근 제출 이력 ──────────────────────────────────── */
 .submission-list { display: flex; flex-direction: column; gap: 0; }
 
 .submission-item {
@@ -578,8 +562,8 @@ onMounted(() => { loading.value = false })
 }
 
 .submission-item__icon {
-  width: 30px; height: 30px;
-  border-radius: 8px;
+  width: 32px; height: 32px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -605,48 +589,86 @@ onMounted(() => { loading.value = false })
 .decision-badge--sell    { background: #eef2ff; color: #4338ca; }
 .decision-badge--dispose { background: #fef2f2; color: #dc2626; }
 
-/* ── 담당 특허 현황 ───────────────────────────────── */
-.patent-stats { display: flex; flex-direction: column; gap: 10px; }
-
-.patent-stat { display: flex; flex-direction: column; gap: 5px; }
-
-.patent-stat__bar-wrap {
-  height: 7px; background: #f1f5f9; border-radius: 4px; overflow: hidden;
+/* ── 구분선 ──────────────────────────────────────────── */
+.section-divider {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 0;
 }
-.patent-stat__bar {
-  height: 100%; border-radius: 4px;
-  transition: width .7s cubic-bezier(.4,0,.2,1);
-}
-.patent-stat__info { display: flex; justify-content: space-between; align-items: center; }
-.patent-stat__label { font-size: 12.5px; color: #374151; font-weight: 500; }
-.patent-stat__count { font-size: 12.5px; font-weight: 700; }
 
-/* ── Lab 프로모 ──────────────────────────────────── */
-.lab-promo {
+/* ── 하단 차트 2열 ───────────────────────────────────── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 16px;
+}
+@media (max-width: 760px) { .charts-row { grid-template-columns: 1fr; } }
+
+/* ── 담당 특허 도넛 ──────────────────────────────────── */
+.donut-wrap {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  background: linear-gradient(135deg, #fafbff, #f5f3ff);
-  border: 1px solid #e0e7ff;
-  border-radius: 12px;
-  text-decoration: none;
-  margin-top: 4px;
-  transition: border-color .15s, background .15s;
+  gap: 16px;
+  flex-wrap: wrap;
 }
-.lab-promo:hover { border-color: #c7d2fe; background: #f0edff; }
 
-.lab-promo__icon {
-  width: 36px; height: 36px;
-  background: #eef2ff;
-  border-radius: 9px;
+.patent-donut {
+  width: 130px; height: 130px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+.patent-donut text {
+  transform: rotate(90deg);
+  transform-origin: 60px 60px;
+}
+
+.patent-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+.patent-legend-item {
   display: flex;
   align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.patent-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.patent-legend-label { flex: 1; color: #374151; font-weight: 500; }
+.patent-legend-count { font-weight: 700; }
+.patent-legend-pct { color: #94a3b8; min-width: 30px; text-align: right; }
+
+/* ── 연도별 추이 꺾은선 ──────────────────────────────── */
+.trend-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   justify-content: center;
-  color: #6366f1;
+}
+
+.biz-trend-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.trend-legend {
+  display: flex;
+  gap: 12px;
+}
+.trend-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: #64748b;
+}
+.trend-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
-
-.lab-promo__title { font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
-.lab-promo__desc  { font-size: 12px; color: #64748b; margin: 0; }
 </style>

@@ -49,7 +49,7 @@
         :key="tab.value"
         class="tab"
         :class="{ 'tab--active': activeTab === tab.value }"
-        @click="activeTab = tab.value as 'active' | 'expired' | 'history'"
+        @click="activeTab = tab.value as 'active' | 'expired'"
       >
         {{ tab.label }}
         <span class="tab__badge">{{ tab.count }}</span>
@@ -73,7 +73,6 @@
           <select v-model="filterStatus" class="filter-bar__select">
             <option value="">전체</option>
             <option value="REGISTERED">등록</option>
-            <option value="EXPIRING_SOON">만료 예정</option>
           </select>
         </div>
       </div>
@@ -267,69 +266,6 @@
       </div>
     </template>
 
-    <!-- ── 검토 제출 이력 ── -->
-    <template v-if="activeTab === 'history'">
-      <div class="table-card">
-        <div v-if="loading" class="skel-rows">
-          <div class="skel-row" v-for="n in 5" :key="n" />
-        </div>
-        <div v-else-if="!submissionHistory.length" class="empty-state">
-          <div class="empty-state__icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M9 11l3 3L22 4"/>
-              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-            </svg>
-          </div>
-          <p>제출 이력이 없습니다.</p>
-        </div>
-        <div v-else class="history-list">
-          <div
-            v-for="h in submissionHistory"
-            :key="h.id"
-            class="history-item"
-            @click="router.push(`/biz/patents/${h.patentId}`)"
-          >
-            <div class="history-item__decision-icon" :class="`decision-icon--${h.decision.toLowerCase()}`">
-              <!-- 유지: outline circle check -->
-              <svg v-if="h.decision === 'KEEP'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M9 12l2 2 4-4"/>
-              </svg>
-              <!-- 포기: trash outline -->
-              <svg v-else-if="h.decision === 'DISPOSE'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
-              </svg>
-              <span v-else class="text-muted">—</span>
-            </div>
-            <div class="history-item__info">
-              <p class="history-item__title">{{ h.patentTitle }}</p>
-              <p class="history-item__meta">
-                <span class="mono">{{ h.applicationNumber }}</span>
-                <span v-if="h.comment" class="history-item__comment">{{ h.comment }}</span>
-              </p>
-            </div>
-            <div class="history-item__right">
-              <span class="decision-badge" :class="`decision-badge--${h.decision.toLowerCase()}`">
-                {{ decisionLabel(h.decision) }}
-              </span>
-              <p class="history-item__date">{{ formatDate(h.decidedAt) }}</p>
-            </div>
-            <svg class="row-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M9 18l6-6-6-6"/>
-            </svg>
-          </div>
-        </div>
-
-        <div v-if="historyTotalPages > 1" class="table-footer">
-          <BasePagination
-            :page="historyPage"
-            :total-pages="historyTotalPages"
-            :total-items="historyTotalItems"
-            @update:page="fetchHistory"
-          />
-        </div>
-      </div>
-    </template>
 
   </div>
 </template>
@@ -347,7 +283,7 @@ const auth   = useAuthStore()
 const loading = ref(false)
 
 // ── 탭 ──────────────────────────────────────────────
-const activeTab = ref<'active' | 'expired' | 'history'>('active')
+const activeTab = ref<'active' | 'expired'>('active')
 
 // ── 특허 데이터 ──────────────────────────────────────
 interface PatentItem {
@@ -363,18 +299,6 @@ const expiredPatents = ref<PatentItem[]>([])
 const activePage       = ref(1)
 const activeTotalPages = ref(1)
 const activeTotalItems = ref(0)
-
-// ── 제출 이력 ────────────────────────────────────────
-interface SubmissionItem {
-  id: number; patentId: number; patentTitle: string
-  applicationNumber: string; decision: string
-  comment?: string; decidedAt: string
-}
-
-const submissionHistory  = ref<SubmissionItem[]>([])
-const historyPage        = ref(1)
-const historyTotalPages  = ref(1)
-const historyTotalItems  = ref(0)
 
 // ── 검색 / 필터 ──────────────────────────────────────
 const searchInput    = ref('')
@@ -462,9 +386,8 @@ const filteredExpiredPatents = computed(() => {
 
 // ── 탭별 카운트 ──────────────────────────────────────
 const tabs = computed(() => [
-  { value: 'active',  label: '유지중인 특허',   count: activeTotalItems.value },
-  { value: 'expired', label: '만료/포기 특허',  count: expiredPatents.value.length },
-  { value: 'history', label: '검토 제출 이력',  count: historyTotalItems.value },
+  { value: 'active',  label: '유지중인 특허',  count: activeTotalItems.value },
+  { value: 'expired', label: '만료/포기 특허', count: expiredPatents.value.length },
 ])
 
 // ── 요약 카드 ────────────────────────────────────────
@@ -501,8 +424,7 @@ function formatDate(d?: string | null) {
 function patentStatus(expiryDate?: string) {
   if (!expiryDate) return 'REGISTERED'
   const diff = (new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  if (diff < 0)   return 'EXPIRED'
-  if (diff < 365) return 'EXPIRING_SOON'
+  if (diff < 0) return 'EXPIRED'
   return 'REGISTERED'
 }
 
@@ -546,28 +468,9 @@ function fetchExpiredPatents() {
     }))
 }
 
-function fetchHistory(_p = 1) {
-  const done = MOCK_REEVAL.filter(r => r.deptId === 2 && r.decision !== null)
-  submissionHistory.value = done.map(r => {
-    const patent = MOCK_PATENTS.find(p => p.id === r.patentId)!
-    return {
-      id: r.patentId,
-      patentId: r.patentId,
-      patentTitle: patent.title,
-      applicationNumber: patent.applicationNumber,
-      decision: r.decision!,
-      comment: '',
-      decidedAt: r.decidedAt ?? '',
-    }
-  })
-  historyTotalItems.value = done.length
-  historyTotalPages.value = 1
-}
-
 onMounted(() => {
   fetchActivePatents(1)
   fetchExpiredPatents()
-  fetchHistory(1)
 })
 </script>
 
