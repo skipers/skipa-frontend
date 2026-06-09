@@ -746,7 +746,7 @@ const patentHistory = computed(() => {
 
   const isActive = p.status === 'REGISTERED'
   const isExpired = p.status === 'EXPIRED'
-  const isDisposed = p.status === 'DISPOSED'
+  const isDisposed = p.status === 'ABANDONED'
 
   if (isActive || isExpired || isDisposed) {
     const regDate = addMonths(p.applicationDate, 18)
@@ -757,11 +757,11 @@ const patentHistory = computed(() => {
     }
 
     if (isExpired) {
-      const lastPaid = feeRecords.value.at(-1)?.paid ?? regDate
+      const lastPaid = feeRecords.value[feeRecords.value.length - 1]?.paid ?? regDate
       const expDate = addMonths(lastPaid, 12)
       events.push({ date: expDate, label: '만료', desc: '등록료 미납으로 특허권 소멸', variant: 'expire' })
     } else if (isDisposed) {
-      const lastPaid = feeRecords.value.at(-1)?.paid ?? regDate
+      const lastPaid = feeRecords.value[feeRecords.value.length - 1]?.paid ?? regDate
       const dispDate = addMonths(lastPaid, 3)
       events.push({ date: dispDate, label: '포기', desc: '특허권 포기 신청 — 권리 소멸', variant: 'dispose' })
     }
