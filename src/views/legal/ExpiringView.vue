@@ -39,7 +39,7 @@
             v-for="p in periodBarData" :key="p.label"
             class="period-bar-col"
             :class="{ 'period-bar-col--selected': activeFilter === p.value }"
-            @click="activeFilter = p.value"
+            @click="activeFilter = p.value as 'all' | '3m' | '6m' | '1y' | '3y' | '5y'"
           >
             <div class="period-bar-wrap">
               <div

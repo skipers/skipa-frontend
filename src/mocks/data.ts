@@ -268,6 +268,7 @@ export interface MockSimilarPatent {
   title: string
   applicant: string
   year: number
+  applicationDate?: string
   citations: number
   status: '유지' | '소멸' | '공개'
   desc: string
