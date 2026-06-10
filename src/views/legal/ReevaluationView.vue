@@ -8,16 +8,16 @@
         <h2 class="page-header__title">재평가 관리</h2>
         <p class="page-header__desc">이번 분기 처리할 특허 목록을 관리하고 사업부에 검토를 요청합니다</p>
       </div>
-      <button
-        class="btn-send-all"
-        :disabled="selectedIds.size === 0 || sending"
-        @click="showSendModal = true"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/>
+      <div class="deadline-block">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="deadline-icon">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
         </svg>
-        {{ selectedIds.size > 0 ? `${selectedIds.size}건 요청 전송` : '검토 요청 전송' }}
-      </button>
+        <span class="deadline-label">재평가 기한</span>
+        <span class="deadline-date">{{ globalDueDate }}</span>
+        <button class="btn-change-deadline" @click="openDueDateModal">변경</button>
+      </div>
     </div>
 
     <!-- 진행 요약 바 -->
@@ -364,6 +364,40 @@
       </Transition>
     </Teleport>
 
+    <!-- ── 기한 변경 모달 ── -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showDueDateModal" class="modal-overlay" @click.self="showDueDateModal = false">
+          <div class="modal">
+            <div class="modal__header">
+              <h3 class="modal__title">재평가 기한 변경</h3>
+              <button class="modal__close" @click="showDueDateModal = false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div class="modal__body">
+              <p class="due-date-desc">변경된 기한은 이전에 전송된 요청을 포함한 모든 보고서 제출 기한에 적용됩니다.</p>
+              <div class="due-date-field">
+                <label class="due-date-field__label">새 기한</label>
+                <input
+                  type="date"
+                  class="due-date-input"
+                  v-model="newDueDate"
+                  :min="today"
+                />
+              </div>
+            </div>
+            <div class="modal__footer">
+              <button class="btn-cancel" @click="showDueDateModal = false">취소</button>
+              <button class="btn-confirm" :disabled="!newDueDate" @click="handleDueDateChange">적용</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
   </div>
 </template>
 
@@ -398,8 +432,12 @@ const decisionOpts = [
   { label: '유지', value: 'KEEP' },
   { label: '포기', value: 'DISPOSE' },
 ]
-const showAssignModal = ref(false)
-const showSendModal   = ref(false)
+const showAssignModal  = ref(false)
+const showSendModal    = ref(false)
+const showDueDateModal = ref(false)
+const globalDueDate    = ref('2026-06-15')
+const newDueDate       = ref('')
+const today            = new Date().toISOString().slice(0, 10)
 const assignTarget    = ref<ReevalItem | null>(null)
 const assignDeptId    = ref<number | null>(null)
 const assignLoading   = ref(false)
@@ -442,6 +480,7 @@ interface ReevalItem {
   decision?: string | null
   reviewStatus: 'unassigned' | 'requested' | 'overdue' | 'done'
   isOverdue?: boolean
+  dueDate?: string
 }
 
 // ── 분기 레이블 ──────────────────────────────────────
@@ -676,6 +715,18 @@ async function handleSend() {
   }
 }
 
+function openDueDateModal() {
+  newDueDate.value = globalDueDate.value
+  showDueDateModal.value = true
+}
+
+function handleDueDateChange() {
+  if (!newDueDate.value) return
+  globalDueDate.value = newDueDate.value
+  mockPatents.forEach(p => { p.dueDate = newDueDate.value })
+  showDueDateModal.value = false
+}
+
 function goDetail(id: number) {
   markRead(id)
   router.push(`/legal/patents/${id}`)
@@ -737,25 +788,83 @@ onMounted(async () => {
   margin: 0;
 }
 
-.btn-send-all {
+.deadline-block {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
-  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
-  color: var(--color-surface);
-  border: none;
+  padding: 9px 16px;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
   border-radius: 10px;
-  font-size: 13.5px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(79,70,229,.3);
-  transition: opacity .15s, transform .12s;
   white-space: nowrap;
 }
-.btn-send-all:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
-.btn-send-all:disabled { opacity: .45; cursor: not-allowed; }
+
+.deadline-icon { color: var(--color-text-muted); flex-shrink: 0; }
+
+.deadline-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.deadline-date {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+.btn-change-deadline {
+  padding: 4px 12px;
+  background: var(--color-primary-bg);
+  border: 1px solid var(--color-primary-border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-primary-dark);
+  cursor: pointer;
+  transition: background .13s;
+  margin-left: 2px;
+}
+.btn-change-deadline:hover { background: var(--color-primary-border); }
+
+.due-date-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin: 0;
+  background: var(--color-surface-muted);
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
+.due-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.due-date-field__label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.due-date-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  color: var(--color-text);
+  background: var(--color-surface);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .13s;
+}
+.due-date-input:focus { border-color: var(--color-primary); }
 
 /* ── 진행률 바 카드 ──────────────────────────────── */
 .progress-bar-card {

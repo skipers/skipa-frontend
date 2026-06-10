@@ -135,6 +135,12 @@ const navItems: { name: string; to: string; label: string; icon: string; badge?:
     label: '특허 검색',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>`,
   },
+  {
+    name: 'LegalPatentManage',
+    to: '/legal/patent-manage',
+    label: '특허 관리',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  },
 ]
 
 const pageTitleMap: Record<string, string> = {
@@ -143,11 +149,13 @@ const pageTitleMap: Record<string, string> = {
   '/legal/portfolio': '포트폴리오 분석',
   '/legal/expiring': '소멸 예정 관리',
   '/legal/patent-search': '특허 검색',
+  '/legal/patent-manage': '특허 관리',
 }
 
 const currentPageTitle = computed(() => {
   const path = route.path
   if (path.startsWith('/legal/patent-search/')) return '특허 상세'
+  if (path.startsWith('/legal/patent-manage/review/')) return '신청 검토'
   return pageTitleMap[path] ?? ''
 })
 

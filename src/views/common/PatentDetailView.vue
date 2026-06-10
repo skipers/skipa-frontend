@@ -58,6 +58,14 @@
                 <span class="meta-chip meta-chip--dept">{{ patent.dept }}</span>
               </div>
             </div>
+            <button class="btn-pdf-download">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              원문 PDF
+            </button>
           </div>
         </div>
       </div>
@@ -405,8 +413,25 @@
         <section id="section-fee" data-section="fee" class="content-section">
           <div class="section-header">
             <h2 class="section-heading">등록료 납부 내역</h2>
+            <div v-if="isLegal" class="fee-edit-actions">
+              <template v-if="!feeEditMode">
+                <button class="btn-fee-edit" @click="startFeeEdit">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                  수정
+                </button>
+              </template>
+              <template v-else>
+                <button class="btn-fee-cancel" @click="cancelFeeEdit">취소</button>
+                <button class="btn-fee-save" @click="saveFeeEdit">저장</button>
+              </template>
+            </div>
           </div>
-          <table class="fee-table">
+
+          <!-- 일반 보기 -->
+          <table v-if="!feeEditMode" class="fee-table">
             <thead>
               <tr>
                 <th>분기</th>
@@ -424,6 +449,58 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- 편집 모드 (legal 전용) -->
+          <template v-else>
+            <table class="fee-table fee-table--edit">
+              <thead>
+                <tr>
+                  <th>시작 년분</th>
+                  <th>종료 년분</th>
+                  <th>금액 (원)</th>
+                  <th>납부일</th>
+                  <th>상태</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, idx) in feeEditDraft" :key="idx">
+                  <td>
+                    <div class="fee-year-input-wrap">
+                      <span class="fee-year-prefix">제</span>
+                      <input class="fee-input fee-input--year" type="number" v-model.number="row.yearStart" min="1" placeholder="1" />
+                      <span class="fee-year-suffix">년분</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="fee-year-input-wrap">
+                      <span class="fee-year-prefix">제</span>
+                      <input class="fee-input fee-input--year" type="number" v-model.number="row.yearEnd" min="1" placeholder="3" />
+                      <span class="fee-year-suffix">년분</span>
+                    </div>
+                  </td>
+                  <td><input class="fee-input fee-input--num" type="number" v-model.number="row.amount" min="0" step="1000" /></td>
+                  <td><input class="fee-input fee-input--date" type="date" v-model="row.paid" /></td>
+                  <td><span class="fee-status-tag">납입</span></td>
+                  <td>
+                    <button class="btn-fee-row-del" @click="feeEditDraft.splice(idx, 1)" title="삭제">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        <path d="M10 11v6"/><path d="M14 11v6"/>
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <button class="btn-fee-add" @click="feeEditDraft.push({ yearStart: 0, yearEnd: 0, amount: 0, paid: '' })">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              행 추가
+            </button>
+          </template>
 
         </section>
 
@@ -453,7 +530,7 @@
         <!-- ── 섹션 5: 평가이력 ── -->
         <section v-if="isOwnDept" id="section-eval" data-section="eval" class="content-section">
           <div class="section-header">
-            <h2 class="section-heading">평가이력</h2>
+            <h2 class="section-heading">평가 이력</h2>
           </div>
           <div class="eval-history-list">
             <div v-for="(item, idx) in MOCK_EVAL_HISTORY" :key="idx" class="eval-history-item">
@@ -1015,10 +1092,53 @@ const FEE_SCHEDULES: Record<string, { quarter: string; amount: number; paid: str
   ],
 }
 
+type FeeRecord     = { quarter: string; amount: number; paid: string }
+type FeeEditRow    = { yearStart: number; yearEnd: number; amount: number; paid: string }
+
+function formatQuarter(start: number, end: number): string {
+  const fmt = (n: number) => n < 10 ? ` ${n}` : `${n}`
+  return `제 ${fmt(start)} - ${fmt(end)} 년분`
+}
+
+function parseQuarter(q: string): { yearStart: number; yearEnd: number } {
+  const m = q.match(/(\d+)[^0-9]+(\d+)/)
+  return m ? { yearStart: Number(m[1]), yearEnd: Number(m[2]) } : { yearStart: 0, yearEnd: 0 }
+}
+
 const feeRecords = computed(() => {
   const status = patent.value?.status ?? ''
-  return FEE_SCHEDULES[status] ?? FEE_SCHEDULES['REGISTERED']
+  return customFeeRecords.value ?? FEE_SCHEDULES[status] ?? FEE_SCHEDULES['REGISTERED']
 })
+
+const customFeeRecords = ref<FeeRecord[] | null>(null)
+const feeEditMode      = ref(false)
+const feeEditDraft     = ref<FeeEditRow[]>([])
+
+function startFeeEdit() {
+  feeEditDraft.value = feeRecords.value.map(r => ({
+    ...parseQuarter(r.quarter),
+    amount: r.amount,
+    paid: r.paid,
+  }))
+  feeEditMode.value = true
+}
+
+function cancelFeeEdit() {
+  feeEditMode.value = false
+  feeEditDraft.value = []
+}
+
+function saveFeeEdit() {
+  customFeeRecords.value = feeEditDraft.value
+    .filter(r => r.yearStart > 0)
+    .map(r => ({
+      quarter: formatQuarter(r.yearStart, r.yearEnd),
+      amount: r.amount,
+      paid: r.paid,
+    }))
+  feeEditMode.value = false
+  feeEditDraft.value = []
+}
 
 type HistoryVariant = 'file' | 'pub' | 'reg' | 'rejected' | 'invalid' | 'expired' | 'withdraw' | 'abandon'
 const patentHistory = computed(() => {
@@ -1159,7 +1279,7 @@ const ALL_TABS = [
   { key: 'report',  label: 'AI 평가 보고서' },
   { key: 'fee',     label: '등록료 납부 내역' },
   { key: 'history', label: '행정 상태' },
-  { key: 'eval',    label: '평가이력' },
+  { key: 'eval',    label: '평가 이력' },
 ]
 const RESTRICTED_TABS = new Set(['report', 'eval'])
 
@@ -1888,6 +2008,15 @@ function closeEvalReport() {
 
 .detail-header__title-area { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 
+.btn-pdf-download {
+  display: flex; align-items: center; gap: 7px; padding: 8px 16px;
+  background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 9px;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  color: #475569; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  transition: background .12s, border-color .12s;
+}
+.btn-pdf-download:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
 .detail-title {
   font-size: 22px; font-weight: 700; color: #0f172a;
   line-height: 1.35; letter-spacing: -0.02em; margin: 0;
@@ -2159,6 +2288,131 @@ function closeEvalReport() {
   border: 1px solid #e2e8f0;
 }
 .fee-table tbody tr:hover td { background: #f8fafc; }
+
+/* ── 등록료 편집 ── */
+.fee-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-fee-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background .13s;
+}
+.btn-fee-edit:hover { background: var(--color-surface-hover); }
+
+.btn-fee-cancel {
+  padding: 5px 14px;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.btn-fee-save {
+  padding: 5px 14px;
+  background: var(--color-primary-dark);
+  border: none;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  cursor: pointer;
+  transition: background .13s;
+}
+.btn-fee-save:hover { background: var(--color-primary-darker); }
+
+.fee-table--edit tbody td { padding: 6px 8px; }
+
+.fee-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color .13s;
+}
+.fee-input:focus { border-color: var(--color-primary); }
+.fee-input--num  { text-align: right; min-width: 110px; }
+.fee-input--date { min-width: 130px; }
+.fee-input--year { width: 56px; text-align: center; padding: 6px 6px; }
+
+.fee-year-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.fee-year-prefix, .fee-year-suffix {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.fee-status-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  background: var(--color-success-bg);
+  color: var(--color-success-dark);
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.btn-fee-row-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-subtle);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 5px;
+  transition: color .13s, background .13s;
+}
+.btn-fee-row-del:hover { color: var(--color-danger); background: var(--color-danger-bg); }
+
+.btn-fee-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 7px 16px;
+  background: var(--color-primary-bg);
+  border: 1px dashed var(--color-primary-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-primary-dark);
+  cursor: pointer;
+  transition: background .13s;
+  width: 100%;
+  justify-content: center;
+}
+.btn-fee-add:hover { background: var(--color-primary-border); }
 
 /* ── 행정 상태 타임라인 ── */
 .patent-timeline { display: flex; flex-direction: column; }
