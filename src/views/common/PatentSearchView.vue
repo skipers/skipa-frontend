@@ -393,30 +393,6 @@ const hasActiveFilters = computed(() =>
   !!filters.q || !!filters.status || !!filters.country || !!filters.techField || !!filters.departmentId
 )
 
-// ── Mock 특허 목록 ──────────────────────────────────
-const mockPatentRows: PatentRow[] = [
-  { id: 1,  title: 'NF3 가스 이물질 제거 시스템',           applicationNumber: '10-2026-0012345', registrationNumber: '10-2450231', applicationDate: '2024-03-15', expiryDate: '2026-08-15', status: 'REGISTERED', techField: '반도체', summary: '반도체 식각 공정에서 발생하는 NF3 가스 내 미세 이물질을 효율적으로 포집·제거하기 위한 복합 필터 시스템으로, 정전 포집 방식과 물리적 여과를 결합하여 기존 대비 제거 효율 98.5% 이상을 달성한다.', citationCount: 34 },
-  { id: 2,  title: '플라즈마 식각 장치 및 제어 방법',         applicationNumber: '10-2025-0098732', registrationNumber: '10-2318740', applicationDate: '2023-09-08', expiryDate: '2026-09-22', status: 'REGISTERED', techField: '반도체', summary: '플라즈마 밀도 및 에너지 분포를 실시간 센싱하여 RF 전력과 가스 유량을 자동 조절함으로써 식각 균일도를 향상시키는 피드백 제어 방법에 관한 발명이다.', citationCount: 58 },
-  { id: 3,  title: '배터리 전극 코팅 균일도 향상 장치',       applicationNumber: '10-2025-0041200', registrationNumber: '10-2298100', applicationDate: '2023-05-20', expiryDate: '2026-10-05', status: 'REGISTERED', techField: '배터리', summary: '슬롯-다이 코터의 유량 맥동을 억제하는 능동형 압력 보상 메커니즘을 적용하여 전극 활물질 코팅 두께 편차를 ±0.3 μm 이내로 제어하는 기술이다.', citationCount: 21 },
-  { id: 4,  title: '신소재 열 전도성 향상 방법',              applicationNumber: '10-2024-0081900', registrationNumber: '10-2201540', applicationDate: '2022-11-12', expiryDate: '2027-01-20', status: 'REGISTERED',    techField: '소재',   summary: '그래핀-질화붕소 복합체를 고분자 매트릭스에 수직 배향으로 분산시켜 두께 방향 열전도도를 기존 대비 4.2배 향상시키는 소재 합성 및 성형 방법이다.', citationCount: 9 },
-  { id: 5,  title: 'AI 기반 품질 검사 자동화 시스템',         applicationNumber: '10-2026-0031891', registrationNumber: '10-2490010', applicationDate: '2024-07-03', expiryDate: '2027-03-01', status: 'REGISTERED',    techField: 'AI/SW',  summary: '비전 트랜스포머 모델과 능동 학습 루프를 결합하여 반도체 외관 결함을 실시간으로 분류하고, 소량의 레이블 데이터만으로도 고정밀 검사를 수행하는 자동화 시스템이다.', citationCount: 73 },
-  { id: 6,  title: '반도체 세정 공정 최적화 방법',            applicationNumber: '10-2023-0055100', registrationNumber: '10-2102390', applicationDate: '2021-08-17', expiryDate: '2026-07-10', status: 'REGISTERED', techField: '반도체', summary: '습식 세정 공정에서 메가소닉 에너지와 희석 HF를 순차 적용하는 최적 시퀀스를 제안하며, 파티클 제거율을 유지하면서 산화막 손실을 30% 이상 저감한다.', citationCount: 45 },
-  { id: 7,  title: '리튬이온 배터리 수명 예측 알고리즘',      applicationNumber: '10-2025-0067432', registrationNumber: '10-2355820', applicationDate: '2023-12-01', expiryDate: '2027-05-14', status: 'REGISTERED',    techField: '배터리', summary: '사이클 충·방전 데이터에서 추출한 증분 용량 곡선 특징을 LSTM 모델에 입력하여 잔여 수명(RUL)을 95% 신뢰구간으로 예측하는 알고리즘이다.', citationCount: 62 },
-  { id: 8,  title: '고온 내열 소재 합성 공정',               applicationNumber: '10-2024-0012980', registrationNumber: '10-2188500', applicationDate: '2022-04-29', expiryDate: '2026-11-30', status: 'REGISTERED',    techField: '소재',   summary: '텅스텐 카바이드 나노입자를 실리콘 카바이드 기지에 스파크 플라즈마 소결로 치밀화하여 1400°C 이상의 고온 환경에서 기계적 강도와 산화 저항성을 동시에 확보하는 공정이다.', citationCount: 17 },
-  { id: 9,  title: '반도체 패키징 방열 구조 및 제조 방법',    applicationNumber: '10-2026-0044211', registrationNumber: '10-2502100', applicationDate: '2024-09-10', expiryDate: '2027-02-08', status: 'REGISTERED',    techField: '반도체', summary: '칩 후면에 마이크로 채널 히트싱크를 직접 집적하고 이중 유체 루프로 냉각하는 구조를 통해 고발열 AI 가속기 칩의 접합 온도를 25°C 이상 저감하는 패키징 기술이다.', citationCount: 88 },
-  { id: 10, title: '신경망 기반 결함 검출 시스템',            applicationNumber: '10-2025-0029004', registrationNumber: '10-2277340', applicationDate: '2023-04-14', expiryDate: '2027-07-22', status: 'REGISTERED',    techField: 'AI/SW',  summary: '다중 스케일 컨볼루션 네트워크와 어텐션 게이트를 결합하여 X선 및 초음파 이미지에서 내부 균열·기공 등 미세 결함을 동시에 검출하는 비파괴 검사 시스템이다.', citationCount: 51 },
-  { id: 11, title: '전고체 배터리 전해질 조성물',             applicationNumber: '10-2024-0093100', registrationNumber: '10-2222870', applicationDate: '2022-12-05', expiryDate: '2026-12-19', status: 'REGISTERED',    techField: '배터리', summary: '황화물계 고체 전해질에 Li₆PS₅Cl 유도체를 도입하고 입계 저항 최소화 소결 조건을 최적화하여 이온 전도도 10 mS/cm 이상을 실온에서 구현하는 조성물이다.', citationCount: 39 },
-  { id: 12, title: '산화막 성장 제어 방법',                  applicationNumber: '10-2023-0077650', registrationNumber: '10-2133010', applicationDate: '2021-11-22', expiryDate: '2027-04-03', status: 'REGISTERED',    techField: '반도체', summary: '원자층 증착(ALD) 사이클 수와 전구체 노출 시간을 정밀 제어하여 High-k 게이트 산화막의 두께 균일도 및 계면 트랩 밀도를 개선하는 공정 제어 방법이다.', citationCount: 27 },
-  { id: 13, title: '나노 구조 촉매 제조 공정',               applicationNumber: '10-2022-0048300', registrationNumber: '10-2055980', applicationDate: '2020-07-08', expiryDate: '2025-12-31', status: 'EXPIRED',       techField: '소재',   summary: '전이금속 산화물 나노입자를 다공성 탄소 지지체에 균일 분산시키는 습식 함침법을 개선하여 촉매 활성 면적을 극대화하고 반응 선택성을 향상시킨 제조 공정이다.', citationCount: 12 },
-  { id: 14, title: '딥러닝 기반 공정 이상 감지 시스템',       applicationNumber: '10-2026-0020011', registrationNumber: '10-2465300', applicationDate: '2024-05-16', expiryDate: '2028-01-10', status: 'REGISTERED',    techField: 'AI/SW',  summary: '제조 공정 센서 시계열 데이터를 Transformer 기반 이상 탐지 모델로 분석하여 설비 고장을 사전 예측하고 유지보수 일정을 자동 생성하는 시스템이다.', citationCount: 94 },
-  { id: 15, title: '차세대 배터리 전극 소재 합성법',          applicationNumber: '10-2025-0082100', registrationNumber: '10-2388200', applicationDate: '2024-01-25', expiryDate: '2028-03-30', status: 'REGISTERED',    techField: '배터리', summary: '실리콘-흑연 복합 음극재의 부피 팽창을 억제하기 위해 탄성 고분자 바인더와 프리스트레스 구조를 적용하여 500 사이클 후 용량 유지율 92% 이상을 달성하는 합성법이다.', citationCount: 43 },
-  { id: 16, title: '플렉서블 기판 반도체 제조 방법',          applicationNumber: '10-2023-0104500', registrationNumber: '10-2155640', applicationDate: '2022-02-18', expiryDate: '2027-09-15', status: 'REGISTERED',    techField: '반도체', summary: '폴리이미드 기판 위에 저온 공정으로 비정질 산화물 반도체를 증착하고 레이저 어닐링으로 결정화하여 웨어러블 소자에 적합한 고성능 박막트랜지스터를 구현하는 방법이다.', citationCount: 31 },
-  { id: 17, title: '하이브리드 전력 제어 알고리즘',           applicationNumber: '10-2024-0061700', registrationNumber: '10-2210890', applicationDate: '2022-09-30', expiryDate: '2027-06-08', status: 'REGISTERED',    techField: 'AI/SW',  summary: '배터리-슈퍼커패시터 하이브리드 시스템에서 강화학습 기반 에너지 분배 정책을 적용하여 피크 전력 대응 속도와 배터리 수명을 동시에 최적화하는 제어 알고리즘이다.', citationCount: 56 },
-  { id: 18, title: '탄소 나노튜브 복합 소재 제조',            applicationNumber: '10-2022-0031200', registrationNumber: '10-2044120', applicationDate: '2020-05-12', expiryDate: '2025-09-20', status: 'EXPIRED',       techField: '소재',   summary: '다중벽 탄소 나노튜브를 에폭시 수지에 초음파 분산·표면 개질하여 계면 접착력을 향상시키고, 인장 강도 및 전기 전도성을 동시에 개선한 복합 소재 제조 방법이다.', citationCount: 8 },
-  { id: 19, title: '식각 공정 부산물 회수 장치',              applicationNumber: '10-2026-0058900', registrationNumber: '10-2520770', applicationDate: '2024-11-07', expiryDate: '2028-07-14', status: 'REGISTERED',    techField: '반도체', summary: '드라이 식각 공정에서 발생하는 불화물계 부산물을 저온 트랩과 흡착 필터로 선택적으로 포집하여 고순도 재생 원료로 회수하는 친환경 장치이다.', citationCount: 19 },
-  { id: 20, title: '초고속 충전 배터리 관리 시스템',          applicationNumber: '10-2025-0011500', registrationNumber: '10-2260430', applicationDate: '2023-02-28', expiryDate: '2028-05-03', status: 'REGISTERED',    techField: '배터리', summary: '셀 임피던스 스펙트로스코피를 실시간 수행하여 충전 상태와 온도를 동시에 추정하고, 리튬 석출 없이 15분 이내 80% 충전을 달성하는 적응형 충전 관리 시스템이다.', citationCount: 77 },
-]
-
 // ── 특허 목록 로드 ───────────────────────────────────
 async function fetchPatents(p = page.value) {
   loading.value = true
@@ -509,7 +485,7 @@ async function handleRegister() {
     showRegisterModal.value = false
     fetchPatents(1)
   } catch (e) {
-    console.error(e)
+    console.error('PatentSearchView/handleRegister:', e)
   } finally {
     registerLoading.value = false
   }

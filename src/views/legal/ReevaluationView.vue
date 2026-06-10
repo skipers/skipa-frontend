@@ -412,7 +412,7 @@ const filteredDepartments = computed(() => {
   return q ? sortedDepartments.value.filter(d => d.name.toLowerCase().includes(q)) : sortedDepartments.value
 })
 
-// mock 부서 목록 (실제: GET /departments)
+// TODO: AI 서버 연동 후 교체 필요 — GET /departments API 구현 시 아래 하드코딩 제거
 const departments = ref<Department[]>([
   { id: 2,  name: '반도체 사업부' },
   { id: 3,  name: '배터리 사업부' },
@@ -620,17 +620,8 @@ async function handleAssign() {
     } else if (assignTarget.value) {
       await patentsApi.assignDepartment(assignTarget.value.id, assignDeptId.value)
     }
-  } catch {
-    // API 미구현: mock 데이터 직접 업데이트
-    if (bulkAssignMode.value) {
-      ;[...selectedIds].forEach(id => {
-        const p = mockPatents.find(p => p.id === id)
-        if (p) p.departmentId = assignDeptId.value!
-      })
-    } else if (assignTarget.value) {
-      const p = mockPatents.find(p => p.id === assignTarget.value!.id)
-      if (p) p.departmentId = assignDeptId.value!
-    }
+  } catch (err) {
+    console.error('ReevaluationView/handleAssign:', err)
   } finally {
     assignLoading.value = false
     showAssignModal.value = false
@@ -650,8 +641,9 @@ async function handleSend() {
       .map(i => i!.id)
 
     await reviewsApi.requestBulkReview(sendablePatentIds)
-  } catch (e) { console.error(e) }
-  finally {
+  } catch (e) {
+    console.error('ReevaluationView/handleSend:', e)
+  } finally {
     sending.value = false
     sentCount.value = sendableCount.value
     sendSuccess.value = true
