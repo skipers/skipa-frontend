@@ -607,8 +607,11 @@ onMounted(() => { loading.value = false })
 .donut-wrap {
   display: flex;
   align-items: center;
+  align-content: center;
   gap: 16px;
   flex-wrap: wrap;
+  flex: 1;
+  justify-content: center;
 }
 
 .patent-donut {
