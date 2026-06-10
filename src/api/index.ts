@@ -1,3 +1,7 @@
 export { authApi } from './auth'
 export { patentsApi } from './patents'
-export { dashboardApi, decisionsApi, inboxApi, reviewRequestsApi, jobsApi } from './misc'
+export { reviewsApi } from './reviews'
+export { reportsApi } from './reports'
+export { dashboardApi } from './dashboard'
+export { businessReviewsApi } from './businessReviews'
+export { dashboardApi as legacyDashboardApi, decisionsApi, inboxApi, reviewRequestsApi, jobsApi } from './misc'
