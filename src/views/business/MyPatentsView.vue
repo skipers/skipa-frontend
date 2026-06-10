@@ -19,23 +19,23 @@
       <div class="portfolio-stat__bar">
         <div class="portfolio-stat__seg portfolio-stat__seg--active"
           :style="{ width: activePct + '%' }"
-          :title="`유지 중 ${activeTotalItems}건`"
+          :title="`유지 ${activeTotalItems}건`"
         />
         <div class="portfolio-stat__seg portfolio-stat__seg--expired"
           :style="{ width: (100 - activePct) + '%' }"
-          :title="`만료·포기 ${expiredPatents.length}건`"
+          :title="`소멸·포기 ${expiredPatents.length}건`"
         />
       </div>
       <div class="portfolio-stat__legend">
         <div class="portfolio-stat__legend-item">
           <span class="portfolio-stat__dot portfolio-stat__dot--active" />
-          <span class="portfolio-stat__label">유지 중</span>
+          <span class="portfolio-stat__label">유지</span>
           <strong class="portfolio-stat__count">{{ activeTotalItems }}건</strong>
           <span class="portfolio-stat__pct">({{ activePct }}%)</span>
         </div>
         <div class="portfolio-stat__legend-item">
           <span class="portfolio-stat__dot portfolio-stat__dot--expired" />
-          <span class="portfolio-stat__label">만료·포기</span>
+          <span class="portfolio-stat__label">소멸·포기</span>
           <strong class="portfolio-stat__count">{{ expiredPatents.length }}건</strong>
           <span class="portfolio-stat__pct">({{ 100 - activePct }}%)</span>
         </div>
@@ -120,7 +120,7 @@
                 출원일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'applicationDate' }">{{ sortIconChar('applicationDate') }}</span>
               </th>
               <th class="sortable" @click="toggleSort('expiryDate')">
-                만료 예정일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
+                소멸 예정일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
               </th>
               <th>기술 분야</th>
               <th>상태</th>
@@ -172,7 +172,7 @@
       </div>
     </template>
 
-    <!-- ── 만료/포기 특허 ── -->
+    <!-- ── 소멸/포기 특허 ── -->
     <template v-if="activeTab === 'expired'">
       <!-- 필터 바 -->
       <div class="filter-bar">
@@ -214,7 +214,7 @@
               <line x1="9" y1="9" x2="15" y2="15"/>
             </svg>
           </div>
-          <p>만료 또는 포기된 특허가 없습니다.</p>
+          <p>소멸 또는 포기된 특허가 없습니다.</p>
         </div>
         <table v-else class="patent-table">
           <thead>
@@ -226,7 +226,7 @@
                 특허명 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'title' }">{{ sortIconChar('title') }}</span>
               </th>
               <th class="sortable" @click="toggleSort('expiryDate')">
-                만료/포기일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
+                소멸/포기일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
               </th>
               <th>기술 분야</th>
               <th>상태</th>
@@ -387,7 +387,7 @@ const filteredExpiredPatents = computed(() => {
 // ── 탭별 카운트 ──────────────────────────────────────
 const tabs = computed(() => [
   { value: 'active',  label: '유지중인 특허',  count: activeTotalItems.value },
-  { value: 'expired', label: '만료/포기 특허', count: expiredPatents.value.length },
+  { value: 'expired', label: '소멸/포기 특허', count: expiredPatents.value.length },
 ])
 
 // ── 요약 카드 ────────────────────────────────────────

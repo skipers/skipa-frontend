@@ -129,7 +129,7 @@ export const RECENT_REPLIES = [
   { id: 14, patent: '수소연료전지 효율 향상 촉매 구조',         dept: '에너지사업부', decision: 'KEEP',    date: '2026-05-22' },
 ]
 
-// ── 만료 예정 특허 목록 (ExpiringView) ───────────────
+// ── 소멸 예정 특허 목록 (ExpiringView) ───────────────
 export const EXPIRING_ITEMS = [
   { id: 12, title: '초고속 데이터 전송 프로토콜 최적화',   applicationNumber: 'KR-2019-0087654', techField: '통신',  dept: '통신사업부',   expiryDate: '2026-11-15', dday: 166, urgency: 'warn'     as const },
   { id: 17, title: '태양광 패널 에너지 변환 효율 향상',    applicationNumber: 'KR-2020-0112233', techField: '에너지', dept: '에너지사업부', expiryDate: '2026-09-30', dday: 120, urgency: 'warn'     as const },
@@ -138,7 +138,7 @@ export const EXPIRING_ITEMS = [
   { id: 1,  title: 'NLP 기반 특허 분류·태깅 자동화 시스템', applicationNumber: 'KR-2021-0087234', techField: 'AI/ML', dept: '반도체사업부', expiryDate: '2041-03-15', dday: 5400, urgency: 'normal'  as const },
 ]
 
-// ── 연도별 출원·등록·만료 추이 ────────────────────────
+// ── 연도별 출원·등록·소멸 추이 ────────────────────────
 export const TREND_DATA = [
   { year: '2021', filed: 11, registered: 8,  expired: 3 },
   { year: '2022', filed: 13, registered: 10, expired: 3 },

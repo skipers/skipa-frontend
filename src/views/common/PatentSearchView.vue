@@ -7,8 +7,8 @@
         <h2 class="page-header__title">특허 검색</h2>
         <p class="page-header__desc">전체 보유 특허를 검색하고 상세 정보를 확인하세요</p>
       </div>
-      <!-- Legal만 등록 버튼 노출 -->
-      <button v-if="auth.isLegal || auth.isAdmin" class="btn-register" @click="goToRegister">
+      <!-- Legal·사업부·Admin 등록 버튼 노출 -->
+      <button v-if="auth.isLegal || auth.isAdmin || auth.isBusiness" class="btn-register" @click="goToRegister">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
@@ -145,97 +145,169 @@
       />
     </div>
 
-    <!-- 신규 등록 모달 (간략) -->
+    <!-- 신규 특허 등록 다이얼로그 -->
     <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showRegisterModal" class="modal-overlay" @click.self="showRegisterModal = false">
-          <div class="modal">
-            <div class="modal__header">
-              <h3 class="modal__title">신규 특허 등록</h3>
-              <button class="modal__close" @click="showRegisterModal = false">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <Transition name="reg-dialog">
+        <div v-if="showRegisterModal" class="reg-backdrop" @click.self="showRegisterModal = false">
+          <div class="reg-dialog">
+
+            <!-- 다이얼로그 헤더 -->
+            <div class="reg-dialog__head">
+              <div>
+                <div class="reg-dialog__title">신규 특허 등록</div>
+                <div class="reg-dialog__sub">특허 PDF에서 기본 항목을 추출한 뒤 수정해 등록합니다.</div>
+              </div>
+              <button class="reg-dialog__close" @click="showRegisterModal = false" aria-label="닫기">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
               </button>
             </div>
 
-            <div class="modal__body">
-              <!-- PDF 업로드 탭 -->
-              <div class="register-tabs">
-                <button class="register-tab" :class="{ 'register-tab--active': registerMode === 'pdf' }" @click="registerMode = 'pdf'">
-                  PDF 업로드
-                </button>
-                <button class="register-tab" :class="{ 'register-tab--active': registerMode === 'manual' }" @click="registerMode = 'manual'">
-                  직접 입력
-                </button>
-              </div>
+            <!-- 다이얼로그 바디 (스크롤) -->
+            <div class="reg-dialog__body">
 
-              <!-- PDF 모드 -->
-              <div v-if="registerMode === 'pdf'" class="upload-zone" @dragover.prevent @drop.prevent="handleDrop">
+              <!-- PDF 업로드 -->
+              <div class="reg-upload-bar" @dragover.prevent @drop.prevent="handleDrop">
                 <input type="file" accept=".pdf" ref="fileInput" style="display:none" @change="handleFileSelect" />
-                <div v-if="!uploadedFile" class="upload-zone__content" @click="(fileInput as HTMLInputElement)?.click()">
-                  <div class="upload-zone__icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="17 8 12 3 7 8"/>
-                      <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                  </div>
-                  <p class="upload-zone__title">PDF 파일을 드래그하거나 클릭하여 업로드</p>
-                  <p class="upload-zone__sub">AI가 특허 정보를 자동으로 추출합니다</p>
-                </div>
-                <div v-else class="upload-zone__file">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" style="flex-shrink:0">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span class="reg-upload-name">{{ uploadedFile ? uploadedFile.name : 'PDF 파일을 드래그하거나 선택하세요' }}</span>
+                <button v-if="uploadedFile" class="reg-upload-clear" @click="uploadedFile = null" type="button">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
-                  <span>{{ uploadedFile.name }}</span>
-                  <button @click="uploadedFile = null">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                  </button>
+                </button>
+                <button class="reg-upload-btn" type="button" @click="(fileInput as HTMLInputElement)?.click()">파일 선택</button>
+                <button class="reg-extract-btn" type="button" @click="(fileInput as HTMLInputElement)?.click()">PDF에서 항목 추출</button>
+              </div>
+
+              <!-- 기본 정보 -->
+              <div class="reg-section">
+                <div class="reg-section__title">기본 정보</div>
+                <div class="reg-grid">
+                  <label class="reg-field full">
+                    <span class="reg-label">특허 제목</span>
+                    <input class="reg-input" type="text" v-model="registerForm.title" placeholder="특허명 입력" />
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">관리번호</span>
+                    <input class="reg-input" type="text" v-model="registerForm.managementNumber" />
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">발명자</span>
+                    <input class="reg-input" type="text" v-model="registerForm.inventors" />
+                  </label>
+                  <label class="reg-field full">
+                    <span class="reg-label">발명의 명칭(최종)</span>
+                    <input class="reg-input" type="text" v-model="registerForm.finalTitle" />
+                  </label>
                 </div>
               </div>
 
-              <!-- 수동 입력 모드 (간략 필드) -->
-              <div v-else class="manual-form">
-                <div class="form-row">
-                  <div class="field">
-                    <label class="field__label">특허명 *</label>
-                    <input v-model="registerForm.title" type="text" class="field__input" placeholder="특허명 입력" />
-                  </div>
-                </div>
-                <div class="form-row form-row--2">
-                  <div class="field">
-                    <label class="field__label">출원번호 *</label>
-                    <input v-model="registerForm.applicationNumber" type="text" class="field__input" placeholder="10-2026-0000000" />
-                  </div>
-                  <div class="field">
-                    <label class="field__label">등록번호</label>
-                    <input v-model="registerForm.registrationNumber" type="text" class="field__input" placeholder="10-0000000" />
-                  </div>
-                </div>
-                <div class="form-row form-row--2">
-                  <div class="field">
-                    <label class="field__label">출원일</label>
-                    <input v-model="registerForm.applicationDate" type="date" class="field__input" />
-                  </div>
-                  <div class="field">
-                    <label class="field__label">만료 예정일</label>
-                    <input v-model="registerForm.expiryDate" type="date" class="field__input" />
-                  </div>
+              <!-- 분류 및 제품 -->
+              <div class="reg-section">
+                <div class="reg-section__title">분류 및 제품</div>
+                <div class="reg-grid">
+                  <label class="reg-field">
+                    <span class="reg-label">관련사업 분야</span>
+                    <input class="reg-input" type="text" v-model="registerForm.bizField" />
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">관련기술 분야</span>
+                    <input class="reg-input" type="text" v-model="registerForm.techField" />
+                  </label>
+                  <label class="reg-field full">
+                    <span class="reg-label">관련제품</span>
+                    <input class="reg-input" type="text" v-model="registerForm.relatedProducts" />
+                  </label>
                 </div>
               </div>
+
+              <!-- 출원 및 등록 -->
+              <div class="reg-section">
+                <div class="reg-section__title">출원 및 등록</div>
+                <div class="reg-grid">
+                  <label class="reg-field">
+                    <span class="reg-label">출원국</span>
+                    <input class="reg-input" type="text" v-model="registerForm.country" />
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">상태</span>
+                    <select class="reg-select" v-model="registerForm.status">
+                      <option>등록</option>
+                      <option>출원</option>
+                      <option>검토 중</option>
+                      <option>포기</option>
+                    </select>
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">공동출원여부</span>
+                    <select class="reg-select" v-model="registerForm.coApplicant">
+                      <option>아니오</option>
+                      <option>예</option>
+                    </select>
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">공동출원인명</span>
+                    <input class="reg-input" type="text" v-model="registerForm.coApplicantName" placeholder="공동출원인명 입력" />
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">출원일</span>
+                    <input class="reg-input" type="date" v-model="registerForm.applicationDate" />
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">등록일</span>
+                    <input class="reg-input" type="date" v-model="registerForm.registrationDate" />
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">출원번호</span>
+                    <input class="reg-input" type="text" v-model="registerForm.applicationNumber" placeholder="10-2026-0000000" />
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">등록번호</span>
+                    <input class="reg-input" type="text" v-model="registerForm.registrationNumber" placeholder="10-0000000" />
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">IPC</span>
+                    <input class="reg-input" type="text" v-model="registerForm.ipc" />
+                  </label>
+                  <label class="reg-field">
+                    <span class="reg-label">예상 소멸일</span>
+                    <input class="reg-input" type="date" v-model="registerForm.expiryDate" />
+                  </label>
+                </div>
+              </div>
+
+              <!-- 추출 요약 -->
+              <div class="reg-section">
+                <div class="reg-section__title">추출 요약</div>
+                <div class="reg-grid">
+                  <label class="reg-field full">
+                    <span class="reg-label">특허 개요</span>
+                    <textarea class="reg-textarea" v-model="registerForm.summary"></textarea>
+                  </label>
+                  <label class="reg-field full">
+                    <span class="reg-label">핵심 내용</span>
+                    <textarea class="reg-textarea" v-model="registerForm.coreContent"></textarea>
+                  </label>
+                </div>
+              </div>
+
             </div>
 
-            <div class="modal__footer">
+            <!-- 다이얼로그 푸터 -->
+            <div class="reg-dialog__foot">
               <button class="btn-cancel" @click="showRegisterModal = false">취소</button>
               <button class="btn-confirm" :disabled="registerLoading" @click="handleRegister">
                 <span v-if="registerLoading" class="spinner" />
-                {{ registerMode === 'pdf' ? 'AI 추출 및 등록' : '등록' }}
+                저장
               </button>
             </div>
+
           </div>
         </div>
       </Transition>
@@ -245,13 +317,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { patentsApi } from '@/api/patents'
 import { usePagination } from '@/composables/usePagination'
 import PatentTable, { type PatentRow } from '@/components/patent/PatentTable.vue'
-import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
 import type { Department } from '@/types'
 
@@ -264,7 +335,6 @@ const loading = ref(false)
 const tableItems = ref<PatentRow[]>([])
 const departments = ref<Department[]>([])
 const showRegisterModal = ref(false)
-const registerMode = ref<'pdf' | 'manual'>('pdf')
 const registerLoading = ref(false)
 const uploadedFile = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -280,17 +350,31 @@ const filters = reactive({
 
 const registerForm = reactive({
   title: '',
+  managementNumber: '',
+  inventors: '',
+  finalTitle: '',
+  bizField: '',
+  techField: '',
+  relatedProducts: '',
+  country: 'KR',
+  status: '등록',
+  coApplicant: '아니오',
+  coApplicantName: '',
+  applicationDate: '',
+  registrationDate: '',
   applicationNumber: '',
   registrationNumber: '',
-  applicationDate: '',
+  ipc: '',
   expiryDate: '',
+  summary: '',
+  coreContent: '',
 })
 
 // ── 옵션 ────────────────────────────────────────────
 const statusOptions = [
   { value: '',           label: '전체'      },
   { value: 'REGISTERED', label: '등록'      },
-  { value: 'EXPIRED',    label: '만료/포기' },
+  { value: 'EXPIRED',    label: '소멸/포기' },
 ]
 
 const countryOptions = ['KR', 'US', 'EP', 'JP', 'CN']
@@ -298,7 +382,7 @@ const countryOptions = ['KR', 'US', 'EP', 'JP', 'CN']
 const techFieldOptions = ['AI/SW', '반도체', '배터리', '소재']
 
 const sortOptions = [
-  { value: 'expiryDate',       label: '만료일순'  },
+  { value: 'expiryDate',       label: '소멸일순'  },
   { value: 'applicationDate',  label: '출원일순'  },
   { value: 'citationCount',    label: '피인용순'  },
 ]
@@ -421,17 +505,16 @@ function handleDrop(e: DragEvent) {
   if (file?.type === 'application/pdf') uploadedFile.value = file
 }
 
-// ── 등록 페이지 이동 ─────────────────────────────────
+// ── 등록 오버레이 열기 ───────────────────────────────
 function goToRegister() {
-  const base = auth.isLegal || auth.isAdmin ? '/legal' : '/biz'
-  router.push(`${base}/patents/new`)
+  showRegisterModal.value = true
 }
 
 // ── 등록 ────────────────────────────────────────────
 async function handleRegister() {
   registerLoading.value = true
   try {
-    if (registerMode.value === 'pdf' && uploadedFile.value) {
+    if (uploadedFile.value) {
       const extracted = await patentsApi.extractFromPdf(uploadedFile.value)
       await patentsApi.create(extracted as any)
     } else {
@@ -715,8 +798,8 @@ onMounted(() => fetchPatents(1))
   padding: 4px 0 8px;
 }
 
-/* ── 모달 ─────────────────────────────────────────── */
-.modal-overlay {
+/* ── 등록 다이얼로그 ──────────────────────────────── */
+.reg-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.45);
@@ -725,33 +808,46 @@ onMounted(() => fetchPatents(1))
   justify-content: center;
   z-index: 200;
   backdrop-filter: blur(2px);
+  padding: 24px;
 }
 
-.modal {
+.reg-dialog {
   background: var(--color-surface);
   border-radius: 18px;
-  width: min(580px, 94vw);
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
+  width: min(780px, 100%);
+  max-height: 90vh;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.2);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
-.modal__header {
+/* 헤더 */
+.reg-dialog__head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 22px 26px 18px;
-  border-bottom: 1px solid var(--color-surface-muted);
+  gap: 16px;
+  padding: 22px 28px 18px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
-.modal__title {
+.reg-dialog__title {
   font-size: 17px;
   font-weight: 700;
   color: var(--color-text);
-  margin: 0;
+  margin-bottom: 3px;
 }
 
-.modal__close {
-  width: 32px; height: 32px;
+.reg-dialog__sub {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.reg-dialog__close {
+  width: 32px;
+  height: 32px;
   background: var(--color-surface-muted);
   border: none;
   border-radius: 8px;
@@ -760,140 +856,181 @@ onMounted(() => fetchPatents(1))
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
+  flex-shrink: 0;
   transition: background 0.13s;
 }
-.modal__close:hover { background: var(--color-border); }
+.reg-dialog__close:hover { background: var(--color-border); }
 
-.modal__body {
-  padding: 22px 26px;
+/* 바디 */
+.reg-dialog__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
 
-.modal__footer {
+/* 푸터 */
+.reg-dialog__foot {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding: 16px 26px 22px;
-  border-top: 1px solid var(--color-surface-muted);
+  padding: 16px 28px 22px;
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
-/* 탭 */
-.register-tabs {
-  display: flex;
-  gap: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 9px;
-  overflow: hidden;
-  margin-bottom: 20px;
-  background: var(--color-surface-hover);
-}
-
-.register-tab {
-  flex: 1;
-  padding: 9px;
-  border: none;
-  background: transparent;
-  font-size: 13.5px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  color: var(--color-text-muted);
-  transition: background 0.13s, color 0.13s;
-}
-.register-tab--active {
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-
-/* 업로드 존 */
-.upload-zone {
-  border: 2px dashed var(--color-border);
-  border-radius: 12px;
-  min-height: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  background: var(--color-surface-soft);
-}
-.upload-zone:hover { border-color: var(--color-primary); background: var(--color-surface-soft); }
-
-.upload-zone__content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 24px;
-}
-
-.upload-zone__icon {
-  width: 52px; height: 52px;
-  background: var(--color-primary-bg);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-primary);
-  margin-bottom: 4px;
-}
-
-.upload-zone__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  margin: 0;
-  text-align: center;
-}
-
-.upload-zone__sub {
-  font-size: 12.5px;
-  color: var(--color-text-subtle);
-  margin: 0;
-  text-align: center;
-}
-
-.upload-zone__file {
+/* PDF 업로드 바 */
+.reg-upload-bar {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  padding: 0 20px;
+  padding: 12px 16px;
+  border: 2px dashed var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface-soft);
 }
-.upload-zone__file button {
+
+.reg-upload-name {
+  flex: 1;
+  font-size: 13.5px;
+  color: var(--color-text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reg-upload-clear {
   background: none;
   border: none;
   cursor: pointer;
   color: var(--color-text-subtle);
   display: flex;
-  margin-left: 4px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+.reg-upload-clear:hover { color: var(--color-danger); }
+
+.reg-upload-btn {
+  padding: 7px 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+  flex-shrink: 0;
+}
+.reg-upload-btn:hover { background: var(--color-surface-muted); }
+
+.reg-extract-btn {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.13s;
+  flex-shrink: 0;
+}
+.reg-extract-btn:hover { opacity: 0.88; }
+
+/* 섹션 */
+.reg-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* 수동 입력 폼 */
-.manual-form { display: flex; flex-direction: column; gap: 14px; }
-.form-row { display: flex; gap: 12px; }
-.form-row--2 > * { flex: 1; }
-.field { display: flex; flex-direction: column; gap: 5px; }
-.field__label { font-size: 12.5px; font-weight: 600; color: var(--color-text-secondary); }
-.field__input {
-  padding: 9px 12px;
+.reg-section__title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-surface-muted);
+}
+
+/* 그리드 */
+.reg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+}
+
+.reg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.reg-field.full {
+  grid-column: 1 / -1;
+}
+
+.reg-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.reg-input,
+.reg-select {
+  padding: 8px 12px;
   border: 1.5px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 7px;
   font-size: 13.5px;
   font-family: inherit;
   color: var(--color-text);
   background: var(--color-surface-soft);
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s, background 0.15s;
 }
-.field__input:focus {
+.reg-input:focus,
+.reg-select:focus {
   border-color: var(--color-primary);
   background: var(--color-surface);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+.reg-input::placeholder { color: var(--c-slate-300); }
+
+.reg-select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.reg-textarea {
+  padding: 8px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 7px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--color-text);
+  background: var(--color-surface-soft);
+  outline: none;
+  resize: vertical;
+  line-height: 1.6;
+  min-height: 80px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s, background 0.15s;
+}
+.reg-textarea:focus {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
 }
 
 /* 버튼 */
@@ -938,13 +1075,13 @@ onMounted(() => fetchPatents(1))
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── 모달 전환 ────────────────────────────────────── */
-.modal-enter-active { transition: opacity 0.2s; }
-.modal-leave-active { transition: opacity 0.15s; }
-.modal-enter-from, .modal-leave-to { opacity: 0; }
-.modal-enter-active .modal { animation: modalUp 0.22s cubic-bezier(0.34,1.56,0.64,1); }
-@keyframes modalUp {
-  from { transform: translateY(12px) scale(0.98); }
-  to   { transform: translateY(0) scale(1); }
+/* ── 다이얼로그 전환 애니메이션 ─────────────────── */
+.reg-dialog-enter-active { transition: opacity 0.2s; }
+.reg-dialog-leave-active { transition: opacity 0.15s; }
+.reg-dialog-enter-from, .reg-dialog-leave-to { opacity: 0; }
+.reg-dialog-enter-active .reg-dialog { animation: dialogPop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes dialogPop {
+  from { transform: translateY(10px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
 }
 </style>
