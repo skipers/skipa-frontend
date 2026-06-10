@@ -642,8 +642,8 @@ onBeforeUnmount(() => {
 .top-bar__title-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
-.top-bar__title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
-.top-bar__sub   { font-size: 12px; color: #94a3b8; margin: 0; }
+.top-bar__title { font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 4px; letter-spacing: -0.02em; }
+.top-bar__sub   { font-size: 13.5px; color: #94a3b8; margin: 0; }
 .btn-new-eval {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer;
