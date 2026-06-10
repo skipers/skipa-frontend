@@ -380,41 +380,6 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- 평가 이력 드롭다운 -->
-        <div class="history-dropdown" :class="{ 'history-dropdown--open': historyDropdownOpen }">
-          <button class="btn-history" type="button" @click="historyDropdownOpen = !historyDropdownOpen">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-            </svg>
-            평가 이력
-            <span class="history-count">{{ history.length }}</span>
-            <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M6 9l6 6 6-6"/>
-            </svg>
-          </button>
-
-          <div class="history-dropdown__menu">
-            <ul class="dropdown-list">
-              <li
-                v-for="item in history"
-                :key="item.id"
-                class="dropdown-item"
-                :class="{ 'dropdown-item--active': selectedHistoryId === item.id }"
-                @click="selectHistoryFromDropdown(item.id)"
-              >
-                <p class="dropdown-item__name">{{ item.patentName }}</p>
-                <div class="dropdown-item__meta">
-                  <span class="dropdown-item__date">{{ formatDate(item.evaluatedAt) }}</span>
-                  <span class="grade-pill" :class="`grade-pill--${item.evaluation.grade.toLowerCase()}`">
-                    {{ item.evaluation.grade }}
-                  </span>
-                </div>
-              </li>
-              <li v-if="history.length === 0" class="dropdown-empty">평가 이력이 없습니다.</li>
-            </ul>
-          </div>
-        </div>
-
         <!-- 드롭다운 외부 클릭 닫기 -->
         <div v-if="historyDropdownOpen" class="dropdown-backdrop" @click="historyDropdownOpen = false" />
       </div>

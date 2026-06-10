@@ -200,7 +200,7 @@ function goDetail(id: number) { router.push(`${base.value}/patents/${id}`) }
 
 // ── 뷰 모드 ─────────────────────────────────────────
 const view         = ref<'timeline' | 'calendar'>('timeline')
-const activeFilter = ref<'all' | '3m' | '6m' | '1y' | '3y' | '5y'>('all')
+const activeFilter = ref<'all' | '3m' | '6m' | '1y' | '3y' | '5y'>('5y')
 
 // ── 색상 ────────────────────────────────────────────
 const techColors = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#ABACED']
@@ -222,7 +222,6 @@ const selectedBarLabel = computed(() => {
 
 // ── 기간별 막대 차트 ─────────────────────────────────
 const periodBarData = [
-  { value: 'all', label: '전체',  count: 247, color: '#94a3b8' },
   { value: '3m',  label: '3개월', count: 8,   color: '#E88989' },
   { value: '6m',  label: '6개월', count: 15,  color: '#FFBC5E' },
   { value: '1y',  label: '1년',   count: 38,  color: '#ABACED' },
@@ -231,7 +230,7 @@ const periodBarData = [
 ]
 const maxPeriod = Math.max(...periodBarData.map(p => p.count))
 function periodBarH(count: number) {
-  return Math.round((count / maxPeriod) * 100) + 20
+  return Math.round((count / maxPeriod) * 120) + 16
 }
 
 // ── 소멸 목록 (mock) ─────────────────────────────────
@@ -388,16 +387,16 @@ const selectedMonthItems = computed(() =>
   display: flex;
   align-items: flex-end;
   justify-content: space-around;
-  height: 160px;
+  height: 220px;
   gap: 12px;
-  padding-top: 20px;
+  padding-top: 28px;
 }
 
 .period-bar-col { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; cursor: pointer; transition: transform 0.1s; }
 .period-bar-col:hover { transform: translateY(-2px); }
 .period-bar-col--selected .period-bar-label { color: var(--color-text); font-weight: 700; }
 
-.period-bar-wrap { display: flex; align-items: flex-end; height: 100px; }
+.period-bar-wrap { display: flex; align-items: flex-end; height: 150px; }
 .period-bar {
   width: 48px; border-radius: 6px 6px 0 0; min-height: 6px;
   transition: height .7s cubic-bezier(.4,0,.2,1);
