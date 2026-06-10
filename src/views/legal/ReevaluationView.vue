@@ -418,6 +418,7 @@ const { readIds, markRead } = useReadReplies()
 const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination()
 
 // ── 상태 ────────────────────────────────────────────
+const mockPatents: any[] = [] // TODO: 백엔드 미확정, API 연동 후 교체
 const loading  = ref(false)
 const sending     = ref(false)
 const sendSuccess = ref(false)

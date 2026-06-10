@@ -381,13 +381,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onUnmounted } from 'vue'
+import { ref, reactive, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { patentsApi, type PatentCreateRequest } from '@/api/patents'
+import { usePatentApplications } from '@/composables/usePatentApplications'
+import { usePatentDatabase, type DBPatentEntry } from '@/composables/usePatentDatabase'
 
 const router = useRouter()
 const { applications } = usePatentApplications()
-const { addApprovedPatent } = usePatentDatabase()
+const { approvedPatents: patentList, addApprovedPatent } = usePatentDatabase()
 
 // ── 탭 ──────────────────────────────────────────────
 type TabKey = 'review' | 'list'
@@ -513,45 +515,85 @@ async function handleFileSelect(e: Event) {
   }
 }
 
-function handleSave() {
-  const mappedStatus = form.status === '등록' ? 'REGISTERED' : form.status === '포기' ? 'ABANDONED' : 'EXPIRED'
+// ── 특허 목록 (탭 2) ─────────────────────────────────
+const searchQuery = ref('')
+const filteredPatents = computed(() => {
+  if (!searchQuery.value) return patentList.value
+  const q = searchQuery.value.toLowerCase()
+  return patentList.value.filter(p =>
+    p.title.toLowerCase().includes(q) || p.applicationNumber.toLowerCase().includes(q)
+  )
+})
 
-  if (editMode.value && editTargetId.value !== null) {
-    const idx = patentList.value.findIndex(p => p.id === editTargetId.value)
-    if (idx !== -1) {
-      patentList.value[idx] = {
-        ...patentList.value[idx],
-        title: form.title,
-        applicationNumber: form.applicationNumber,
-        applicationDate: form.applicationDate,
-        techField: form.techField,
-        status: mappedStatus,
-      }
-    }
-  } else {
-    const newId = Date.now()
-    patentList.value.unshift({
-      id: newId,
-      title: form.title,
-      applicationNumber: form.applicationNumber,
-      applicationDate: form.applicationDate,
-      techField: form.techField,
-      status: mappedStatus,
-      dept: 'Legal',
-    })
-    addApprovedPatent({
-      title: form.title,
-      applicationNumber: form.applicationNumber,
-      registrationNumber: form.registrationNumber,
-      applicationDate: form.applicationDate,
-      expiryDate: form.expiryDate,
-      techField: form.techField,
-      status: mappedStatus,
-      summary: form.summary,
-      citationCount: 0,
-    })
-  }
-  closeRegisterModal()
+function statusLabel(s: string) {
+  return ({ REGISTERED: '등록', EXPIRED: '소멸', ABANDONED: '포기' } as Record<string, string>)[s] ?? s
+}
+function statusClass(s: string) {
+  return ({ REGISTERED: 'status--registered', EXPIRED: 'status--expired', ABANDONED: 'status--abandoned' } as Record<string, string>)[s] ?? ''
+}
+
+// ── 모달 상태 ─────────────────────────────────────────
+const editMode = ref(false)
+const editTargetId = ref<number | null>(null)
+const editTargetTitle = ref('')
+const deleteTarget = ref<DBPatentEntry | null>(null)
+
+const FORM_DEFAULTS = {
+  title: '', managementNumber: '', inventors: '', finalTitle: '',
+  bizField: '', techField: '', relatedProducts: '', country: 'KR',
+  status: '등록', coApplicant: '아니오', coApplicantName: '',
+  applicationDate: '', registrationDate: '', applicationNumber: '',
+  registrationNumber: '', ipc: '', expiryDate: '', summary: '', coreContent: '',
+}
+
+function openRegisterModal() {
+  editMode.value = false
+  editTargetId.value = null
+  editTargetTitle.value = ''
+  Object.assign(form, FORM_DEFAULTS)
+  adminHistory.value = []
+  showRegisterModal.value = true
+}
+
+function closeRegisterModal() {
+  showRegisterModal.value = false
+  editMode.value = false
+  editTargetId.value = null
+}
+
+function startEdit(p: DBPatentEntry) {
+  editMode.value = true
+  editTargetId.value = p.id
+  editTargetTitle.value = p.title
+  Object.assign(form, {
+    ...FORM_DEFAULTS,
+    title: p.title,
+    finalTitle: p.title,
+    applicationNumber: p.applicationNumber,
+    registrationNumber: p.registrationNumber,
+    applicationDate: p.applicationDate,
+    expiryDate: p.expiryDate,
+    techField: p.techField,
+    summary: p.summary,
+    status: p.status === 'REGISTERED' ? '등록' : p.status === 'ABANDONED' ? '포기' : '소멸',
+  })
+  adminHistory.value = []
+  showRegisterModal.value = true
+}
+
+function confirmDelete(p: DBPatentEntry) {
+  deleteTarget.value = p
+}
+
+function handleDelete() {
+  if (!deleteTarget.value) return
+  const idx = patentList.value.findIndex(p => p.id === deleteTarget.value!.id)
+  if (idx !== -1) patentList.value.splice(idx, 1)
+  deleteTarget.value = null
+}
+
+function handleExtract() {
+  fileInputRef.value?.click()
 }
 
 function handleCancel() {
@@ -562,26 +604,53 @@ async function handleSave() {
   if (isSubmitting.value) return
   isSubmitting.value = true
   try {
-    await patentsApi.createPatent({
-      title: form.finalTitle || form.title,
-      applicationNumber: form.applicationNumber,
-      registrationNumber: form.registrationNumber || undefined,
-      managementNumber: form.managementNumber || undefined,
-      inventor: form.inventors || undefined,
-      applicationDate: form.applicationDate || undefined,
-      registrationDate: form.registrationDate || undefined,
-      ipcCodes: form.ipc ? form.ipc.split(',').map(s => s.trim()).filter(Boolean) : undefined,
-      expiryDate: form.expiryDate || undefined,
-      businessField: form.bizField || undefined,
-      techField: form.techField || undefined,
-      relatedProducts: form.relatedProducts
-        ? form.relatedProducts.split(',').map(s => s.trim()).filter(Boolean)
-        : undefined,
-      summary: form.summary || undefined,
-      filingCountry: form.country || undefined,
-      // TODO: 확인 필요 - isJointApplication / jointApplicant 필드 API 지원 여부
-    })
-    router.push('/legal/patent-search')
+    if (editMode.value && editTargetId.value !== null) {
+      const mappedStatus = form.status === '등록' ? 'REGISTERED' : form.status === '포기' ? 'ABANDONED' : 'EXPIRED'
+      const idx = patentList.value.findIndex(p => p.id === editTargetId.value)
+      if (idx !== -1) {
+        patentList.value[idx] = {
+          ...patentList.value[idx],
+          title: form.title,
+          applicationNumber: form.applicationNumber,
+          applicationDate: form.applicationDate,
+          techField: form.techField,
+          status: mappedStatus,
+        }
+      }
+      closeRegisterModal()
+    } else {
+      await patentsApi.createPatent({
+        title: form.finalTitle || form.title,
+        applicationNumber: form.applicationNumber,
+        registrationNumber: form.registrationNumber || undefined,
+        managementNumber: form.managementNumber || undefined,
+        inventor: form.inventors || undefined,
+        applicationDate: form.applicationDate || undefined,
+        registrationDate: form.registrationDate || undefined,
+        ipcCodes: form.ipc ? form.ipc.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+        expiryDate: form.expiryDate || undefined,
+        businessField: form.bizField || undefined,
+        techField: form.techField || undefined,
+        relatedProducts: form.relatedProducts
+          ? form.relatedProducts.split(',').map(s => s.trim()).filter(Boolean)
+          : undefined,
+        summary: form.summary || undefined,
+        filingCountry: form.country || undefined,
+        // TODO: 확인 필요 - isJointApplication / jointApplicant 필드 API 지원 여부
+      })
+      addApprovedPatent({
+        title: form.title,
+        applicationNumber: form.applicationNumber,
+        registrationNumber: form.registrationNumber,
+        applicationDate: form.applicationDate,
+        expiryDate: form.expiryDate,
+        techField: form.techField,
+        status: 'REGISTERED',
+        summary: form.summary,
+        citationCount: 0,
+      })
+      router.push('/legal/patent-search')
+    }
   } catch (err) {
     console.error('특허 저장 오류:', err)
   } finally {

@@ -301,6 +301,7 @@ const auth = useAuthStore()
 const { applications, submit, resubmit, withdraw, remove } = usePatentApplications()
 
 const confirmDeleteId = ref<number | null>(null)
+const submitted = ref(false)
 
 // ── 탭 ──────────────────────────────────────────────
 type TabKey = 'write' | 'history'
