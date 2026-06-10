@@ -196,13 +196,13 @@
 
     <p class="section-label">추이 분석</p>
 
-    <!-- 연도별 출원·등록·만료 추이 + 연차료 추이 -->
+    <!-- 연도별 출원·등록·소멸 추이 + 연차료 추이 -->
     <div class="trend-annuity-row">
 
-      <!-- 연도별 출원·등록·만료 추이 -->
+      <!-- 연도별 출원·등록·소멸 추이 -->
       <div class="chart-card">
         <div class="chart-card__header">
-          <h3 class="chart-card__title">연도별 출원 · 등록 · 만료 추이</h3>
+          <h3 class="chart-card__title">연도별 출원 · 등록 · 소멸 추이</h3>
           <div class="chart-legend chart-legend--inline">
             <div v-for="(s, i) in trendSeries" :key="s.key" class="legend-item">
               <span class="legend-dot" :style="{ background: trendColors[i] }" />{{ s.label }}
@@ -349,7 +349,7 @@ const trendColors = ['#ABACED', '#67E2AB', '#FFBC5E']
 // ── 요약 카운트 ──────────────────────────────────────
 const summaryCounts = [
   { value: '247', label: '총 보유 특허' },
-  { value: '38',  label: '만료 예정 (1년)' },
+  { value: '38',  label: '소멸 예정 (1년)' },
   { value: '4',   label: '국가' },
   { value: '5',   label: '기술 분야' },
 ]
@@ -429,7 +429,7 @@ type TrendKey = 'filed' | 'registered' | 'expired'
 const trendSeries: { key: TrendKey; label: string }[] = [
   { key: 'filed',      label: '출원' },
   { key: 'registered', label: '등록' },
-  { key: 'expired',    label: '만료' },
+  { key: 'expired',    label: '소멸' },
 ]
 
 const trendLines = computed(() =>
@@ -603,7 +603,7 @@ const insights = [
   {
     type: 'warn',
     icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-    text: '반도체 분야 특허 38건이 1년 이내 만료 예정입니다. 유지 여부 검토가 필요합니다.',
+    text: '반도체 분야 특허 38건이 1년 이내 소멸 예정입니다. 유지 여부 검토가 필요합니다.',
   },
   {
     type: 'info',

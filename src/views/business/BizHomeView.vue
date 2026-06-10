@@ -142,16 +142,16 @@
         </div>
       </div>
 
-      <!-- 연도별 출원·만료/포기 추이 -->
+      <!-- 연도별 출원·소멸/포기 추이 -->
       <div class="card">
         <div class="card__header">
-          <h3 class="card__title">연도별 출원 · 만료/포기 추이</h3>
+          <h3 class="card__title">연도별 출원 · 소멸/포기 추이</h3>
           <div class="trend-legend">
             <span class="trend-legend-item">
               <span class="trend-dot" style="background:#ABACED"/>출원
             </span>
             <span class="trend-legend-item">
-              <span class="trend-dot" style="background:#E88989"/>만료/포기
+              <span class="trend-dot" style="background:#E88989"/>소멸/포기
             </span>
           </div>
         </div>
@@ -165,13 +165,13 @@
             <!-- 출원 선 -->
             <polyline :points="filedPoints" fill="none" stroke="#ABACED" stroke-width="2"
               stroke-linejoin="round" stroke-linecap="round"/>
-            <!-- 만료/포기 선 -->
+            <!-- 소멸/포기 선 -->
             <polyline :points="expiredPoints" fill="none" stroke="#E88989" stroke-width="2"
               stroke-linejoin="round" stroke-linecap="round"/>
             <!-- 출원 점 -->
             <circle v-for="(d, i) in bizTrendData" :key="`f${i}`"
               :cx="tX(i)" :cy="tY(d.filed)" r="3.5" fill="#fff" stroke="#ABACED" stroke-width="2"/>
-            <!-- 만료/포기 점 -->
+            <!-- 소멸/포기 점 -->
             <circle v-for="(d, i) in bizTrendData" :key="`e${i}`"
               :cx="tX(i)" :cy="tY(d.expired)" r="3.5" fill="#fff" stroke="#E88989" stroke-width="2"/>
             <!-- X축 연도 라벨 -->
@@ -235,9 +235,8 @@ const pendingItems = ref(
 const recentSubmissions = ref(RECENT_SUBMISSIONS)
 
 const patentStatItems = [
-  { label: '유지 중',   count: 6, color: '#67E2AB', pct: 75 },
-  { label: '만료 예정', count: 1, color: '#FFBC5E', pct: 12 },
-  { label: '포기/만료', count: 1, color: '#E88989', pct: 13 },
+  { label: '유지',   count: 6, color: '#67E2AB', pct: 75 },
+  { label: '소멸/포기', count: 1, color: '#E88989', pct: 13 },
 ]
 
 const patentTotal = patentStatItems.reduce((s, i) => s + i.count, 0)

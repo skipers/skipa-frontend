@@ -125,7 +125,7 @@
 
     <hr class="section-divider" />
 
-    <!-- 하단 행: 기술 분야 분포 + 분기별 만료 현황 -->
+    <!-- 하단 행: 기술 분야 분포 + 분기별 소멸 현황 -->
     <div class="bottom-row">
 
       <!-- 기술 분야 분포 (트리맵 스타일) -->
@@ -157,11 +157,11 @@
         </div>
       </div>
 
-      <!-- 분기별 만료 예정 -->
+      <!-- 분기별 소멸 예정 -->
       <div class="card">
         <div class="card__header">
-          <h3 class="card__title">분기별 만료 예정 특허</h3>
-          <RouterLink to="/legal/expiring" class="card__link">만료 예정 관리</RouterLink>
+          <h3 class="card__title">분기별 소멸 예정 특허</h3>
+          <RouterLink to="/legal/expiring" class="card__link">소멸 예정 관리</RouterLink>
         </div>
         <div v-if="loadingDist" class="card__skeleton">
           <div class="skel skel--chart" />
@@ -320,7 +320,7 @@ function techPct(count: number) {
   return Math.round((count / max) * 100)
 }
 
-// ── 만료 차트 ─────────────────────────────────────────
+// ── 소멸 차트 ─────────────────────────────────────────
 const expiryItems = computed(() => distribution.value?.byExpiryQuarter ?? [])
 function expiryBarH(count: number) {
   const max = Math.max(...expiryItems.value.map(i => i.count), 1)
@@ -777,7 +777,7 @@ onMounted(loadAll)
 .tech-dist__name  { font-size: 12.5px; font-weight: 500; color: var(--color-text-secondary); }
 .tech-dist__count { font-size: 12.5px; font-weight: 700; color: var(--color-text); }
 
-/* ── 만료 차트 ───────────────────────────────────── */
+/* ── 소멸 차트 ───────────────────────────────────── */
 .expiry-chart {
   display: flex;
   align-items: flex-end;

@@ -116,7 +116,7 @@ const navItems = [
   {
     name: 'BizExpiring',
     to: '/biz/expiring',
-    label: '만료 예정 관리',
+    label: '소멸 예정 관리',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
   },
   {
@@ -132,7 +132,7 @@ const pageTitleMap: Record<string, string> = {
   '/biz/review': '검토 현황',
   '/biz/patents': '담당 특허 관리',
 '/biz/pre-eval-lab': '사전 평가 Lab',
-  '/biz/expiring': '만료 예정 관리',
+  '/biz/expiring': '소멸 예정 관리',
   '/biz/patent-search': '특허 검색',
 }
 

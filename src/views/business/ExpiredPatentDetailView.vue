@@ -116,7 +116,7 @@
                 <p class="info-item__value">{{ registrationDate }}</p>
               </div>
               <div class="info-item">
-                <p class="info-item__label">{{ patent.status === 'ABANDONED' ? '포기일' : '만료일' }}</p>
+                <p class="info-item__label">{{ patent.status === 'ABANDONED' ? '포기일' : '소멸일' }}</p>
                 <p class="info-item__value" :class="patent.status === 'ABANDONED' ? 'text-abandoned' : 'text-expired'">
                   {{ formatDate(patent.expiryDate) }}
                 </p>
@@ -380,7 +380,7 @@ const statusSub = computed(() => {
   const d = formatDate(patent.value?.expiryDate)
   return patent.value?.status === 'ABANDONED'
     ? `${d}에 권리가 포기되었습니다`
-    : `${d}에 권리가 만료되었습니다`
+    : `${d}에 권리가 소멸되었습니다`
 })
 
 const aiScores = computed(() => {

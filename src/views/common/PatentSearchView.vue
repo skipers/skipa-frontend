@@ -222,7 +222,7 @@
                     <input v-model="registerForm.applicationDate" type="date" class="field__input" />
                   </div>
                   <div class="field">
-                    <label class="field__label">만료 예정일</label>
+                    <label class="field__label">소멸 예정일</label>
                     <input v-model="registerForm.expiryDate" type="date" class="field__input" />
                   </div>
                 </div>
@@ -290,7 +290,7 @@ const registerForm = reactive({
 const statusOptions = [
   { value: '',           label: '전체'      },
   { value: 'REGISTERED', label: '등록'      },
-  { value: 'EXPIRED',    label: '만료/포기' },
+  { value: 'EXPIRED',    label: '소멸/포기' },
 ]
 
 const countryOptions = ['KR', 'US', 'EP', 'JP', 'CN']
@@ -298,7 +298,7 @@ const countryOptions = ['KR', 'US', 'EP', 'JP', 'CN']
 const techFieldOptions = ['AI/SW', '반도체', '배터리', '소재']
 
 const sortOptions = [
-  { value: 'expiryDate',       label: '만료일순'  },
+  { value: 'expiryDate',       label: '소멸일순'  },
   { value: 'applicationDate',  label: '출원일순'  },
   { value: 'citationCount',    label: '피인용순'  },
 ]

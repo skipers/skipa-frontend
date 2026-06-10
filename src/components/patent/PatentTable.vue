@@ -46,7 +46,7 @@
               :class="{ 'sort-active': sortKey === 'expiryDate' }"
               @click="toggleSort('expiryDate')"
             >
-              만료일
+            소멸일
               <SortIcon :active="sortKey === 'expiryDate'" :dir="sortDir" />
             </th>
             <th class="col-field">기술 분야</th>
@@ -89,7 +89,7 @@
               {{ formatDate(patent.applicationDate) }}
             </td>
 
-            <!-- 만료일 -->
+            <!-- 소멸일 -->
             <td class="col-date">
               <span :class="isExpired(patent.expiryDate) ? 'expiry--expired' : ''">
                 {{ formatDate(patent.expiryDate) }}

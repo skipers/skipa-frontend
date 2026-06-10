@@ -86,7 +86,7 @@
           <input v-model="form.applicationDate" type="date" class="field__input" />
         </div>
         <div class="field">
-          <label class="field__label">만료일 <span class="req-star">*</span></label>
+          <label class="field__label">소멸일 <span class="req-star">*</span></label>
           <input v-model="form.expiryDate" type="date" class="field__input" />
         </div>
 
