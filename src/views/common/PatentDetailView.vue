@@ -132,7 +132,7 @@
                 </tr>
                 <tr><th>심사청구항수</th><td>{{ patentBiblio.claimsCount }}</td></tr>
                 <tr>
-                  <th>만료일</th>
+                  <th>소멸일</th>
                   <td :class="expiryClass">{{ formatDate(patent.expiryDate) }}</td>
                 </tr>
               </tbody>
@@ -1039,7 +1039,7 @@ const patentHistory = computed(() => {
   } else if (p.status === 'EXPIRED') {
     events.push({ date: regDate, label: '등록', desc: '심사를 통과하여 권리가 정식으로 확정된 상태', variant: 'reg' })
     const expDate = addMonths(regDate, 36)
-    events.push({ date: expDate, label: '소멸', desc: '권리 기간 만료 또는 연차료 미납으로 권리가 사라진 상태', variant: 'expired' })
+    events.push({ date: expDate, label: '소멸', desc: '권리 기간 소멸 또는 연차료 미납으로 권리가 사라진 상태', variant: 'expired' })
   } else if (p.status === 'ABANDONED') {
     const withdrawDate = addMonths(p.applicationDate, 12)
     events.push({ date: withdrawDate, label: '취하', desc: '신청자 스스로 신청을 없던 일로 돌린 상태', variant: 'withdraw' })
@@ -1139,7 +1139,7 @@ const opinionAssigned = computed(() => {
   return r && (r.reviewStatus === 'requested' || r.reviewStatus === 'overdue' || r.reviewStatus === 'done')
 })
 
-// ── 만료일 강조 ──────────────────────────────────────
+// ── 소멸일 강조 ──────────────────────────────────────
 const expiryClass = computed(() => {
   if (!patent.value?.expiryDate) return ''
   const diff = (new Date(patent.value.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)

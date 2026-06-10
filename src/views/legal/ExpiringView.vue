@@ -4,9 +4,9 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">{{ deptId ? '내 사업부 만료 예정' : '만료 예정 관리' }}</p>
-        <h2 class="page-header__title">만료 예정 특허</h2>
-        <p class="page-header__desc">기간별 만료 예정 특허를 확인하고 유지/포기를 결정하세요</p>
+        <p class="page-header__eyebrow">{{ deptId ? '내 사업부 소멸 예정' : '소멸 예정 관리' }}</p>
+        <h2 class="page-header__title">소멸 예정 특허</h2>
+        <p class="page-header__desc">기간별 소멸 예정 특허를 확인하고 유지/포기를 결정하세요</p>
       </div>
       <div class="view-toggle">
         <button :class="{ active: view === 'timeline' }" @click="view = 'timeline'">
@@ -26,7 +26,7 @@
       <!-- 기간별 막대 시각화 -->
       <div class="chart-card">
         <div class="chart-card__header">
-          <h3 class="chart-card__title">만료 예정 기간별 현황</h3>
+          <h3 class="chart-card__title">소멸 예정 기간별 현황</h3>
           <div class="chart-legend">
             <div class="legend-item" v-for="(c, i) in periodColors" :key="i">
               <span class="legend-dot" :style="{ background: c.color }" />
@@ -76,10 +76,10 @@
         </template>
       </div>
 
-      <!-- 만료 예정 특허 목록 -->
+      <!-- 소멸 예정 특허 목록 -->
       <div class="table-card">
         <div class="table-card__header">
-          <h3 class="table-card__title">만료 예정 목록</h3>
+          <h3 class="table-card__title">소멸 예정 목록</h3>
           <p class="table-card__count">{{ filteredItems.length }}건</p>
         </div>
         <div class="expiry-list">
@@ -123,7 +123,7 @@
           <button class="cal-nav" @click="calYear--">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <h3 class="ycal-title">{{ calYear }}년 만료 예정</h3>
+          <h3 class="ycal-title">{{ calYear }}년 소멸 예정</h3>
           <button class="cal-nav" @click="calYear++">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
@@ -164,7 +164,7 @@
         <!-- 선택한 달 상세 목록 -->
         <Transition name="slide-down">
           <div v-if="selectedMonth !== null && selectedMonthItems.length" class="ycal-detail">
-            <h4 class="ycal-detail__title">{{ calYear }}년 {{ selectedMonth + 1 }}월 만료 예정 특허</h4>
+            <h4 class="ycal-detail__title">{{ calYear }}년 {{ selectedMonth + 1 }}월 소멸 예정 특허</h4>
             <div
               v-for="item in selectedMonthItems"
               :key="item.id"
@@ -200,7 +200,7 @@ function goDetail(id: number) { router.push(`${base.value}/patents/${id}`) }
 
 // ── 뷰 모드 ─────────────────────────────────────────
 const view         = ref<'timeline' | 'calendar'>('timeline')
-const activeFilter = ref<'all' | '3m' | '6m' | '1y' | '3y' | '5y'>('all')
+const activeFilter = ref<'all' | '3m' | '6m' | '1y' | '3y' | '5y'>('5y')
 
 // ── 색상 ────────────────────────────────────────────
 const techColors = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#ABACED']
@@ -222,7 +222,6 @@ const selectedBarLabel = computed(() => {
 
 // ── 기간별 막대 차트 ─────────────────────────────────
 const periodBarData = [
-  { value: 'all', label: '전체',  count: 247, color: '#94a3b8' },
   { value: '3m',  label: '3개월', count: 8,   color: '#E88989' },
   { value: '6m',  label: '6개월', count: 15,  color: '#FFBC5E' },
   { value: '1y',  label: '1년',   count: 38,  color: '#ABACED' },
@@ -231,10 +230,10 @@ const periodBarData = [
 ]
 const maxPeriod = Math.max(...periodBarData.map(p => p.count))
 function periodBarH(count: number) {
-  return Math.round((count / maxPeriod) * 100) + 20
+  return Math.round((count / maxPeriod) * 120) + 16
 }
 
-// ── 만료 목록 (mock) ─────────────────────────────────
+// ── 소멸 목록 (mock) ─────────────────────────────────
 interface ExpiryItem {
   id: number; title: string; applicationNumber: string
   techField: string; dept: string; deptId?: number; expiryDate: string
@@ -388,16 +387,16 @@ const selectedMonthItems = computed(() =>
   display: flex;
   align-items: flex-end;
   justify-content: space-around;
-  height: 160px;
+  height: 220px;
   gap: 12px;
-  padding-top: 20px;
+  padding-top: 28px;
 }
 
 .period-bar-col { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; cursor: pointer; transition: transform 0.1s; }
 .period-bar-col:hover { transform: translateY(-2px); }
 .period-bar-col--selected .period-bar-label { color: var(--color-text); font-weight: 700; }
 
-.period-bar-wrap { display: flex; align-items: flex-end; height: 100px; }
+.period-bar-wrap { display: flex; align-items: flex-end; height: 150px; }
 .period-bar {
   width: 48px; border-radius: 6px 6px 0 0; min-height: 6px;
   transition: height .7s cubic-bezier(.4,0,.2,1);
@@ -446,7 +445,7 @@ const selectedMonthItems = computed(() =>
   white-space: nowrap;
 }
 
-/* 만료 목록 */
+/* 소멸 목록 */
 .table-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
