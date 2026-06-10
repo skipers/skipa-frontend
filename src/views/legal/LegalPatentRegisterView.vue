@@ -10,7 +10,7 @@
         </div>
         <div class="doc-work-actions">
           <button class="btn" type="button" @click="handleCancel">취소</button>
-          <button class="btn primary" type="button" @click="handleSave">저장</button>
+          <button class="btn primary" type="button" :disabled="isSubmitting || isExtracting" @click="handleSave">저장</button>
         </div>
       </div>
 
@@ -22,7 +22,7 @@
           <span>{{ uploadedFile ? uploadedFile.name : '특허 PDF 업로드 · patent_notice_A.pdf' }}</span>
         </label>
         <input id="doc-new-pdf" class="visually-hidden" type="file" accept=".pdf" ref="fileInputRef" @change="handleFileSelect" />
-        <button class="btn" type="button" @click="handleExtract">PDF에서 항목 추출</button>
+        <button class="btn" type="button" :disabled="isExtracting" @click="handleExtract">PDF에서 항목 추출</button>
       </div>
 
       <!-- 기본 정보 -->
@@ -142,13 +142,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { patentsApi, type PatentCreateRequest } from '@/api/patents'
 
 const router = useRouter()
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const uploadedFile = ref<File | null>(null)
+const isExtracting = ref(false)
+const isSubmitting = ref(false)
+const extractJobId = ref<number | null>(null)
+let extractPollTimer: ReturnType<typeof setInterval> | null = null
 
 const form = reactive({
   title: '',
@@ -172,24 +177,122 @@ const form = reactive({
   coreContent: '',
 })
 
-function handleFileSelect(e: Event) {
+function fillFormFromResult(result: Partial<PatentCreateRequest>) {
+  if (result.title) { form.title = result.title; form.finalTitle = result.title }
+  if (result.applicationNumber) form.applicationNumber = result.applicationNumber
+  if (result.registrationNumber) form.registrationNumber = result.registrationNumber
+  if (result.managementNumber) form.managementNumber = result.managementNumber
+  if (result.inventor) form.inventors = result.inventor
+  if (result.applicationDate) form.applicationDate = result.applicationDate
+  if (result.registrationDate) form.registrationDate = result.registrationDate
+  if (result.ipcCodes?.length) form.ipc = result.ipcCodes.join(', ')
+  if (result.expiryDate) form.expiryDate = result.expiryDate
+  if (result.businessField) form.bizField = result.businessField
+  if (result.techField) form.techField = result.techField
+  if (result.relatedProducts?.length) form.relatedProducts = result.relatedProducts.join(', ')
+  if (result.summary) form.summary = result.summary
+  if (result.filingCountry) form.country = result.filingCountry
+}
+
+async function handleFileSelect(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
-  if (file) uploadedFile.value = file
+  if (!file) return
+  uploadedFile.value = file
+  isExtracting.value = true
+
+  try {
+    // 1. 업로드 URL 생성
+    const { extractJobId: jobId, uploadUrl } = await patentsApi.createExtractUploadUrl()
+    extractJobId.value = jobId
+
+    // 2. presigned URL로 PUT 업로드 (인증 헤더 없이)
+    const putRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/pdf' },
+      body: file,
+    })
+    if (!putRes.ok) throw new Error('PDF 업로드 실패')
+
+    // 3. 업로드 완료 신호
+    await patentsApi.completeExtractUpload(jobId)
+
+    // 4. 상태 폴링 (1초 간격)
+    await new Promise<void>((resolve, reject) => {
+      extractPollTimer = setInterval(async () => {
+        try {
+          const { status } = await patentsApi.getExtractJobStatus(jobId)
+          if (status === 'COMPLETED') {
+            clearInterval(extractPollTimer!)
+            extractPollTimer = null
+            resolve()
+          } else if (status === 'FAILED') {
+            clearInterval(extractPollTimer!)
+            extractPollTimer = null
+            reject(new Error('추출 작업 실패'))
+          }
+        } catch (err) {
+          clearInterval(extractPollTimer!)
+          extractPollTimer = null
+          reject(err)
+        }
+      }, 1000)
+    })
+
+    // 5. 결과 조회 후 폼 자동 입력
+    const result = await patentsApi.getExtractJobResult(jobId)
+    fillFormFromResult(result)
+  } catch (err) {
+    console.error('PDF 추출 오류:', err)
+  } finally {
+    isExtracting.value = false
+  }
 }
 
 function handleExtract() {
   fileInputRef.value?.click()
 }
 
-
 function handleCancel() {
   router.push('/legal/patent-search')
 }
 
 async function handleSave() {
-  // TODO: API 연동
-  console.log('저장', { ...form })
+  if (isSubmitting.value) return
+  isSubmitting.value = true
+  try {
+    await patentsApi.createPatent({
+      title: form.finalTitle || form.title,
+      applicationNumber: form.applicationNumber,
+      registrationNumber: form.registrationNumber || undefined,
+      managementNumber: form.managementNumber || undefined,
+      inventor: form.inventors || undefined,
+      applicationDate: form.applicationDate || undefined,
+      registrationDate: form.registrationDate || undefined,
+      ipcCodes: form.ipc ? form.ipc.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+      expiryDate: form.expiryDate || undefined,
+      businessField: form.bizField || undefined,
+      techField: form.techField || undefined,
+      relatedProducts: form.relatedProducts
+        ? form.relatedProducts.split(',').map(s => s.trim()).filter(Boolean)
+        : undefined,
+      summary: form.summary || undefined,
+      filingCountry: form.country || undefined,
+      // TODO: 확인 필요 - isJointApplication / jointApplicant 필드 API 지원 여부
+    })
+    router.push('/legal/patent-search')
+  } catch (err) {
+    console.error('특허 저장 오류:', err)
+  } finally {
+    isSubmitting.value = false
+  }
 }
+
+onUnmounted(() => {
+  if (extractPollTimer) {
+    clearInterval(extractPollTimer)
+    extractPollTimer = null
+  }
+})
 </script>
 
 <style scoped>
