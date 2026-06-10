@@ -125,20 +125,28 @@ const navItems = [
     label: '특허 검색',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>`,
   },
+  {
+    name: 'BizPatentRegister',
+    to: '/biz/register',
+    label: '신규 특허 등록 신청',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`,
+  },
 ]
 
 const pageTitleMap: Record<string, string> = {
   '/biz/home': '홈',
   '/biz/review': '검토 현황',
   '/biz/patents': '담당 특허 관리',
-'/biz/pre-eval-lab': '사전 평가 Lab',
+  '/biz/pre-eval-lab': '사전 평가 Lab',
   '/biz/expiring': '소멸 예정 관리',
   '/biz/patent-search': '특허 검색',
+  '/biz/register': '신규 특허 등록 신청',
 }
 
 const currentPageTitle = computed(() => {
   const path = route.path
   if (path.startsWith('/biz/patent-search/')) return '특허 상세'
+  if (path.startsWith('/biz/register/history/')) return '신청 상세'
   return pageTitleMap[path] ?? ''
 })
 
