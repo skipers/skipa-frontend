@@ -328,7 +328,7 @@ import type { Department } from '@/types'
 
 const router  = useRouter()
 const auth    = useAuthStore()
-const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination()
+const { page, size, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination()
 
 // ── 상태 ────────────────────────────────────────────
 const loading = ref(false)

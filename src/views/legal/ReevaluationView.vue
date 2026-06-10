@@ -621,16 +621,7 @@ async function handleAssign() {
       await patentsApi.assignDepartment(assignTarget.value.id, assignDeptId.value)
     }
   } catch {
-    // API 미구현: mock 데이터 직접 업데이트
-    if (bulkAssignMode.value) {
-      ;[...selectedIds].forEach(id => {
-        const p = mockPatents.find(p => p.id === id)
-        if (p) p.departmentId = assignDeptId.value!
-      })
-    } else if (assignTarget.value) {
-      const p = mockPatents.find(p => p.id === assignTarget.value!.id)
-      if (p) p.departmentId = assignDeptId.value!
-    }
+    console.error('부서 배정 실패')
   } finally {
     assignLoading.value = false
     showAssignModal.value = false
