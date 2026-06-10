@@ -405,7 +405,8 @@
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { patentsApi } from '@/api/patents'
-import { reviewRequestsApi } from '@/api/misc'
+import { reviewsApi } from '@/api/reviews'
+import type { ReviewTargetParams } from '@/api/reviews'
 import { usePagination } from '@/composables/usePagination'
 import { useReadReplies } from '@/composables/useReadReplies'
 import BasePagination from '@/components/ui/BasePagination.vue'
@@ -574,73 +575,59 @@ function decisionLabel(d: string) {
   return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
 }
 
-// ── Mock 특허 목록 ───────────────────────────────────
-const mockPatents: ReevalItem[] = [
-  { id: 1,  title: 'NF3 가스 이물질 제거 시스템',         applicationNumber: '10-2026-0012345', techField: '반도체', summary: '반도체 식각 공정에서 발생하는 NF3 가스 내 미세 이물질을 효율적으로 포집·제거하기 위한 복합 필터 시스템으로, 정전 포집 방식과 물리적 여과를 결합하여 기존 대비 제거 효율 98.5% 이상을 달성한다.', departmentId: 2, decision: 'KEEP',    reviewStatus: 'done',       isOverdue: false },
-  { id: 2,  title: '플라즈마 식각 장치 제어 방법',          applicationNumber: '10-2025-0098732', techField: '반도체', summary: '플라즈마 밀도 및 에너지 분포를 실시간 센싱하여 RF 전력과 가스 유량을 자동 조절함으로써 식각 균일도를 향상시키는 피드백 제어 방법에 관한 발명이다.', departmentId: 2, decision: null,      reviewStatus: 'requested',  isOverdue: false },
-  { id: 3,  title: '배터리 전극 코팅 균일도 향상',          applicationNumber: '10-2025-0041200', techField: '배터리', summary: '슬롯-다이 코터의 유량 맥동을 억제하는 능동형 압력 보상 메커니즘을 적용하여 전극 활물질 코팅 두께 편차를 ±0.3 μm 이내로 제어하는 기술이다.', departmentId: 3, decision: 'KEEP',    reviewStatus: 'done',       isOverdue: false },
-  { id: 4,  title: '신소재 열 전도성 향상 방법',            applicationNumber: '10-2024-0081900', techField: '소재',   summary: '그래핀-질화붕소 복합체를 고분자 매트릭스에 수직 배향으로 분산시켜 두께 방향 열전도도를 기존 대비 4.2배 향상시키는 소재 합성 및 성형 방법이다.', departmentId: 5, decision: 'DISPOSE', reviewStatus: 'done',       isOverdue: false },
-  { id: 5,  title: 'AI 기반 품질 검사 자동화 시스템',       applicationNumber: '10-2026-0031891', techField: 'AI/SW',  summary: '비전 트랜스포머 모델과 능동 학습 루프를 결합하여 반도체 외관 결함을 실시간으로 분류하고, 소량의 레이블 데이터만으로도 고정밀 검사를 수행하는 자동화 시스템이다.', departmentId: 4, decision: null,      reviewStatus: 'requested',  isOverdue: false },
-  { id: 6,  title: '반도체 세정 공정 최적화 방법',          applicationNumber: '10-2023-0055100', techField: '반도체', summary: '습식 세정 공정에서 메가소닉 에너지와 희석 HF를 순차 적용하는 최적 시퀀스를 제안하며, 파티클 제거율을 유지하면서 산화막 손실을 30% 이상 저감한다.', departmentId: undefined, decision: null, reviewStatus: 'unassigned', isOverdue: false },
-  { id: 7,  title: '리튬이온 배터리 수명 예측 알고리즘',    applicationNumber: '10-2025-0067432', techField: '배터리', summary: '사이클 충·방전 데이터에서 추출한 증분 용량 곡선 특징을 LSTM 모델에 입력하여 잔여 수명(RUL)을 95% 신뢰구간으로 예측하는 알고리즘이다.', departmentId: 3, decision: null,      reviewStatus: 'overdue',    isOverdue: true  },
-  { id: 8,  title: '고온 내열 소재 합성 공정',              applicationNumber: '10-2024-0012980', techField: '소재',   summary: '텅스텐 카바이드 나노입자를 실리콘 카바이드 기지에 스파크 플라즈마 소결로 치밀화하여 1400°C 이상의 고온 환경에서 기계적 강도와 산화 저항성을 동시에 확보하는 공정이다.', departmentId: 5, decision: null,      reviewStatus: 'requested',  isOverdue: false },
-  { id: 9,  title: '반도체 패키징 방열 구조',               applicationNumber: '10-2026-0044211', techField: '반도체', summary: '칩 후면에 마이크로 채널 히트싱크를 직접 집적하고 이중 유체 루프로 냉각하는 구조를 통해 고발열 AI 가속기 칩의 접합 온도를 25°C 이상 저감하는 패키징 기술이다.', departmentId: 2, decision: null,      reviewStatus: 'requested',  isOverdue: false },
-  { id: 10, title: '신경망 기반 결함 검출 시스템',          applicationNumber: '10-2025-0029004', techField: 'AI/SW',  summary: '다중 스케일 컨볼루션 네트워크와 어텐션 게이트를 결합하여 X선 및 초음파 이미지에서 내부 균열·기공 등 미세 결함을 동시에 검출하는 비파괴 검사 시스템이다.', departmentId: 4, decision: null,      reviewStatus: 'requested',  isOverdue: false },
-  { id: 11, title: '전고체 배터리 전해질 조성물',           applicationNumber: '10-2024-0093100', techField: '배터리', summary: '황화물계 고체 전해질에 Li₆PS₅Cl 유도체를 도입하고 입계 저항 최소화 소결 조건을 최적화하여 이온 전도도 10 mS/cm 이상을 실온에서 구현하는 조성물이다.', departmentId: undefined, decision: null, reviewStatus: 'unassigned', isOverdue: false },
-  { id: 12, title: '산화막 성장 제어 방법',                 applicationNumber: '10-2023-0077650', techField: '반도체', summary: '원자층 증착(ALD) 사이클 수와 전구체 노출 시간을 정밀 제어하여 High-k 게이트 산화막의 두께 균일도 및 계면 트랩 밀도를 개선하는 공정 제어 방법이다.', departmentId: 2, decision: 'DISPOSE', reviewStatus: 'done',       isOverdue: false },
-]
-
 // ── 데이터 로드 ──────────────────────────────────────
+const statusToReview: Record<string, string> = {
+  unassigned: 'SCHEDULED',
+  requested:  'PENDING',
+  overdue:    'OVERDUE',
+  done:       'SUBMITTED',
+}
+const reviewToStatus: Record<string, ReevalItem['reviewStatus']> = {
+  SCHEDULED: 'unassigned',
+  PENDING:   'requested',
+  OVERDUE:   'overdue',
+  SUBMITTED: 'done',
+}
+
 async function fetchList(p = 1) {
   loading.value = true
   setPage(p)
   selectedIds.clear()
   try {
-    const res = await patentsApi.list({ ...pageQuery.value })
-    items.value = res.items.map((patent, i) => ({
-      id: patent.id,
-      title: patent.title,
-      applicationNumber: patent.applicationNumber,
-      techField: (patent as any).techField,
-      summary: (patent as any).summary,
-      departmentId: i % 3 === 0 ? undefined : [2, 3, 4][i % 3],
-      decision: i % 5 === 4 ? 'KEEP' : i % 7 === 6 ? 'DISPOSE' : null,
-      reviewStatus: (['unassigned', 'requested', 'overdue', 'done', 'requested'] as const)[i % 5],
-      isOverdue: i % 7 === 3,
+    const params: ReviewTargetParams = { page: p, size: pageQuery.value.size }
+    if (activeStatus.value !== 'all' && activeStatus.value !== 'unread' && statusToReview[activeStatus.value]) {
+      params.status = statusToReview[activeStatus.value]
+    }
+    if (activeDept.value !== null && activeDept.value !== -1) {
+      params.departmentId = activeDept.value
+    }
+    // TODO: 확인 필요 - activeDecision(opinion) 필터 API 지원 여부
+
+    const res = await reviewsApi.getReviewTargets(params)
+    items.value = res.items.map(r => ({
+      id: r.patentId,
+      title: r.title,
+      applicationNumber: r.applicationNumber,
+      departmentId: r.departmentId,
+      decision: r.opinion ?? null,
+      reviewStatus: reviewToStatus[r.status] ?? 'unassigned',
+      isOverdue: r.status === 'OVERDUE',
+      // techField, summary: ReviewResponse에 없음
     }))
     setTotal(res.totalItems, res.totalPages)
+
+    // TODO: 확인 필요 - 각 상태별 정확한 count는 별도 API 호출 필요
+    const cur = activeStatus.value
     statusCounts.value = {
-      all: res.totalItems,
-      unassigned: Math.round(res.totalItems * 0.12),
-      requested:  Math.round(res.totalItems * 0.45),
-      overdue:    Math.round(res.totalItems * 0.08),
-      done:       Math.round(res.totalItems * 0.35),
+      all:        cur === 'all'        ? res.totalItems : statusCounts.value.all,
+      unassigned: cur === 'unassigned' ? res.totalItems : statusCounts.value.unassigned,
+      requested:  cur === 'requested'  ? res.totalItems : statusCounts.value.requested,
+      overdue:    cur === 'overdue'    ? res.totalItems : statusCounts.value.overdue,
+      done:       cur === 'done'       ? res.totalItems : statusCounts.value.done,
       unread:     0,
     }
-  } catch {
-    let pool = activeDept.value === null
-      ? mockPatents
-      : activeDept.value === -1
-        ? mockPatents.filter(i => !i.departmentId)
-        : mockPatents.filter(i => i.departmentId === activeDept.value)
-    if (activeDecision.value === 'KEEP')         pool = pool.filter(i => i.decision === 'KEEP')
-    else if (activeDecision.value === 'DISPOSE') pool = pool.filter(i => i.decision === 'DISPOSE')
-    const byDept = pool
-    const unreadItems = byDept.filter(i => i.reviewStatus === 'done' && i.decision && !readIds.value.has(i.id))
-    const filtered =
-      activeStatus.value === 'all'    ? byDept :
-      activeStatus.value === 'unread' ? unreadItems :
-      byDept.filter(i => i.reviewStatus === activeStatus.value)
-    items.value = filtered
-    setTotal(filtered.length, 1)
-    statusCounts.value = {
-      all:        byDept.length,
-      unread:     unreadItems.length,
-      unassigned: byDept.filter(i => i.reviewStatus === 'unassigned').length,
-      requested:  byDept.filter(i => i.reviewStatus === 'requested').length,
-      overdue:    byDept.filter(i => i.reviewStatus === 'overdue').length,
-      done:       byDept.filter(i => i.reviewStatus === 'done').length,
-    }
+  } catch (err) {
+    console.error('목록 조회 오류:', err)
   } finally {
     loading.value = false
   }
@@ -696,15 +683,12 @@ async function handleAssign() {
 async function handleSend() {
   sending.value = true
   try {
-    const assignedItems = [...selectedIds]
+    const sendablePatentIds = [...selectedIds]
       .map(id => items.value.find(i => i.id === id))
-      .filter(i => i?.departmentId && !['requested', 'done', 'overdue'].includes(i?.reviewStatus)) as ReevalItem[]
+      .filter(i => i?.departmentId && !['requested', 'done', 'overdue'].includes(i?.reviewStatus ?? ''))
+      .map(i => i!.id)
 
-    const d = new Date()
-    await reviewRequestsApi.create({
-      quarter: `${d.getFullYear()}Q${Math.ceil((d.getMonth() + 1) / 3)}`,
-      items: assignedItems.map(i => ({ patentId: i.id, departmentId: i.departmentId! })),
-    })
+    await reviewsApi.requestBulkReview(sendablePatentIds)
   } catch (e) { console.error(e) }
   finally {
     sending.value = false

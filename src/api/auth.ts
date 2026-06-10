@@ -1,23 +1,33 @@
-import client from '@/http/client'
-import type { LoginRequest, LoginResponse, RefreshResponse, User } from '@/types'
+import apiClient from './axios'
+import type { LoginResponse, RefreshResponse, User } from '@/types'
+
+export interface RegisterRequest {
+  loginId: string
+  password: string
+  name: string
+  email: string
+  role: string
+  departmentId?: number
+}
 
 export const authApi = {
-  login: async (body: LoginRequest): Promise<LoginResponse> => {
-    const { data } = await client.post('/auth/login', body)
-    return data.data
+  login: async (loginId: string, password: string): Promise<LoginResponse> => {
+    return apiClient.post('/auth/login', { loginId, password })
+  },
+
+  register: async (body: RegisterRequest): Promise<{ userId: string }> => {
+    return apiClient.post('/auth/register', body)
   },
 
   logout: async (): Promise<void> => {
-    await client.post('/auth/logout')
-  },
-
-  me: async (): Promise<{ user: User }> => {
-    const { data } = await client.get('/auth/me')
-    return data.data
+    return apiClient.post('/auth/logout')
   },
 
   refresh: async (refreshToken: string): Promise<RefreshResponse> => {
-    const { data } = await client.post('/auth/refresh', { refreshToken })
-    return data.data
+    return apiClient.post('/auth/refresh', { refreshToken })
+  },
+
+  me: async (): Promise<{ user: User }> => {
+    return apiClient.get('/auth/me')
   },
 }

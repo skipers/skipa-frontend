@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { tokenStorage } from '@/http/client'
+import { tokenStorage } from '@/api/axios'
 import { authApi } from '@/api/auth'
 import type { User, LoginRequest } from '@/types'
 
@@ -20,24 +20,10 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(credentials: LoginRequest) {
     loading.value = true
     try {
-      // 임시 mock — 백엔드 연결 후 아래 주석 해제하고 mock 코드 삭제
-      tokenStorage.setAccess('mock-access-token')
-      tokenStorage.setRefresh('mock-refresh-token')
-      const isBiz = credentials.id !== 'legal'
-      user.value = {
-        id: credentials.id,
-        name: isBiz ? '반도체 사업부' : 'Legal AI팀',
-        email: credentials.id + '@skipa.com',
-        role: isBiz ? 'BUSINESS' : 'LEGAL',
-        departmentId: isBiz ? 2 : undefined,
-      }
-
-      // 실제 API 연결 시 아래 코드 사용
-      // const data = await authApi.login(credentials)
-      // tokenStorage.setAccess(data.accessToken)
-      // tokenStorage.setRefresh(data.refreshToken)
-      // await fetchMe()
-
+      const data = await authApi.login(credentials.id, credentials.password)
+      tokenStorage.setAccess(data.accessToken)
+      tokenStorage.setRefresh(data.refreshToken)
+      await fetchMe()
       return user.value
     } finally {
       loading.value = false
