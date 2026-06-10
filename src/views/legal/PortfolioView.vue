@@ -13,7 +13,7 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">Legal AI팀</p>
+        <p class="page-header__eyebrow">보유 특허 전체</p>
         <h2 class="page-header__title">포트폴리오 분석</h2>
         <p class="page-header__desc">보유 특허의 기술 분야, 국가, 가치 등급 분포를 분석합니다</p>
       </div>
@@ -719,17 +719,17 @@ const insights = [
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  align-items: start;
 }
 @media (max-width: 860px) { .decision-row { grid-template-columns: 1fr; } }
 
 /* ── 연도별 재평가 결정 스택 바 ──────────────────── */
 .decision-chart {
-  flex: 1;
+  height: 180px;
   display: flex;
   align-items: flex-end;
   justify-content: space-around;
   gap: 6px;
-  min-height: 120px;
 }
 .decision-bar-group {
   display: flex;
