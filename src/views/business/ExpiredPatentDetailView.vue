@@ -1,8 +1,13 @@
 <template>
   <div class="expired-detail">
 
+    <!-- 로딩 -->
+    <div v-if="isLoading" class="not-found">
+      <p style="color:#64748b">불러오는 중...</p>
+    </div>
+
     <!-- 특허 없음 / 접근 불가 -->
-    <div v-if="!patent || isActivePatent" class="not-found">
+    <div v-else-if="!patent || isActivePatent" class="not-found">
       <div class="not-found__icon">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -338,9 +343,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
+import { patentsApi, type PatentDetail } from '@/api/patents'
+// TODO: AI 서버 연동 후 교체 필요 — MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS, AI_REPORT_COMMENTS, AI_GRADE_SCORES, MOCK_OPINION_HISTORIES
 import {
-  MOCK_PATENTS, PATENT_INVENTORS, TECH_FIELD_IPC,
-  COUNTRY_LABEL, TECH_FIELD_SUMMARY, TECH_FIELD_CLAIMS,
+  COUNTRY_LABEL,
   AI_REPORT_COMMENTS, AI_GRADE_SCORES,
   MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS,
   MOCK_OPINION_HISTORIES,
@@ -348,7 +354,40 @@ import {
 
 const props = defineProps<{ patentId: number }>()
 
-const patent = computed(() => MOCK_PATENTS.find(p => p.id === props.patentId) ?? null)
+const isLoading = ref(false)
+const loadError = ref<string | null>(null)
+const patentData = ref<PatentDetail | null>(null)
+
+function scoreToGrade(score?: number): string | null {
+  if (score == null) return null
+  if (score >= 90) return 'S'
+  if (score >= 75) return 'A'
+  if (score >= 60) return 'B'
+  return 'C'
+}
+
+const patent = computed(() => {
+  const d = patentData.value
+  if (!d) return null
+  return {
+    id: d.id,
+    title: d.title,
+    applicationNumber: d.applicationNumber,
+    applicationDate: d.applicationDate,
+    registrationDate: d.registrationDate,
+    expiryDate: d.expiryDate,
+    techField: d.techField ?? '',
+    status: d.latestLegalStatus === 'LAPSED' ? 'EXPIRED' : (d.latestLegalStatus ?? 'EXPIRED'),
+    dept: d.currentDepartmentName ?? '',
+    grade: scoreToGrade(d.latestReportScore),
+    aiOpinion: null as string | null,
+    tags: d.keywords ?? [],
+    inventor: d.inventor ?? '—',
+    ipcCodes: d.ipcCodes ?? [],
+    summary: d.summary ?? '',
+    filingCountry: d.filingCountry,
+  }
+})
 
 const isActivePatent = computed(() =>
   !!patent.value && patent.value.status !== 'EXPIRED' && patent.value.status !== 'ABANDONED'
@@ -356,20 +395,23 @@ const isActivePatent = computed(() =>
 
 const patentCountry = computed(() => {
   if (!patent.value) return ''
-  const code = patent.value.applicationNumber.split('-')[0]
+  const code = patent.value.filingCountry ?? patent.value.applicationNumber.split('-')[0]
   return COUNTRY_LABEL[code] ?? code
 })
 
-const inventor = computed(() => PATENT_INVENTORS[props.patentId] ?? '—')
-const ipcCode  = computed(() => patent.value ? (TECH_FIELD_IPC[patent.value.techField] ?? '—') : '—')
-const summary  = computed(() => patent.value ? (TECH_FIELD_SUMMARY[patent.value.techField] ?? '') : '')
-const claims   = computed(() => patent.value ? (TECH_FIELD_CLAIMS[patent.value.techField] ?? []) : [])
+const inventor  = computed(() => patent.value?.inventor ?? '—')
+const ipcCode   = computed(() => patent.value?.ipcCodes[0] ?? '—')
+const summary   = computed(() => patent.value?.summary ?? '')
+// TODO: AI 서버 연동 후 교체 필요 — 청구항 데이터는 AI 서버에서 제공
+const claims    = computed<string[]>(() => [])
 
 const registrationDate = computed(() => {
-  if (!patent.value) return '—'
-  const d = new Date(patent.value.applicationDate)
-  d.setMonth(d.getMonth() + 18)
-  return d.toISOString().slice(0, 10).replace(/-/g, '.')
+  const d = patent.value?.registrationDate
+  if (d) return d.slice(0, 10).replace(/-/g, '.')
+  if (!patent.value?.applicationDate) return '—'
+  const dt = new Date(patent.value.applicationDate)
+  dt.setMonth(dt.getMonth() + 18)
+  return dt.toISOString().slice(0, 10).replace(/-/g, '.')
 })
 
 const statusStripClass = computed(() =>
@@ -383,6 +425,7 @@ const statusSub = computed(() => {
     : `${d}에 권리가 소멸되었습니다`
 })
 
+// TODO: AI 서버 연동 후 교체 필요
 const aiScores = computed(() => {
   const g = patent.value?.grade
   if (!g) return { tech: 0, rights: 0, biz: 0 }
@@ -395,6 +438,7 @@ const aiScores = computed(() => {
   }
 })
 
+// TODO: AI 서버 연동 후 교체 필요
 const aiComments = computed(() => {
   const g = patent.value?.grade
   if (!g) return { tech: '', rights: '', biz: '', bizSubmit: '' }
@@ -407,10 +451,8 @@ const miniScores = computed(() => [
   { label: '사업성', value: aiScores.value.biz },
 ])
 
-const opinionHistories = computed(() => {
-  if (!patent.value) return []
-  return MOCK_OPINION_HISTORIES[props.patentId] ?? []
-})
+// TODO: AI 서버 연동 후 교체 필요 — businessReviewsApi.getBusinessReviewHistory() 연결 필요
+const opinionHistories = computed(() => MOCK_OPINION_HISTORIES[props.patentId] ?? [])
 
 // ── 탭 & 스크롤 스파이 ───────────────────────────────
 const activeTab = ref('info')
@@ -468,8 +510,18 @@ function setupObserver() {
 }
 
 onMounted(async () => {
-  await nextTick()
-  setupObserver()
+  isLoading.value = true
+  loadError.value = null
+  try {
+    patentData.value = await patentsApi.getPatent(props.patentId)
+  } catch (e) {
+    console.error('ExpiredPatentDetailView/onMounted:', e)
+    loadError.value = '특허 정보를 불러오는 데 실패했습니다.'
+  } finally {
+    isLoading.value = false
+    await nextTick()
+    setupObserver()
+  }
 })
 
 onUnmounted(() => {

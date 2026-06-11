@@ -1,3 +1,4 @@
+// DEPRECATED: 모든 API 호출은 src/api/ 모듈을 사용하세요. 이 파일은 삭제 예정입니다.
 import client from '@/http/client'
 import type {
   DashboardSummary,

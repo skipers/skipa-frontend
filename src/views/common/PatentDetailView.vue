@@ -1027,6 +1027,7 @@ interface ChatMessage {
   typing?: boolean
 }
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
+// TODO: AI 서버 연동 후 교체 필요 — MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS, MOCK_PROJECT_EVIDENCE
 import {
   MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS, MOCK_PROJECT_EVIDENCE,
   COUNTRY_LABEL, TECH_FIELD_CLAIMS, AI_REPORT_COMMENTS, AI_GRADE_SCORES, DEPT_MAP,

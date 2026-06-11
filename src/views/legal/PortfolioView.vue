@@ -351,6 +351,8 @@ import type {
 const techColors  = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#6366f1', '#ABACED', '#67E2AB']
 const trendColors = ['#ABACED', '#67E2AB', '#FFBC5E']
 
+const isLoading = ref(false)
+
 // ── 분포 데이터 ──────────────────────────────────────
 const totalPatents = ref(0)
 const treemapItems = ref<TechFieldItem[]>([])
@@ -371,6 +373,7 @@ const techDecision = ref<BreakdownDecisionItem[]>([])
 const insights = ref<PortfolioInsightItem[]>([])
 
 async function fetchAll() {
+  isLoading.value = true
   try {
     const [dist, trends, decisions, ins] = await Promise.all([
       portfolioApi.getPortfolioDistribution(),
@@ -390,7 +393,9 @@ async function fetchAll() {
     techDecision.value = decisions.byTechField
     insights.value     = ins
   } catch (err) {
-    console.error('포트폴리오 데이터 조회 실패:', err)
+    console.error('PortfolioView/fetchAll:', err)
+  } finally {
+    isLoading.value = false
   }
 }
 
