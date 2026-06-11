@@ -106,8 +106,28 @@
 
     <hr class="section-divider"/>
 
-    <!-- 담당 특허 현황 + 연도별 추이 -->
+    <!-- 신규 신청 현황 + 담당 특허 현황 + 연도별 추이 -->
     <div class="charts-row">
+
+      <!-- 신규 특허 신청 현황 -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">신규 특허 신청 현황</h3>
+          <RouterLink to="/biz/register?tab=history" class="card__link">전체 보기</RouterLink>
+        </div>
+        <div v-if="recentApplications.length" class="app-list">
+          <div v-for="a in recentApplications" :key="a.id" class="app-item">
+            <div class="app-item__left">
+              <span class="app-status-badge" :class="`app-status--${a.appStatus}`">
+                {{ appStatusLabel(a.appStatus) }}
+              </span>
+              <p class="app-item__title">{{ a.title }}</p>
+            </div>
+            <p class="app-item__date">{{ formatDate(a.submittedAt) }}</p>
+          </div>
+        </div>
+        <div v-else class="card__empty">신청 이력이 없습니다.</div>
+      </div>
 
       <!-- 담당 특허 현황 (도넛) -->
       <div class="card">
@@ -163,21 +183,21 @@
               :x2="tW - tPad.r" :y2="tPad.t + ((n - 1) / 3) * tPlotH"
               stroke="#f1f5f9" stroke-width="1"/>
             <!-- 출원 선 -->
-            <polyline :points="filedPoints" fill="none" stroke="#ABACED" stroke-width="2"
+            <polyline :points="filedPoints" fill="none" stroke="#ABACED" stroke-width="1.5"
               stroke-linejoin="round" stroke-linecap="round"/>
             <!-- 소멸/포기 선 -->
-            <polyline :points="expiredPoints" fill="none" stroke="#E88989" stroke-width="2"
+            <polyline :points="expiredPoints" fill="none" stroke="#E88989" stroke-width="1.5"
               stroke-linejoin="round" stroke-linecap="round"/>
             <!-- 출원 점 -->
             <circle v-for="(d, i) in bizTrendData" :key="`f${i}`"
-              :cx="tX(i)" :cy="tY(d.filed)" r="3.5" fill="#fff" stroke="#ABACED" stroke-width="2"/>
+              :cx="tX(i)" :cy="tY(d.filed)" r="3" fill="#fff" stroke="#ABACED" stroke-width="1.5"/>
             <!-- 소멸/포기 점 -->
             <circle v-for="(d, i) in bizTrendData" :key="`e${i}`"
-              :cx="tX(i)" :cy="tY(d.expired)" r="3.5" fill="#fff" stroke="#E88989" stroke-width="2"/>
+              :cx="tX(i)" :cy="tY(d.expired)" r="3" fill="#fff" stroke="#E88989" stroke-width="1.5"/>
             <!-- X축 연도 라벨 -->
             <text v-for="(d, i) in bizTrendData" :key="`lbl${i}`"
               :x="tX(i)" :y="tH - 3"
-              text-anchor="middle" font-size="10" fill="#94a3b8" font-weight="500">{{ d.year }}</text>
+              text-anchor="middle" font-size="9" fill="#94a3b8" font-weight="500">{{ d.year }}</text>
           </svg>
         </div>
       </div>
@@ -192,6 +212,7 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { MOCK_PATENTS, MOCK_REEVAL, RECENT_SUBMISSIONS } from '@/mocks/data'
+import { usePatentApplications } from '@/composables/usePatentApplications'
 
 const auth   = useAuthStore()
 const router = useRouter()
@@ -234,6 +255,17 @@ const pendingItems = ref(
 
 const recentSubmissions = ref(RECENT_SUBMISSIONS)
 
+const { applications } = usePatentApplications()
+const recentApplications = computed(() =>
+  [...applications.value]
+    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+    .slice(0, 4)
+)
+
+function appStatusLabel(s: string) {
+  return { pending: '검토중', approved: '승인', rejected: '거절', withdrawn: '철회' }[s] ?? s
+}
+
 const patentStatItems = [
   { label: '유지',   count: 6, color: '#67E2AB', pct: 75 },
   { label: '소멸/포기', count: 1, color: '#E88989', pct: 13 },
@@ -261,8 +293,8 @@ const bizTrendData = [
   { year: '2025', filed: 2, expired: 1 },
   { year: '2026', filed: 1, expired: 0 },
 ]
-const tW = 540, tH = 130
-const tPad = { t: 28, b: 22, l: 18, r: 12 }
+const tW = 620, tH = 118
+const tPad = { t: 24, b: 28, l: 18, r: 12 }
 const tPlotH = tH - tPad.t - tPad.b
 const tPlotW = tW - tPad.l - tPad.r
 const tMaxVal = Math.max(...bizTrendData.flatMap(d => [d.filed, d.expired]))
@@ -446,7 +478,7 @@ onMounted(() => { loading.value = false })
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
-@media (max-width: 760px) { .main-row { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .main-row { grid-template-columns: 1fr; } }
 
 /* ── 공통 카드 ────────────────────────────────────────── */
 .card {
@@ -588,6 +620,53 @@ onMounted(() => { loading.value = false })
 .decision-badge--sell    { background: #eef2ff; color: #4338ca; }
 .decision-badge--dispose { background: #fef2f2; color: #dc2626; }
 
+/* ── 신규 특허 신청 현황 ──────────────────────────────── */
+.app-list { display: flex; flex-direction: column; gap: 0; }
+
+.app-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f8fafc;
+}
+.app-item:last-child { border-bottom: none; }
+
+.app-item__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-item__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.app-item__date { font-size: 11.5px; color: #94a3b8; margin: 0; white-space: nowrap; flex-shrink: 0; }
+
+.app-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.app-status--pending   { background: #fef9c3; color: #854d0e; }
+.app-status--approved  { background: #f0fdf4; color: #15803d; }
+.app-status--rejected  { background: #fef2f2; color: #dc2626; }
+.app-status--withdrawn { background: #f1f5f9; color: #64748b; }
+
 /* ── 구분선 ──────────────────────────────────────────── */
 .section-divider {
   border: none;
@@ -598,10 +677,11 @@ onMounted(() => { loading.value = false })
 /* ── 하단 차트 2열 ───────────────────────────────────── */
 .charts-row {
   display: grid;
-  grid-template-columns: 1fr 1.6fr;
+  grid-template-columns: 1fr 1fr 2fr;
   gap: 16px;
 }
-@media (max-width: 760px) { .charts-row { grid-template-columns: 1fr; } }
+@media (max-width: 960px) { .charts-row { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .charts-row { grid-template-columns: 1fr; } }
 
 /* ── 담당 특허 도넛 ──────────────────────────────────── */
 .donut-wrap {
