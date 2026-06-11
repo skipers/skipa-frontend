@@ -190,9 +190,9 @@
                     <span class="form-label">발명자</span>
                     <input class="form-input" type="text" v-model="form.inventors" placeholder="홍길동, 김철수" />
                   </label>
-                  <label class="form-field full">
-                    <span class="form-label">발명의 명칭(최종)</span>
-                    <input class="form-input" type="text" v-model="form.finalTitle" />
+                  <label class="form-field">
+                    <span class="form-label">출원인명</span>
+                    <input class="form-input" type="text" v-model="form.applicant" />
                   </label>
                 </div>
               </div>
@@ -249,6 +249,14 @@
                     <input class="form-input" type="date" v-model="form.registrationDate" />
                   </label>
                   <label class="form-field">
+                    <span class="form-label">공개일</span>
+                    <input class="form-input" type="date" v-model="form.publicationDate" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">공고일</span>
+                    <input class="form-input" type="date" v-model="form.announcementDate" />
+                  </label>
+                  <label class="form-field">
                     <span class="form-label">출원번호</span>
                     <input class="form-input" type="text" v-model="form.applicationNumber" placeholder="10-2026-0000000" />
                   </label>
@@ -257,8 +265,28 @@
                     <input class="form-input" type="text" v-model="form.registrationNumber" placeholder="10-0000000" />
                   </label>
                   <label class="form-field">
-                    <span class="form-label">IPC</span>
-                    <input class="form-input" type="text" v-model="form.ipc" />
+                    <span class="form-label">공개번호</span>
+                    <input class="form-input" type="text" v-model="form.publicationNumber" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">공고번호</span>
+                    <input class="form-input" type="text" v-model="form.announcementNumber" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">IPC 코드</span>
+                    <TagInput v-model="form.ipc" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">CPC 코드</span>
+                    <TagInput v-model="form.cpc" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">심사청구항수</span>
+                    <input class="form-input" type="number" min="0" v-model="form.examinationClaimCount" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">피인용 수</span>
+                    <input class="form-input" type="number" min="0" v-model="form.citationCount" />
                   </label>
                   <label class="form-field">
                     <span class="form-label">예상 소멸일</span>
@@ -272,6 +300,10 @@
                 <div class="form-section__title">내용 요약</div>
                 <div class="form-grid">
                   <label class="form-field full">
+                    <span class="form-label">키워드</span>
+                    <TagInput v-model="form.keywords" />
+                  </label>
+                  <label class="form-field full">
                     <span class="form-label">발명의 요약</span>
                     <textarea class="form-textarea" v-model="form.summary" placeholder="특허의 핵심 기술 내용을 요약해 주세요." />
                   </label>
@@ -281,32 +313,45 @@
               <!-- 행정 상태 -->
               <div class="form-section">
                 <div class="form-section__title">행정 상태</div>
-                <div class="ah-stack">
-                  <div v-for="(entry, idx) in adminHistory" :key="idx" class="ah-row">
-                    <select :class="['ah-type-select', `ah-type-select--${entry.type}`]" v-model="entry.type">
-                      <option value="file">출원</option>
-                      <option value="pub">공개</option>
-                      <option value="reg">등록</option>
-                      <option value="rejected">거절</option>
-                      <option value="invalid">무효</option>
-                      <option value="expired">소멸</option>
-                      <option value="withdraw">취하</option>
-                      <option value="abandon">포기</option>
-                    </select>
-                    <input class="form-input ah-date" type="date" v-model="entry.date" />
-                    <button class="btn-ah-del" type="button" @click="adminHistory.splice(idx, 1)">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                      </svg>
-                    </button>
+                <template v-if="!editMode">
+                  <div class="ah-stack">
+                    <div v-for="(entry, idx) in adminHistory" :key="idx" class="ah-row">
+                      <select :class="['ah-type-select', `ah-type-select--${entry.type}`]" v-model="entry.type">
+                        <option value="file">출원</option>
+                        <option value="pub">공개</option>
+                        <option value="reg">등록</option>
+                        <option value="rejected">거절</option>
+                        <option value="invalid">무효</option>
+                        <option value="expired">소멸</option>
+                        <option value="withdraw">취하</option>
+                        <option value="abandon">포기</option>
+                      </select>
+                      <input class="form-input ah-date" type="date" v-model="entry.date" />
+                      <button class="btn-ah-del" type="button" @click="adminHistory.splice(idx, 1)">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <button class="btn-ah-add" type="button" @click="adminHistory.push({ type: 'file', date: '' })">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                  상태 추가
-                </button>
+                  <button class="btn-ah-add" type="button" @click="adminHistory.push({ type: 'file', date: '' })">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    상태 추가
+                  </button>
+                </template>
+                <template v-else>
+                  <div v-if="adminHistory.length > 0" class="ah-stack">
+                    <div v-for="entry in adminHistory" :key="entry.type + entry.date" class="ah-row ah-row--readonly">
+                      <span :class="['ah-type-select', `ah-type-select--${entry.type}`, 'ah-type-readonly']">
+                        {{ { file:'출원', pub:'공개', reg:'등록', rejected:'거절', invalid:'무효', expired:'소멸', withdraw:'취하', abandon:'포기' }[entry.type] ?? entry.type }}
+                      </span>
+                      <span class="ah-date-readonly">{{ entry.date || '-' }}</span>
+                    </div>
+                  </div>
+                  <p v-else class="ah-empty">등록된 행정 상태가 없습니다.</p>
+                </template>
               </div>
 
             </div>
@@ -363,6 +408,7 @@
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { MOCK_PATENTS } from '@/mocks/data'
+import TagInput from '@/components/ui/TagInput.vue'
 import { usePatentApplications } from '@/composables/usePatentApplications'
 import { usePatentDatabase } from '@/composables/usePatentDatabase'
 
@@ -415,20 +461,24 @@ const editTargetId = ref<number | null>(null)
 const editTargetTitle = ref('')
 
 const form = reactive({
-  title: '', managementNumber: '', inventors: '', finalTitle: '',
+  title: '', managementNumber: '', inventors: '', applicant: '',
   bizField: '', techField: '', relatedProducts: '', country: 'KR',
   status: '등록', coApplicant: '아니오', coApplicantName: '',
-  applicationDate: '', registrationDate: '', applicationNumber: '',
-  registrationNumber: '', ipc: '', expiryDate: '', summary: '',
+  applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
+  applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
+  ipc: [] as string[], cpc: [] as string[], examinationClaimCount: '', citationCount: '',
+  expiryDate: '', keywords: [] as string[], summary: '',
 })
 
 function clearForm() {
   Object.assign(form, {
-    title: '', managementNumber: '', inventors: '', finalTitle: '',
+    title: '', managementNumber: '', inventors: '', applicant: '',
     bizField: '', techField: '', relatedProducts: '', country: 'KR',
     status: '등록', coApplicant: '아니오', coApplicantName: '',
-    applicationDate: '', registrationDate: '', applicationNumber: '',
-    registrationNumber: '', ipc: '', expiryDate: '', summary: '',
+    applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
+    applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
+    ipc: [], cpc: [], examinationClaimCount: '', citationCount: '',
+    expiryDate: '', keywords: [] as string[], summary: '',
   })
   uploadedFile.value = null
   adminHistory.value = []
@@ -534,11 +584,13 @@ function startEdit(p: typeof patentList.value[0]) {
     applicationDate: p.applicationDate,
     techField: p.techField,
     status: statusLabel(p.status),
-    managementNumber: '', inventors: '', finalTitle: '',
+    managementNumber: '', inventors: '', applicant: '',
     bizField: '', relatedProducts: '', country: 'KR',
     coApplicant: '아니오', coApplicantName: '',
-    registrationDate: '', registrationNumber: '', ipc: '', expiryDate: '',
-    summary: '',
+    registrationDate: '', publicationDate: '', announcementDate: '',
+    registrationNumber: '', publicationNumber: '', announcementNumber: '',
+    ipc: [], cpc: [], examinationClaimCount: '', citationCount: '',
+    expiryDate: '', keywords: [] as string[], summary: '',
   })
   showRegisterModal.value = true
 }
@@ -981,6 +1033,15 @@ function handleDelete() {
   transition: border-color .13s, color .13s, background .13s;
 }
 .btn-ah-add:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-bg); }
+
+.ah-row--readonly { cursor: default; }
+.ah-type-readonly {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  pointer-events: none;
+}
+.ah-date-readonly { font-size: 13px; color: var(--color-text-secondary); }
+.ah-empty { font-size: 13px; color: var(--color-text-muted); margin: 4px 0 8px; }
 
 .visually-hidden {
   position: absolute; width: 1px; height: 1px;

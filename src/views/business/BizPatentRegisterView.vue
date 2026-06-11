@@ -75,9 +75,9 @@
               <span class="form-label">발명자</span>
               <input class="form-input" type="text" v-model="form.inventors" placeholder="홍길동, 김철수" />
             </label>
-            <label class="form-field full">
-              <span class="form-label">발명의 명칭(최종)</span>
-              <input class="form-input" type="text" v-model="form.finalTitle" />
+            <label class="form-field">
+              <span class="form-label">출원인명</span>
+              <input class="form-input" type="text" v-model="form.applicant" />
             </label>
           </div>
         </div>
@@ -134,6 +134,14 @@
               <input class="form-input" type="date" v-model="form.registrationDate" />
             </label>
             <label class="form-field">
+              <span class="form-label">공개일</span>
+              <input class="form-input" type="date" v-model="form.publicationDate" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">공고일</span>
+              <input class="form-input" type="date" v-model="form.announcementDate" />
+            </label>
+            <label class="form-field">
               <span class="form-label">출원번호</span>
               <input class="form-input" type="text" v-model="form.applicationNumber" placeholder="10-2026-0000000" />
             </label>
@@ -142,8 +150,28 @@
               <input class="form-input" type="text" v-model="form.registrationNumber" placeholder="10-0000000" />
             </label>
             <label class="form-field">
-              <span class="form-label">IPC</span>
-              <input class="form-input" type="text" v-model="form.ipc" />
+              <span class="form-label">공개번호</span>
+              <input class="form-input" type="text" v-model="form.publicationNumber" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">공고번호</span>
+              <input class="form-input" type="text" v-model="form.announcementNumber" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">IPC 코드</span>
+              <TagInput v-model="form.ipc" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">CPC 코드</span>
+              <TagInput v-model="form.cpc" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">심사청구항수</span>
+              <input class="form-input" type="number" min="0" v-model="form.examinationClaimCount" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">피인용 수</span>
+              <input class="form-input" type="number" min="0" v-model="form.citationCount" />
             </label>
             <label class="form-field">
               <span class="form-label">예상 소멸일</span>
@@ -156,6 +184,10 @@
         <div class="form-section">
           <div class="form-section__title">내용 요약</div>
           <div class="form-grid">
+            <label class="form-field full">
+              <span class="form-label">키워드</span>
+              <TagInput v-model="form.keywords" />
+            </label>
             <label class="form-field full">
               <span class="form-label">발명의 요약</span>
               <textarea class="form-textarea" v-model="form.summary" placeholder="특허의 핵심 기술 내용을 요약해 주세요." />
@@ -290,6 +322,7 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePatentApplications, type PatentApplication } from '@/composables/usePatentApplications'
 import { useAuthStore } from '@/stores/auth'
+import TagInput from '@/components/ui/TagInput.vue'
 
 const router = useRouter()
 const route  = useRoute()
@@ -336,11 +369,13 @@ const AH_LABELS: Record<string, string> = {
 const adminHistory = ref<{ type: string; date: string }[]>([])
 
 const form = reactive({
-  title: '', managementNumber: '', inventors: '', finalTitle: '',
+  title: '', managementNumber: '', inventors: '', applicant: '',
   bizField: '', techField: '', relatedProducts: '', country: 'KR',
   patentStatus: '출원', coApplicant: '아니오', coApplicantName: '',
-  applicationDate: '', registrationDate: '', applicationNumber: '',
-  registrationNumber: '', ipc: '', expiryDate: '', summary: '',
+  applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
+  applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
+  ipc: [] as string[], cpc: [] as string[], examinationClaimCount: '', citationCount: '',
+  expiryDate: '', keywords: [] as string[], summary: '',
 })
 
 function handleFileSelect(e: Event) {
@@ -350,11 +385,13 @@ function handleFileSelect(e: Event) {
 
 function resetForm() {
   Object.assign(form, {
-    title: '', managementNumber: '', inventors: '', finalTitle: '',
+    title: '', managementNumber: '', inventors: '', applicant: '',
     bizField: '', techField: '', relatedProducts: '', country: 'KR',
     patentStatus: '출원', coApplicant: '아니오', coApplicantName: '',
-    applicationDate: '', registrationDate: '', applicationNumber: '',
-    registrationNumber: '', ipc: '', expiryDate: '', summary: '',
+    applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
+    applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
+    ipc: [], cpc: [], examinationClaimCount: '', citationCount: '',
+    expiryDate: '', keywords: [] as string[], summary: '',
   })
   uploadedFile.value = null
   adminHistory.value = []
@@ -369,7 +406,7 @@ function startResubmit(app: PatentApplication) {
     title: app.title,
     managementNumber: app.managementNumber,
     inventors: app.inventors,
-    finalTitle: app.finalTitle,
+    applicant: app.applicant ?? '',
     bizField: app.bizField,
     techField: app.techField,
     relatedProducts: app.relatedProducts,
@@ -379,10 +416,18 @@ function startResubmit(app: PatentApplication) {
     coApplicantName: app.coApplicantName,
     applicationDate: app.applicationDate,
     registrationDate: app.registrationDate,
+    publicationDate: app.publicationDate ?? '',
+    announcementDate: app.announcementDate ?? '',
     applicationNumber: app.applicationNumber,
     registrationNumber: app.registrationNumber,
-    ipc: app.ipc,
+    publicationNumber: app.publicationNumber ?? '',
+    announcementNumber: app.announcementNumber ?? '',
+    ipc: Array.isArray(app.ipc) ? app.ipc : (app.ipc ? [app.ipc] : []),
+    cpc: Array.isArray(app.cpc) ? app.cpc : (app.cpc ? [app.cpc] : []),
+    examinationClaimCount: app.examinationClaimCount ?? '',
+    citationCount: app.citationCount ?? '',
     expiryDate: app.expiryDate,
+    keywords: Array.isArray(app.keywords) ? app.keywords : (app.keywords ? [app.keywords] : []),
     summary: app.summary,
   })
   submitted.value = false
