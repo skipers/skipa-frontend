@@ -149,30 +149,38 @@
         <div v-else class="card__empty">신청 내역이 없습니다.</div>
       </div>
 
-      <!-- 기술 분야 분포 (트리맵 스타일) -->
+      <!-- 기술 분야 분포 (도넛 차트) -->
       <div class="card">
         <div class="card__header">
           <h3 class="card__title">기술 분야 분포</h3>
           <RouterLink to="/legal/portfolio" class="card__link">포트폴리오 분석</RouterLink>
         </div>
         <div v-if="loadingDist" class="card__skeleton">
-          <div class="skel skel--treemap" />
+          <div class="skel skel--donut" />
         </div>
-        <div v-else class="tech-dist">
-          <div
-            v-for="(item, i) in techFieldItems"
-            :key="item.name"
-            class="tech-dist__item"
-          >
-            <div class="tech-dist__bar-wrap">
-              <div
-                class="tech-dist__bar"
-                :style="{ width: techPct(item.count) + '%', background: techColors[i % techColors.length] }"
-              />
-            </div>
-            <div class="tech-dist__info">
-              <span class="tech-dist__name">{{ item.name }}</span>
-              <span class="tech-dist__count">{{ item.count }}건</span>
+        <div v-else class="donut-wrap">
+          <svg class="donut-svg" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
+            <circle
+              v-for="(seg, i) in donutSegments"
+              :key="i"
+              cx="60" cy="60" r="50"
+              fill="none"
+              :stroke="techColors[i % techColors.length]"
+              stroke-width="20"
+              :stroke-dasharray="`${seg.dash} ${314 - seg.dash}`"
+              :stroke-dashoffset="seg.offset"
+              stroke-linecap="butt"
+            />
+            <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="800" fill="#0f172a">{{ donutTotal }}</text>
+            <text x="60" y="70" text-anchor="middle" font-size="9" font-weight="600" fill="#475569">총 특허</text>
+          </svg>
+          <div class="donut-legend">
+            <div v-for="(seg, i) in donutSegments" :key="seg.name" class="donut-legend-item">
+              <span class="legend-dot" :style="{ background: techColors[i % techColors.length] }" />
+              <span class="donut-legend-item__name">{{ seg.name }}</span>
+              <span class="donut-legend-item__count">{{ seg.count }}건</span>
+              <span class="donut-legend-item__pct">{{ seg.pct }}%</span>
             </div>
           </div>
         </div>
@@ -342,10 +350,22 @@ function deptPct(d: { assigned: number; decided: number }) {
 // ── 기술 분야 ─────────────────────────────────────────
 const techColors = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#ABACED']
 const techFieldItems = computed(() => distribution.value?.byTechField ?? [])
-function techPct(count: number) {
-  const max = Math.max(...techFieldItems.value.map(i => i.count), 1)
-  return Math.round((count / max) * 100)
-}
+
+const DONUT_C = 314  // 2π × r=50
+
+const donutTotal = computed(() => techFieldItems.value.reduce((s, i) => s + i.count, 0))
+
+const donutSegments = computed(() => {
+  const total = donutTotal.value
+  if (!total) return []
+  let offset = -DONUT_C / 4
+  return techFieldItems.value.map((item, i) => {
+    const dash = Math.round((item.count / total) * DONUT_C)
+    const seg = { dash, offset, name: item.name, count: item.count, pct: Math.round((item.count / total) * 100) }
+    offset -= dash
+    return seg
+  })
+})
 
 // ── 소멸 차트 ─────────────────────────────────────────
 const expiryItems = computed(() => distribution.value?.byExpiryQuarter ?? [])
@@ -828,31 +848,45 @@ onMounted(loadAll)
 .app-status--withdrawn { background: #f8fafc; color: #64748b; }
 .app-status--resubmit  { background: #fefce8; color: #ca8a04; }
 
-/* ── 기술 분야 분포 ───────────────────────────────── */
-.tech-dist { display: flex; flex-direction: column; gap: 10px; }
+/* ── 기술 분야 분포 (도넛) ─────────────────────────── */
+.skel--donut { height: 140px; border-radius: 8px; }
 
-.tech-dist__item { display: flex; flex-direction: column; gap: 5px; }
-
-.tech-dist__bar-wrap {
-  height: 7px;
-  background: var(--color-surface-muted);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.tech-dist__bar {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
-}
-
-.tech-dist__info {
+.donut-wrap {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
+  gap: 14px;
 }
-.tech-dist__name  { font-size: 12.5px; font-weight: 500; color: var(--color-text-secondary); }
-.tech-dist__count { font-size: 12.5px; font-weight: 700; color: var(--color-text); }
+
+.donut-svg {
+  width: 140px;
+  height: 140px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+.donut-svg text {
+  transform: rotate(90deg);
+  transform-origin: 60px 60px;
+}
+
+.donut-legend {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.donut-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.donut-legend-item__name  { flex: 1; color: var(--color-text); font-weight: 500; }
+.donut-legend-item__count { font-weight: 700; color: var(--color-text); }
+.donut-legend-item__pct   { color: var(--color-text-secondary); font-weight: 600; min-width: 32px; text-align: right; }
+
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
 /* ── 소멸 차트 ───────────────────────────────────── */
 .expiry-chart {

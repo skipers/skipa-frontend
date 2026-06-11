@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 type Grade = 'S' | 'A' | 'B' | 'C'
 type ChatRole = 'assistant' | 'user'
@@ -43,6 +43,29 @@ interface ChatMessage {
 }
 
 const HISTORY_KEY = 'skipa_pre_eval_history'
+const GREETING = '안녕하세요! 평가 결과에 대해 궁금한 점을 질문해주세요.'
+
+const DEMO_CHATS: Record<string, ChatMessage[]> = {
+  'demo-3': [
+    { id: 101, role: 'assistant', text: '\'머신러닝 기반 웨이퍼 불량 검출 시스템\' 평가 결과를 불러왔습니다. 궁금한 점을 질문해주세요.' },
+    { id: 102, role: 'user',      text: '기술성 점수가 84점인 이유가 뭔가요?' },
+    { id: 103, role: 'assistant', text: 'CNN 기반 이미지 분류 모델의 실시간 처리 능력과 히트맵 시각화 기능이 기술적 완성도를 높게 평가받았습니다.\n\n다만 선행 특허 대비 독창성 차별화 포인트를 명세서에 더 명확히 서술하면 추가 점수 향상이 가능합니다.' },
+    { id: 104, role: 'user',      text: 'A등급을 S등급으로 올리려면 어떻게 해야 하나요?' },
+    { id: 105, role: 'assistant', text: '세 가지를 보완해보세요:\n\n1. 권리성(78점) 강화 — 청구항 범위를 더 넓게, 독립항·종속항 구조를 정교하게\n2. 선행기술 조사 결과 첨부\n3. 실험 데이터·수치를 명세서에 포함\n\n이 세 가지만 보완해도 S등급 진입이 충분히 가능합니다.' },
+  ],
+  'demo-2': [
+    { id: 201, role: 'assistant', text: '\'5G 기반 실시간 데이터 압축 알고리즘\' 평가 결과를 불러왔습니다. 궁금한 점을 질문해주세요.' },
+    { id: 202, role: 'user',      text: 'B등급인데 어떻게 개선할 수 있나요?' },
+    { id: 203, role: 'assistant', text: '권리성(65점)이 가장 취약합니다. 다음을 보완해보세요:\n\n- 청구항 1항을 독립항으로 더 넓게 작성\n- "적응형 압축률 조절" 메커니즘을 단계별로 구체화\n- 5G 환경에서의 지연 감소 수치를 실험 데이터로 뒷받침\n\n권리성이 75점 이상이 되면 A등급 진입이 가능합니다.' },
+  ],
+  'demo-1': [
+    { id: 301, role: 'assistant', text: '\'자율주행 장애물 회피 경로 계획 기술\' 평가 결과를 불러왔습니다. 궁금한 점을 질문해주세요.' },
+    { id: 302, role: 'user',      text: 'S등급 받았네요! 다음 단계는 어떻게 하면 되나요?' },
+    { id: 303, role: 'assistant', text: '축하합니다! 세 영역 모두 최상위 수준입니다.\n\n권고 다음 단계:\n1. 특허법인에 명세서 작성 의뢰\n2. 국내 출원 후 PCT 국제 출원 동시 준비 (한·미·독·중 4개국)\n3. 기술 공개 전 빠른 출원일 확보가 핵심\n\n이미 사업부 시스템에 등록 신청이 완료된 상태라면 법무팀과 빠르게 협의하세요.' },
+    { id: 304, role: 'user',      text: '청구항 3개면 충분한가요?' },
+    { id: 305, role: 'assistant', text: '3개로도 기본은 됩니다. 하지만 S등급 특허라면 독립항 1개 + 종속항 5~8개 구조를 권장합니다.\n\n특히 "실시간 재계획" 부분에 대한 방법 클레임과 시스템 클레임을 모두 포함하면 권리 범위가 훨씬 두터워집니다.' },
+  ],
+}
 
 const DUMMY_HISTORY: EvaluationHistoryItem[] = [
   {
@@ -145,13 +168,30 @@ const historyDropdownOpen = ref(false)
 const chatbotOpen     = ref(false)
 const chatbotExpanded = ref(false)
 const chatInput       = ref('')
-const chatMessages    = ref<ChatMessage[]>([
-  { id: 1, role: 'assistant', text: '안녕하세요! 평가 결과에 대해 궁금한 점을 질문해주세요.' },
-])
+
+const chatHistories = ref<Record<string, ChatMessage[]>>(
+  JSON.parse(JSON.stringify(DEMO_CHATS))
+)
 
 const chatViewport  = ref<HTMLElement | null>(null)
-const messageId     = ref(2)
+const messageId     = ref(1000)
 const pendingTimers = new Set<number>()
+
+// ── 채팅 컨텍스트 ─────────────────────────────────────
+const activeChatKey = computed(() => selectedHistoryId.value ?? '__new__')
+
+watch(activeChatKey, (key) => {
+  if (!chatHistories.value[key]) {
+    const item = history.value.find((h) => h.id === key)
+    const text = item
+      ? `'${item.patentName}' 평가 결과를 불러왔습니다. 궁금한 점을 질문해주세요.`
+      : GREETING
+    chatHistories.value[key] = [{ id: messageId.value++, role: 'assistant', text }]
+  }
+  void nextTick(() => { if (chatbotOpen.value) scrollChatToBottom() })
+}, { immediate: true })
+
+const chatMessages = computed(() => chatHistories.value[activeChatKey.value] ?? [])
 
 // ── computed ──────────────────────────────────────────
 const isStartEnabled = computed(() =>
@@ -253,8 +293,6 @@ function buildEvaluationResult(): EvaluationResult {
 function startEvaluation() {
   if (!isStartEnabled.value) return
   const result = buildEvaluationResult()
-  evaluation.value = result
-  selectedHistoryId.value = null
 
   const item: EvaluationHistoryItem = {
     id: `${Date.now()}`,
@@ -269,8 +307,18 @@ function startEvaluation() {
     },
     evaluation: result,
   }
+
+  // 새 평가 중에 나눈 대화를 해당 아이템 ID로 이전
+  if (chatHistories.value['__new__']) {
+    chatHistories.value[item.id] = chatHistories.value['__new__']
+    delete chatHistories.value['__new__']
+  }
+
   history.value.unshift(item)
   saveHistory(history.value)
+
+  evaluation.value = null
+  selectedHistoryId.value = item.id  // 평가 완료 후 해당 이력으로 바로 전환
 }
 
 function resetAssessment() {
@@ -285,12 +333,10 @@ function resetAssessment() {
   chatInput.value = ''
   chatbotOpen.value = false
   chatbotExpanded.value = false
-  chatMessages.value = [
-    { id: 1, role: 'assistant', text: '안녕하세요! 평가 결과에 대해 궁금한 점을 질문해주세요.' },
-  ]
   pendingTimers.forEach((t) => window.clearTimeout(t))
   pendingTimers.clear()
-  messageId.value = 2
+  // 새 평가 채팅을 인삿말만 남기고 초기화
+  chatHistories.value['__new__'] = [{ id: messageId.value++, role: 'assistant', text: GREETING }]
 }
 
 function selectHistory(id: string) {
@@ -322,18 +368,21 @@ async function sendChatMessage() {
   if (!text) return
   if (!chatbotOpen.value) { chatbotOpen.value = true; await nextTick() }
 
-  chatMessages.value.push({ id: nextMessageId(), role: 'user', text })
+  const key = activeChatKey.value
+  const msgs = chatHistories.value[key]
+  msgs.push({ id: nextMessageId(), role: 'user', text })
   chatInput.value = ''
 
   const typingId = nextMessageId()
-  chatMessages.value.push({ id: typingId, role: 'assistant', text: '', typing: true })
+  msgs.push({ id: typingId, role: 'assistant', text: '', typing: true })
   await nextTick()
   scrollChatToBottom()
 
   const timerId = window.setTimeout(() => {
-    const idx = chatMessages.value.findIndex((m) => m.id === typingId)
+    const cur = chatHistories.value[key]
+    const idx = cur.findIndex((m) => m.id === typingId)
     if (idx !== -1) {
-      chatMessages.value.splice(idx, 1, {
+      cur.splice(idx, 1, {
         id: nextMessageId(),
         role: 'assistant',
         text: '해당 특허의 평가 결과를 분석한 결과, 기술적 독창성이 높게 평가되었습니다. 추가적으로 궁금한 점이 있으시면 질문해주세요.',
