@@ -126,65 +126,73 @@ export interface PatentExtractResultResponse {
 // ── API ─────────────────────────────────────────────────────
 
 export const patentsApi = {
-  // ── Main CRUD ──────────────────────────────────────────
+  // ── 특허 CRUD ─────────────────────────────────────────
 
-  getPatents: async (params?: PatentListParams): Promise<PageResponse<PatentListItem>> => {
-    const p = params ? { ...params, page: params.page != null ? params.page - 1 : 0 } : {}
-    return apiClient.get('/patents', { params: p })
+  list: async (query?: PatentListQuery): Promise<PaginatedData<PatentListItem>> => {
+    const { data } = await client.get('/patents', { params: query })
+    return data.data
   },
 
-  getPatent: async (patentId: number): Promise<PatentDetail> => {
-    return apiClient.get(`/patents/${patentId}`)
+  get: async (patentId: number): Promise<{ patent: Patent }> => {
+    const { data } = await client.get(`/patents/${patentId}`)
+    return data.data
   },
 
-  getPatentSummary: async (): Promise<{ active: number; inactive: number }> => {
-    return apiClient.get('/patents/summary')
+  create: async (body: PatentCreateRequest): Promise<{ patentId: number }> => {
+    const { data } = await client.post('/patents', body)
+    return data.data
   },
 
-  createPatent: async (body: PatentCreateRequest): Promise<PatentDetail> => {
-    return apiClient.post('/patents', body)
+  update: async (patentId: number, body: Partial<PatentCreateRequest>): Promise<{ patentId: number }> => {
+    const { data } = await client.patch(`/patents/${patentId}`, body)
+    return data.data
   },
 
-  updatePatent: async (patentId: number, body: PatentUpdateRequest): Promise<PatentDetail> => {
-    return apiClient.put(`/patents/${patentId}`, body)
-  },
-
-  deletePatent: async (patentId: number): Promise<void> => {
-    return apiClient.delete(`/patents/${patentId}`)
-  },
-
-  changePatentDepartment: async (patentId: number, departmentId: number): Promise<PatentDetail> => {
-    return apiClient.patch(`/patents/${patentId}/department`, { departmentId })
+  remove: async (patentId: number): Promise<void> => {
+    await client.delete(`/patents/${patentId}`)
   },
 
   // ── Legal Status ───────────────────────────────────────
 
   getLegalStatus: async (patentId: number): Promise<{ items: PatentLegalStatus[] }> => {
-    return apiClient.get(`/patents/${patentId}/legal-status`)
+    const { data } = await client.get(`/patents/${patentId}/legal-status`)
+    return data.data
   },
 
-  addLegalStatus: async (patentId: number, body: { status: string; changedAt: string }): Promise<{ id: number }> => {
-    return apiClient.post(`/patents/${patentId}/legal-status`, body)
+  addLegalStatus: async (
+    patentId: number,
+    body: { status: string; changedAt: string },
+  ): Promise<{ id: number }> => {
+    const { data } = await client.post(`/patents/${patentId}/legal-status`, body)
+    return data.data
   },
 
-  // ── Annuities ──────────────────────────────────────────
+  // ── 연차료 이력 ────────────────────────────────────────
 
   getAnnuities: async (patentId: number): Promise<{ items: Annuity[] }> => {
-    return apiClient.get(`/patents/${patentId}/annuities`)
+    const { data } = await client.get(`/patents/${patentId}/annuities`)
+    return data.data
   },
 
   addAnnuity: async (patentId: number, body: Omit<Annuity, 'id' | 'patentId'>): Promise<{ id: number }> => {
-    return apiClient.post(`/patents/${patentId}/annuities`, body)
+    const { data } = await client.post(`/patents/${patentId}/annuities`, body)
+    return data.data
   },
 
-  updateAnnuity: async (patentId: number, annuityId: number, body: Partial<Annuity>): Promise<{ id: number }> => {
-    return apiClient.patch(`/patents/${patentId}/annuities/${annuityId}`, body)
+  updateAnnuity: async (
+    patentId: number,
+    annuityId: number,
+    body: Partial<Annuity>,
+  ): Promise<{ id: number }> => {
+    const { data } = await client.patch(`/patents/${patentId}/annuities/${annuityId}`, body)
+    return data.data
   },
 
   // ── Evaluation Reports ─────────────────────────────────
 
   getReports: async (patentId: number): Promise<{ items: Report[] }> => {
-    return apiClient.get(`/patents/${patentId}/reports`)
+    const { data } = await client.get(`/patents/${patentId}/reports`)
+    return data.data
   },
 
   generateReport: async (patentId: number): Promise<{ id: number; patentId: number; status: string; createdAt: string; updatedAt: string }> => {
@@ -192,7 +200,8 @@ export const patentsApi = {
   },
 
   getReport: async (patentId: number, reportId: number): Promise<ReportWithUrl> => {
-    return apiClient.get(`/patents/${patentId}/reports/${reportId}`)
+    const { data } = await client.get(`/patents/${patentId}/reports/${reportId}`)
+    return data.data
   },
 
   getReportStatus: async (patentId: number, reportId: number): Promise<{ id: number; status: string }> => {
@@ -230,8 +239,11 @@ export const patentsApi = {
     return apiClient.get(`/patents/${patentId}`)
   },
 
-  /** @deprecated use createPatent */
-  create: async (body: any): Promise<PatentDetail> => {
-    return apiClient.post('/patents', body)
+  sendDecisionRequest: async (
+    patentId: number,
+    departmentId: number,
+  ): Promise<{ decisionId: number; patentId: number; departmentId: number }> => {
+    const { data } = await client.post(`/patents/${patentId}/decisions`, { departmentId })
+    return data.data
   },
 }

@@ -532,7 +532,7 @@
             <h2 class="section-heading">평가 이력</h2>
           </div>
           <div class="eval-history-list">
-            <div v-for="(item, idx) in evalHistory" :key="idx" class="eval-history-item">
+            <div v-for="(item, idx) in MOCK_EVAL_HISTORY" :key="idx" class="eval-history-item">
               <div class="eval-history-item__top">
                 <div class="eval-history-item__left">
                   <span class="eval-history-item__date">{{ item.date }}</span>
@@ -966,14 +966,14 @@
     </template>
 
     <!-- ── 챗봇 FAB ── -->
-    <button v-if="!chatbotOpen" class="chat-fab" type="button" aria-label="AI 챗봇에게 질문하기" @click="toggleChatbot">
+    <button v-if="showChatbot && !chatbotOpen" class="chat-fab" type="button" aria-label="AI 챗봇에게 질문하기" @click="toggleChatbot">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
     </button>
 
     <!-- ── 챗봇 패널 ── -->
-    <aside class="chat-panel" :class="{ open: chatbotOpen, expanded: chatbotExpanded }">
+    <aside v-if="showChatbot" class="chat-panel" :class="{ open: chatbotOpen, expanded: chatbotExpanded }">
       <div class="chat-shell">
         <header class="chat-header">
           <button class="icon-button" type="button" @click="chatbotExpanded = !chatbotExpanded">
@@ -1015,16 +1015,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, reactive } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { patentsApi, type PatentDetail } from '@/api/patents'
+import { patentChatHistories, nextChatId, type ChatMessage } from '@/composables/usePatentChat'
 
 type ChatRole = 'assistant' | 'user'
-interface ChatMessage {
-  id: number
-  role: ChatRole
-  text: string
-  typing?: boolean
-}
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
 import {
   COUNTRY_LABEL, TECH_FIELD_CLAIMS, DEPT_MAP,
@@ -1039,9 +1034,11 @@ import type { BusinessReviewDetailResponse } from '@/api/businessReviews'
 
 const props = defineProps<{ patentId: number }>()
 const auth  = useAuthStore()
+const route = useRoute()
 
 const isLegal    = computed(() => auth.isLegal || auth.isAdmin)
 const isBusiness = computed(() => auth.isBusiness)
+const showChatbot = computed(() => route.name === 'ReviewPatentDetail')
 const myDept     = computed(() => DEPT_MAP[auth.user?.departmentId ?? 0] ?? null)
 
 // ── 특허 데이터 (API) ─────────────────────────────────
@@ -1116,6 +1113,21 @@ const patentCountry = computed(() => {
   return COUNTRY_LABEL[code] ?? code
 })
 
+// ── 서지정보 IPC/CPC mock 데이터 ────────────────────
+const BIBLIO_IPC: Record<string, string[]> = {
+  'AI/ML':  ['G06N 20/00(2019.01.01)', 'G06F 18/214(2023.01.01)', 'G06N 3/04(2023.01.01)'],
+  '반도체':  ['H10D 1/00(2025.01.01)', 'H10D 1/68(2025.01.01)', 'H10P 10/00(2026.01.01)', 'H10P 10/00(2026.01.01)'],
+  '통신':    ['H04W 16/28(2013.01.01)', 'H04B 7/04(2020.01.01)', 'H04W 72/04(2023.01.01)'],
+  '에너지':  ['H01M 10/052(2013.01.01)', 'H02J 7/00(2020.01.01)', 'H01M 4/38(2013.01.01)'],
+  '제조':    ['B25J 9/16(2013.01.01)', 'G05B 19/418(2006.01.01)', 'G05B 23/02(2019.01.01)'],
+}
+const BIBLIO_CPC: Record<string, string[]> = {
+  'AI/ML':  ['G06N 20/00(2019.01)', 'G06F 18/214(2023.01)', 'G06N 3/04(2023.01)', 'G06F 40/30(2020.01)'],
+  '반도체':  ['H10D 1/042(2025.01)', 'H10D 1/716(2025.01)', 'H10P 70/23(2026.01)', 'H10P 70/27(2026.01)'],
+  '통신':    ['H04W 16/28(2013.01)', 'H04B 7/04(2020.01)', 'H04W 72/04(2023.01)', 'H04L 5/00(2013.01)'],
+  '에너지':  ['H01M 10/052(2013.01)', 'H02J 7/00(2020.01)', 'H01M 4/38(2013.01)'],
+  '제조':    ['B25J 9/16(2013.01)', 'G05B 19/418(2006.01)', 'G05B 23/02(2019.01)', 'G05B 19/05(2013.01)'],
+}
 
 type FeeRecord     = { quarter: string; amount: number; paid: string }
 type FeeEditRow    = { yearStart: number; yearEnd: number; amount: number; paid: string }
@@ -1141,6 +1153,36 @@ const feeRecords = computed(() => {
     paid: a.paidDate ?? a.dueDate,
   }))
 })
+const feeEditMode      = ref(false)
+const feeEditDraft     = ref<FeeEditRow[]>([])
+
+function startFeeEdit() {
+  feeEditDraft.value = feeRecords.value.map(r => ({
+    ...parseQuarter(r.quarter),
+    amount: r.amount,
+    paid: r.paid,
+  }))
+  feeEditMode.value = true
+}
+
+function cancelFeeEdit() {
+  feeEditMode.value = false
+  feeEditDraft.value = []
+}
+
+function saveFeeEdit() {
+  customFeeRecords.value = feeEditDraft.value
+    .filter(r => r.yearStart > 0)
+    .map(r => ({
+      quarter: formatQuarter(r.yearStart, r.yearEnd),
+      amount: r.amount,
+      paid: r.paid,
+    }))
+  feeEditMode.value = false
+  feeEditDraft.value = []
+}
+
+const customFeeRecords = ref<FeeRecord[] | null>(null)
 const feeEditMode      = ref(false)
 const feeEditDraft     = ref<FeeEditRow[]>([])
 
@@ -1209,22 +1251,22 @@ const patentBiblio = computed(() => {
   const pubDate = addMonths(p.applicationDate, 6)
   const appDateFmt = formatDate(p.applicationDate)
   return {
-    ipcCodes: p.ipcCodes,
-    cpcCodes: p.cpcCodes,
+    ipcCodes: BIBLIO_IPC[p.techField] ?? [],
+    cpcCodes: BIBLIO_CPC[p.techField] ?? [],
     applicationNum: p.applicationNumber,
     applicationDate: appDateFmt,
-    applicant: p.applicant || 'SKIPA 주식회사',
-    registrationNum: p.registrationNumber || (isRegistered ? `10118${numSeed.slice(0, 4)}90000` : ''),
-    registrationDate: p.registrationDate ? formatDate(p.registrationDate) : (isRegistered ? formatDate(regDate) : ''),
-    pubNum: p.publicationNumber || `1020${year}${numSeed}`,
-    pubDate: p.publicationDate ? formatDate(p.publicationDate) : formatDate(pubDate),
-    annNum: p.announcementNumber || (isRegistered ? `(${formatDate(regDate)})` : ''),
-    annDate: p.announcementDate ? formatDate(p.announcementDate) : (isRegistered ? formatDate(regDate) : ''),
+    applicant: 'SKIPA 주식회사',
+    registrationNum: isRegistered ? `10118${numSeed.slice(0, 4)}90000` : '',
+    registrationDate: isRegistered ? formatDate(regDate) : '',
+    pubNum: `1020${year}${numSeed}`,
+    pubDate: formatDate(pubDate),
+    annNum: isRegistered ? `(${formatDate(regDate)})` : '',
+    annDate: isRegistered ? formatDate(regDate) : '',
     legalStatus: isRegistered ? '등록' : isExpired ? '소멸' : '심사중',
     examStatus: isRegistered ? '등록결정(일반)' : isExpired ? '소멸' : '심사중',
     classification: '국내출원/신규',
     examinationRequested: `Y(${appDateFmt})`,
-    claimsCount: p.examinationClaimCount ?? (TECH_FIELD_CLAIMS[p.techField] ?? []).length,
+    claimsCount: (TECH_FIELD_CLAIMS[p.techField] ?? []).length,
   }
 })
 
@@ -1232,12 +1274,12 @@ const patentBiblio = computed(() => {
 const detailExtras = computed(() => {
   const p = patent.value
   if (!p) return { inventor: '', ipcCode: '', registrationDate: '—', summary: '', claims: [] }
-  const regDate = p.registrationDate ?? addMonths(p.applicationDate, 18)
+  const regDate = addMonths(p.applicationDate, 18)
   return {
-    inventor: p.inventor || '—',
-    ipcCode: (p.ipcCodes ?? []).join(', ') || '—',
+    inventor: PATENT_INVENTORS[p.id] ?? '—',
+    ipcCode: TECH_FIELD_IPC[p.techField] ?? '—',
     registrationDate: p.status === 'REGISTERED' ? formatDate(regDate) : '—',
-    summary: p.summary || '',
+    summary: TECH_FIELD_SUMMARY[p.techField] ?? '',
     claims: TECH_FIELD_CLAIMS[p.techField] ?? [],
   }
 })
@@ -1335,30 +1377,12 @@ const reportGrade = computed<string | null>(() => reportJson.value?.report?.summ
 const totalScore = computed(() => reportJson.value?.report?.summary?.overall_score_out_of_100 ?? 0)
 
 // ── 재평가 레코드 ────────────────────────────────────
-const REVIEW_STATUS_MAP: Record<string, 'unassigned' | 'requested' | 'overdue' | 'done'> = {
-  SCHEDULED: 'unassigned',
-  PENDING:   'requested',
-  OVERDUE:   'overdue',
-  SUBMITTED: 'done',
-}
 const reevalRecord = computed(() => {
-  const r = reviewData.value
-  if (!r) return null
-  return {
-    patentId: r.patentId,
-    reviewStatus: REVIEW_STATUS_MAP[r.status] ?? 'unassigned',
-    decision: r.opinion ?? null,
-    decidedAt: r.submittedAt ?? null,
-    dueDate: r.dueDate ?? null,
-    isOverdue: r.status === 'OVERDUE',
-  }
+  if (!patent.value) return null
+  return MOCK_REEVAL.find(r => r.patentId === props.patentId) ?? null
 })
 
 const opinionAssigned = computed(() => {
-  if (isBusiness.value) {
-    const r = businessReviewData.value
-    return r && ['PENDING', 'OVERDUE', 'SUBMITTED'].includes(r.status)
-  }
   const r = reevalRecord.value
   return r && (r.reviewStatus === 'requested' || r.reviewStatus === 'overdue' || r.reviewStatus === 'done')
 })
@@ -1438,12 +1462,15 @@ function setupObserver() {
 const chatbotOpen     = ref(false)
 const chatbotExpanded = ref(false)
 const chatInput       = ref('')
-const chatMessages    = ref<ChatMessage[]>([
-  { id: 1, role: 'assistant', text: `${patent.value?.title ?? '이 특허'}에 대해 궁금한 점을 질문해주세요.` },
-])
-const chatViewport  = ref<HTMLElement | null>(null)
-const messageId     = ref(2)
-const pendingTimers = new Set<number>()
+const chatViewport    = ref<HTMLElement | null>(null)
+const pendingTimers   = new Set<number>()
+
+if (!patentChatHistories[props.patentId]) {
+  patentChatHistories[props.patentId] = [
+    { id: nextChatId(), role: 'assistant', text: `${patent.value?.title ?? '이 특허'}에 대해 궁금한 점을 질문해주세요.` },
+  ]
+}
+const chatMessages = computed(() => patentChatHistories[props.patentId])
 
 const chatPanelWidth = computed(() =>
   chatbotOpen.value ? (chatbotExpanded.value ? '100vw' : '480px') : '0px'
@@ -1453,9 +1480,7 @@ function scrollChatToBottom() {
   if (chatViewport.value) chatViewport.value.scrollTop = chatViewport.value.scrollHeight
 }
 
-function nextMessageId() {
-  return messageId.value++
-}
+function nextMessageId() { return nextChatId() }
 
 async function toggleChatbot() {
   chatbotOpen.value = !chatbotOpen.value
@@ -1471,18 +1496,19 @@ async function sendChatMessage() {
   if (!text) return
   if (!chatbotOpen.value) { chatbotOpen.value = true; await nextTick() }
 
-  chatMessages.value.push({ id: nextMessageId(), role: 'user', text })
+  const history = patentChatHistories[props.patentId]
+  history.push({ id: nextMessageId(), role: 'user', text })
   chatInput.value = ''
 
   const typingId = nextMessageId()
-  chatMessages.value.push({ id: typingId, role: 'assistant', text: '', typing: true })
+  history.push({ id: typingId, role: 'assistant', text: '', typing: true })
   await nextTick()
   scrollChatToBottom()
 
   const timerId = window.setTimeout(() => {
-    const idx = chatMessages.value.findIndex((m) => m.id === typingId)
+    const idx = history.findIndex((m) => m.id === typingId)
     if (idx !== -1) {
-      chatMessages.value.splice(idx, 1, {
+      history.splice(idx, 1, {
         id: nextMessageId(),
         role: 'assistant',
         text: '해당 특허의 평가 결과를 분석한 결과, 기술적 독창성이 높게 평가되었습니다. 추가적으로 궁금한 점이 있으시면 질문해주세요.',
@@ -1534,12 +1560,14 @@ onMounted(async () => {
   await Promise.all([fetchPatent(), fetchReviewData(), fetchEvalHistory(), fetchLatestReport(), fetchAnnuityHistory()])
   await nextTick()
 
-  if (patent.value && isBusiness.value && businessReviewData.value?.opinion) {
-    const brd = businessReviewData.value
-    submittedOpinion.value = {
-      decision: brd.opinion === 'MAINTAIN' ? 'KEEP' : 'DISPOSE',
-      comment: brd.comment ?? '',
-      submittedAt: brd.submittedAt ?? '',
+  if (patent.value) {
+    const r = MOCK_REEVAL.find(rv => rv.patentId === props.patentId && rv.decision !== null)
+    if (r && isBusiness.value) {
+      submittedOpinion.value = {
+        decision: r.decision as 'KEEP' | 'DISPOSE',
+        comment: aiComments.value.bizSubmit,
+        submittedAt: r.decidedAt ?? '',
+      }
     }
   }
 
@@ -1555,31 +1583,13 @@ onUnmounted(() => {
 async function submitOpinion() {
   if (!opinionForm.decision) return
   opinionSubmitting.value = true
-  try {
-    const apiOpinion = opinionForm.decision === 'KEEP' ? 'MAINTAIN' : 'ABANDON'
-    const result = await businessReviewsApi.submitOpinion(
-      props.patentId,
-      apiOpinion,
-      opinionForm.comment || undefined,
-    )
-    submittedOpinion.value = {
-      decision: opinionForm.decision as 'KEEP' | 'DISPOSE',
-      comment: opinionForm.comment,
-      submittedAt: result.submittedAt ?? new Date().toISOString().slice(0, 10),
-    }
-    if (businessReviewData.value) {
-      businessReviewData.value = {
-        ...businessReviewData.value,
-        opinion: result.opinion,
-        submittedAt: result.submittedAt,
-        status: result.status,
-      }
-    }
-  } catch (e) {
-    console.error('의견 제출 오류:', e)
-  } finally {
-    opinionSubmitting.value = false
+  await new Promise(r => setTimeout(r, 600))
+  submittedOpinion.value = {
+    decision: opinionForm.decision as 'KEEP' | 'DISPOSE',
+    comment: opinionForm.comment,
+    submittedAt: new Date().toISOString().slice(0, 10),
   }
+  opinionSubmitting.value = false
 }
 
 // ── 유틸 ────────────────────────────────────────────
@@ -1763,13 +1773,312 @@ interface EvalReport {
 }
 interface EvalHistoryItem {
   date: string
-  grade: 'S' | 'A' | 'B' | 'C' | string
+  grade: 'S' | 'A' | 'B' | 'C'
   score: number
-  decision: '유지' | '포기' | '—'
+  decision: '유지' | '포기'
   opinion: string
-  report: EvalReport | null  // TODO: 확인 필요 - API에서 보고서 전체 내용 미제공
+  report: EvalReport
 }
 
+const MOCK_EVAL_HISTORY: EvalHistoryItem[] = [
+  // ── 2023년 3분기 (A / 82) ────────────────────────────
+  {
+    date: '2023.09.15', grade: 'A', score: 82, decision: '유지',
+    opinion: '기술성 및 권리성 모두 우수하여 유지 결정',
+    report: {
+      title: '2023년 3분기 평가 보고서',
+      grade: 'A',
+      scores: { tech: 84, rights: 81, biz: 79 },
+      comments: {
+        tech: '메시지 지향 미들웨어 기반의 토폴로지 모니터링 기술은 시장 내 차별화 요소가 명확하며, 모방 및 회피 설계 난이도가 높은 것으로 평가되었습니다.',
+        rights: '청구항 구성이 핵심 기능 중심으로 간결하게 작성되어 권리 행사 실효성이 높습니다. 다만 해외 출원 부재로 글로벌 보호 범위에 한계가 있습니다.',
+        biz: '스마트 팩토리 통합 미들웨어 솔루션으로의 사업화가 진행 중이며, 관련 시장 성장세와 함께 사업 가치가 확인됩니다.',
+      },
+      evalBlocks: [
+        {
+          key: 'tech', title: '기술성', score: 84,
+          items: [
+            { id: 'ep23-rt-1', name: '차별성 및 파급성', score: 4, method: 'LLM 분석',
+              summary: 'MOM 기반 토폴로지 모니터링은 차별성 명확하며 다중 산업 적용 가능.',
+              grounds: '메시지 지향 미들웨어 특화 병목 감지 구조는 경쟁사 대비 차별화 포인트가 분명하며, 제조·물류·통신 등 복수 산업 분야에 적용 가능한 파급성을 보유합니다.',
+              sources: 'ETRI 유선 네트워크 기술 동향; Oracle MOM 기술문서' },
+            { id: 'ep23-rt-2', name: '기술 모방 및 회피설계 난이도', score: 4, method: 'LLM 분석',
+              summary: '병목 감지 로직과 화면 연계 구조로 모방·회피설계 모두 어려움.',
+              grounds: '트랜잭션 실패 기반 병목 감지 로직과 토폴로지 화면 표시의 연계 구조는 구현 복잡성이 높아 회피 설계가 어렵습니다.',
+              sources: 'KIPRIS 등록특허 10-2893083' },
+          ],
+        },
+        {
+          key: 'rights', title: '권리성', score: 81,
+          items: [
+            { id: 'ep23-rr-1', name: '권리행사 제한 가능성', score: 5, method: '자동산출',
+              summary: '단독 출원인, 심판이력 0건으로 권리행사 제약 없음.',
+              grounds: '출원인 1명, 심판이력 0건. 공동출원에 의한 제한 또는 무효심판 등 제약 요소가 없습니다.',
+              sources: 'KIPRIS 자동산출' },
+            { id: 'ep23-rr-2', name: '권리의 구성요소', score: 4, method: 'LLM 분석',
+              summary: '핵심 기능 명확히 기재, 비본질적 요소 최소화.',
+              grounds: '모니터링 시스템의 핵심 기능이 명확하게 설명되어 있으며, 비본질적 구성요소가 거의 없습니다.',
+              sources: 'KIPRIS 등록특허 10-2893083' },
+          ],
+        },
+        {
+          key: 'market', title: '시장성 및 사업성', score: 79,
+          items: [
+            { id: 'ep23-rm-1', name: '매출 성장성', score: 4, method: '자동산출 (KOSIS)',
+              summary: '전자부품·통신장비 5년 평균 성장률 8.32%.',
+              grounds: '관련 제조 미들웨어 시장은 연 8% 이상의 성장세를 보이며 사업화 가치가 높습니다.',
+              sources: 'KOSIS 자동산출' },
+            { id: 'ep23-rm-2', name: '고객에 미치는 영향', score: 4, method: 'LLM 분석',
+              summary: '마이크로서비스 운영 기업에 실시간 병목 시각화로 직접 가치 제공.',
+              grounds: '토폴로지 기반 직관적 모니터링으로 운영 효율성 직접 개선. 실제 고객 사례가 확인됩니다.',
+              sources: '스마트제조혁신 생태계 고도화방안 (관계부처 합동)' },
+          ],
+        },
+      ],
+      project: {
+        commercialized: '진행 중',
+        service: '스마트 팩토리 시스템 통합 미들웨어 솔루션',
+        history: '2022년 이후 주요 고객 사례와 함께 적용 중',
+        customer: '반도체 소재 제조 업체 S사, 자동화 설비 업체 K사',
+        signal: '고객 사례, 수상·인증',
+        summary: '본 특허와 연결되는 사내 활용 영역은 스마트 팩토리 통합 미들웨어 솔루션이며 사업화 상태는 진행 중입니다. 2022년부터 실제 고객 사례에 적용되어 운영 효율 향상이 확인되었습니다.',
+        evidence: [
+          { title: '스마트 팩토리 구축을 위한 설비제어 데이터 표준화 및 통합 관제 플랫폼', url: '#' },
+          { title: '스마트 팩토리 시스템의 통합을 실현하는 미들웨어 솔루션', url: '#' },
+          { title: '제조 데이터 분석 기반 스마트 팩토리 구축 및 고도화', url: '#' },
+        ],
+      },
+      similarPatents: [
+        { id: 101, similarityScore: 38.83, applicationNumber: '1020170095218', title: '차량 네트워크에서 ASIL에 기초한 통신 방법 및 장치', applicant: '기아 주식회사 외 현대자동차주식회사', year: 2017, citations: 7, status: '유지', desc: '대상 특허는 메시지 지향 미들웨어에서의 병목 구간 모니터링 방법에 대한 혁신적 요소가 있음에도 불구하고 강력한 경쟁환경에서 기술적 보호의 필요성이 강조됩니다. 비교 특허는 차량 네트워크 내 통신 안정성에 중점을 두고 있으며 실질적인 등록 실적과 인용 횟수에서 경쟁력을 보여줍니다.', detail: '기술적으로 겹치는 부분: 두 기술 모두 메시지와 관련된 노드 간 데이터 전송을 여하히 다루는지에 집중합니다.\n기술적 차이: 대상 특허는 메시지 지향 미들웨어에서 병목 구간을 관리하는 데 중점을 두고, 비교 특허는 차량 네트워크의 메시지 무결성 및 안전성을 강조합니다.\n청구범위 관점: 비교 특허는 20개 청구항과 핵심 독립항들로 구성되어 있어 보호 범위가 명확하고 더 광범위합니다.\n유지 판단 시사점: 경쟁기술의 풍부함과 제한된 차별성으로 인해 포트폴리오 전략의 적극적 재검토 여지가 있습니다.' },
+        { id: 102, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '분석 대상 특허와 상세 비교 특허는 모두 병목 구간 모니터링 및 분석 방법에 대한 기술을 다룹니다. 개선된 모니터링 기능을 제공하기 때문에 유사하나, 기술적 차이점은 유지 가능성을 검토할 때 참고할 수 있는 요소로 보입니다.', detail: '기술적으로 겹치는 부분: 두 특허 모두 병목 구간 정보를 수집 및 분석하여 시스템 성능을 모니터링하고 개선하는 기능을 포함합니다.\n기술적 차이: 대상 특허는 미들웨어 레벨 모니터링, 비교 특허는 서버 레벨 성능 분석을 보다 중점적으로 수행합니다.\n청구범위 관점: 비교 특허는 11개 청구항을 보유하여 공식적인 청구 내용이 더 명확합니다.\n유지 판단 시사점: 등록된 비교 특허의 영향을 고려하여 차별화된 기술 요소를 명확히 해 둘 필요가 있습니다.' },
+        { id: 103, similarityScore: 38.52, applicationNumber: '1020170063049', title: '통신 시스템에서 네트워크 품질 관리를 위한 방법 및 장치', applicant: '삼성전자주식회사', year: 2017, citations: 5, status: '소멸', desc: '네트워크 품질 관리 방법에서 기술적 겹침이 있으나, 현재 소멸된 특허로 직접적인 권리 충돌 가능성은 낮습니다. 삼성전자의 높은 피인용수는 해당 분야 기술력을 방증하며 관련 출원 동향 모니터링이 필요합니다.', detail: '기술적으로 겹치는 부분: 네트워크 트래픽 품질을 측정하고 관리하는 기능에서 기술적 겹침이 확인됩니다.\n기술적 차이: 대상 특허는 MOM 레이어에서 메시지 큐 병목을 감지하는 반면, 비교 특허는 이동통신 네트워크의 QoS 파라미터를 관리하는 방식에 초점을 맞춥니다.\n청구범위 관점: 비교 특허는 현재 소멸 상태로 권리 행사가 불가능하여 직접적 법적 위협은 없습니다.\n유지 판단 시사점: 직접 경쟁 위협은 낮으나 삼성전자와 같은 대형 출원인이 해당 기술 분야에 존재함을 인지하고 기술 차별화 포인트를 명확히 유지하는 것이 중요합니다.' },
+        { id: 104, similarityScore: 38.34, applicationNumber: '1020200173311', title: '차세대 배전지능화 시스템 검증장치', applicant: '한국전력공사', year: 2020, citations: 1, status: '유지', desc: '', detail: '' },
+        { id: 105, similarityScore: 37.92, applicationNumber: '1020160076352', title: '분산시스템 호출 로그 기반 비즈니스 트랜잭션 실시간 추적 방법', applicant: '티쓰3큐 주식회사', year: 2016, citations: 3, status: '유지', desc: '', detail: '' },
+        { id: 106, similarityScore: 37.15, applicationNumber: '1020180028210', title: '네트워크 토폴로지 구조 분석 방법', applicant: '국방과학연구소', year: 2018, citations: 0, status: '유지', desc: '', detail: '' },
+        { id: 107, similarityScore: 37.04, applicationNumber: '1020150187276', title: '다종 네트워크 환경에서 동적 경로 상태를 측정하는 방법', applicant: '한국전자기술연구원', year: 2015, citations: 2, status: '소멸', desc: '', detail: '' },
+      ],
+      similarStats: { total: 7, registered: 5, pending: 0, rejectedExpired: 2, avgCitations: 2.9 },
+      similarSummary: 'KIPRIS 유사도 상위 7건 중 등록/유지 5건, 거절/소멸 2건입니다. 메시지 지향 미들웨어에서의 병목 모니터링에 집중한 점에서 경쟁 기술과 차별화됩니다.',
+      confirmItems: [
+        { title: '대체기술 및 경쟁성', meta: ' · 기술성 · 2/5', desc: '기아, 그린아일, 삼성전자 등 경쟁 출원인 점유율이 높습니다. 자사 차별화 포인트 구체화가 필요합니다.' },
+        { title: '권리의 충실성', meta: ' · 권리성 · 3/5', desc: '청구항 3개, 해외출원 없음. PCT 출원 등 글로벌 보호 범위 확대를 검토하십시오.' },
+      ],
+      refs: [
+        '메시지 지향 미들웨어(MOM) 개요 (Oracle 기술문서)',
+        'OSGi 기반 미들웨어의 개발에 관한 연구 (한국지식정보기술학회)',
+        '유선 네트워크 기술 동향 및 전망 (ETRI)',
+        '스마트제조혁신 생태계 고도화방안 (관계부처 합동)',
+        'KIPRIS 유사 특허 분석 결과: 10-2893083',
+      ],
+      feeRecords: [
+        { quarter: '제  1 -  3 년분', amount:  630000, paid: '2012-09-20' },
+        { quarter: '제  4 -  6 년분', amount: 1110000, paid: '2015-08-24' },
+        { quarter: '제  7 -  9 년분', amount: 2010000, paid: '2018-08-22' },
+        { quarter: '제 10 - 12 년분', amount: 3195000, paid: '2021-08-25' },
+      ],
+      history: [
+        { date: '2021-03-15', label: '출원', variant: 'file' },
+        { date: '2021-09-15', label: '공개', variant: 'pub' },
+        { date: '2022-09-15', label: '등록', variant: 'reg' },
+      ],
+    },
+  },
+
+  // ── 2022년 3분기 (B / 71) ────────────────────────────
+  {
+    date: '2022.09.20', grade: 'B', score: 71, decision: '유지',
+    opinion: '시장성 점수 다소 낮으나 핵심 기술 가치 인정',
+    report: {
+      title: '2022년 3분기 평가 보고서',
+      grade: 'B',
+      scores: { tech: 75, rights: 73, biz: 62 },
+      comments: {
+        tech: '병목 구간 자동 탐지 및 토폴로지 기반 시각화 기능은 산업 현장에서 실질적인 운영 효율 향상에 기여합니다.',
+        rights: '청구항 수 3개, 카테고리 3개로 구성되어 있으며 해외출원이 없습니다. 권리의 충실성 보완이 필요합니다.',
+        biz: '동일 IPC 분야 출원 증가율이 감소세를 보이고 있어 시장 성장성에 대한 지속적인 모니터링이 필요합니다.',
+      },
+      evalBlocks: [
+        {
+          key: 'tech', title: '기술성', score: 75,
+          items: [
+            { id: 'ep22-rt-1', name: '차별성 및 파급성', score: 3, method: 'LLM 분석',
+              summary: '단일 시장 적용 가능, 유사 솔루션 증가로 차별성 다소 약화.',
+              grounds: '토폴로지 기반 병목 감지 기능은 유효하나, 시장에 유사 모니터링 솔루션이 증가하여 차별성이 다소 약화되었습니다.',
+              sources: 'ETRI 유선 네트워크 기술 동향; Oracle MOM 기술문서' },
+            { id: 'ep22-rt-2', name: '혁신성 및 개척성', score: 4, method: 'LLM 분석',
+              summary: '토폴로지 기반 동적 갱신 구조는 여전히 기술적 개척성 인정.',
+              grounds: '정적 모니터링 대비 토폴로지 기반 동적 상태 갱신 구조는 기술적 개척성 측면에서 긍정적으로 평가됩니다.',
+              sources: 'OSGi 기반 미들웨어 연구 (한국지식정보기술학회)' },
+          ],
+        },
+        {
+          key: 'rights', title: '권리성', score: 73,
+          items: [
+            { id: 'ep22-rr-1', name: '권리의 충실성', score: 3, method: '자동산출',
+              summary: '청구항 3개, 카테고리 3개, 해외출원 없음.',
+              grounds: '청구항 수 3개로 구성되어 있으며 해외출원이 없어 글로벌 보호에 한계가 있습니다.',
+              sources: 'KIPRIS 자동산출' },
+            { id: 'ep22-rr-2', name: '무효 가능성', score: 3, method: 'LLM 분석',
+              summary: '선행기술 3건 존재로 무효 가능성 일부 잔존.',
+              grounds: '심사관 인용 선행기술 3건이 확인되어 무효 가능성을 완전히 배제하기 어렵습니다.',
+              sources: 'KIPRIS 등록특허 10-2893083' },
+          ],
+        },
+        {
+          key: 'market', title: '시장성 및 사업성', score: 62,
+          items: [
+            { id: 'ep22-rm-1', name: '특허출원 활성도', score: 1, method: '자동산출',
+              summary: 'IPC 출원 증가율 -78.1%, 시장 활성도 저하.',
+              grounds: '동일 IPC 분야 특허 출원이 급격히 감소하고 있어 시장 활성도가 낮습니다.',
+              sources: 'KIPRIS 자동산출' },
+            { id: 'ep22-rm-2', name: '고객에 미치는 영향', score: 3, method: 'LLM 분석',
+              summary: '운영 효율 개선 기여하나 고객 사례 증거 부족.',
+              grounds: '토폴로지 시각화로 운영 효율 개선에 기여하나, 당시 고객 사례 데이터가 충분하지 않습니다.',
+              sources: '스마트제조혁신 생태계 고도화방안 (관계부처 합동)' },
+          ],
+        },
+      ],
+      project: {
+        commercialized: '검토 중',
+        service: '스마트 팩토리 시스템 통합 미들웨어 솔루션 (PoC 단계)',
+        history: '2022년 1분기 PoC 진행, 고객 적용 검토 중',
+        customer: '반도체 소재 제조 업체 S사 (협의 중)',
+        signal: '내부 검토 문서',
+        summary: '2022년 당시 사업화는 PoC 단계였습니다. 스마트 팩토리 미들웨어 솔루션으로의 적용이 검토되었으나, 실제 고객 사례는 아직 확보되지 않은 상태였습니다.',
+        evidence: [
+          { title: '스마트 팩토리 구축을 위한 설비제어 데이터 표준화 및 통합 관제 플랫폼', url: '#' },
+          { title: '스마트 팩토리 시스템의 통합을 실현하는 미들웨어 솔루션', url: '#' },
+        ],
+      },
+      similarPatents: [
+        { id: 201, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '분석 대상 특허와 상세 비교 특허는 모두 병목 구간 모니터링 및 분석 방법에 대한 기술을 다룹니다. 개선된 모니터링 기능을 제공하기 때문에 유사하나, 기술적 차이점은 유지 가능성을 검토할 때 참고할 수 있는 요소로 보입니다.', detail: '기술적으로 겹치는 부분: 두 특허 모두 병목 구간 정보를 수집 및 분석하여 시스템 성능을 모니터링하고 개선하는 기능을 포함합니다.\n기술적 차이: 대상 특허는 미들웨어 레벨 모니터링, 비교 특허는 서버 레벨 성능 분석을 보다 중점적으로 수행합니다.\n청구범위 관점: 비교 특허는 11개 청구항을 보유하여 공식적인 청구 내용이 더 명확합니다.\n유지 판단 시사점: 등록된 비교 특허의 영향을 고려하여 차별화된 기술 요소를 명확히 해 둘 필요가 있습니다.' },
+        { id: 202, similarityScore: 37.92, applicationNumber: '1020160076352', title: '분산시스템에서 애플리케이션 호출 로그를 이용한 비즈니스 트랜잭션의 실시간 추적 및 분석 방법, 그리고 그 시스템', applicant: '티쓰3큐 주식회사', year: 2016, citations: 3, status: '유지', desc: '두 특허 모두 분산 시스템에서 트랜잭션 흐름을 모니터링하고 성능 이슈를 추적하는 기능을 공유합니다. 접근 방식의 차이가 있어 직접 경쟁 관계는 아니지만, 기술적 겹침으로 인해 차별화 전략 수립이 필요합니다.', detail: '기술적으로 겹치는 부분: 두 특허 모두 분산 시스템에서 트랜잭션 흐름을 모니터링하고 성능 이슈를 추적하는 기능을 포함합니다.\n기술적 차이: 대상 특허는 미들웨어 레벨 병목 감지에 집중하는 반면, 비교 특허는 애플리케이션 호출 로그를 활용한 비즈니스 트랜잭션 추적에 초점을 맞춥니다.\n청구범위 관점: 비교 특허는 9개 청구항을 보유하며 서비스 호출 체인 분석에 특화된 권리 범위를 가집니다.\n유지 판단 시사점: 미들웨어 특화 포지셔닝을 명확히 하여 비교 특허와의 기술적 차별성을 문서화하는 것이 권장됩니다.' },
+        { id: 203, similarityScore: 37.17, applicationNumber: '1020220155709', title: '프로그래밍 가능한 네트워크 가상화에서의 제어 트래픽 시계열 예측 기반 제어 채널 고립 방법', applicant: '고려대학교 산학협력단', year: 2022, citations: 0, status: '유지', desc: 'SDN/NFV 기반 네트워크 가상화 환경에서 제어 트래픽 예측 기술이 포함되어 있어 네트워크 성능 관리 측면에서 기술적 겹침이 확인됩니다. 학술 출원으로 상업적 권리 행사 가능성은 낮으나 선행기술 참고 자료로서 의미가 있습니다.', detail: '기술적으로 겹치는 부분: 두 기술 모두 네트워크 상태를 시계열 데이터로 분석하여 트래픽 흐름의 이상 및 병목을 식별하는 접근 방식을 공유합니다.\n기술적 차이: 대상 특허는 미들웨어 레이어의 메시지 큐 병목 감지에 집중하는 반면, 비교 특허는 SDN 제어 채널을 시계열 예측으로 고립시키는 방법에 초점을 맞춥니다.\n청구범위 관점: 비교 특허는 최근 출원(2022년)으로 아직 등록 심사 중이며 청구범위가 확정되지 않아 권리 범위 예측이 어렵습니다.\n유지 판단 시사점: 학술기관 출원으로 직접적인 상업적 위협은 낮으나, 네트워크 트래픽 예측 기반 관리 기술의 최신 연구 동향을 반영하고 있어 기술 차별화 논리 보강에 활용할 수 있습니다.' },
+        { id: 204, similarityScore: 37.15, applicationNumber: '1020180028210', title: '네트워크 토폴로지 구조 분석 방법', applicant: '국방과학연구소', year: 2018, citations: 0, status: '유지', desc: '', detail: '' },
+        { id: 205, similarityScore: 36.93, applicationNumber: '1020240146212', title: '서비스 메시를 활용한 네트워크 트래픽 관리 방법, 장치 및 프로그램', applicant: '(주) 케이티클라우드', year: 2024, citations: 0, status: '공개', desc: '', detail: '' },
+      ],
+      similarStats: { total: 5, registered: 4, pending: 1, rejectedExpired: 0, avgCitations: 1.0 },
+      similarSummary: 'KIPRIS 유사도 상위 5건 중 등록/유지 4건, 공개/심사중 1건입니다. 미들웨어 특화 병목 모니터링이라는 차별점이 있으나 유사 기술이 증가하는 추세입니다.',
+      confirmItems: [
+        { title: '특허출원 활성도', meta: ' · 시장성 및 사업성 · 1/5', desc: 'IPC 분야 출원이 급감하고 있습니다. 시장 관심도 하락 여부를 추가 검토하십시오.' },
+        { title: '권리의 충실성', meta: ' · 권리성 · 3/5', desc: '해외출원이 없어 글로벌 보호 범위가 없습니다. PCT 출원 검토를 권장합니다.' },
+        { title: '고객에 미치는 영향', meta: ' · 시장성 · 3/5', desc: 'PoC 진행 중이나 고객 사례 확보가 필요합니다. 사업 적용 근거를 보강하십시오.' },
+      ],
+      refs: [
+        '메시지 지향 미들웨어(MOM) 개요 (Oracle 기술문서)',
+        'OSGi 기반 미들웨어의 개발에 관한 연구 (한국지식정보기술학회)',
+        'ETRI 유선 네트워크 기술 동향 및 전망 보고서',
+        'KIPRIS 유사 특허 분석 결과: 10-2893083',
+      ],
+      feeRecords: [
+        { quarter: '제  1 -  3 년분', amount:  630000, paid: '2012-09-20' },
+        { quarter: '제  4 -  6 년분', amount: 1110000, paid: '2015-08-24' },
+        { quarter: '제  7 -  9 년분', amount: 2010000, paid: '2018-08-22' },
+      ],
+      history: [
+        { date: '2021-03-15', label: '출원', variant: 'file' },
+        { date: '2021-09-15', label: '공개', variant: 'pub' },
+        { date: '2022-09-15', label: '등록', variant: 'reg' },
+      ],
+    },
+  },
+
+  // ── 2021년 3분기 (C / 58) ────────────────────────────
+  {
+    date: '2021.09.10', grade: 'C', score: 58, decision: '포기',
+    opinion: '유사 기술 다수 출현으로 차별성 상실',
+    report: {
+      title: '2021년 3분기 평가 보고서',
+      grade: 'C',
+      scores: { tech: 61, rights: 57, biz: 54 },
+      comments: {
+        tech: '유사한 모니터링 솔루션이 시장에 다수 출현하면서 본 기술만의 차별화 포인트가 약화되었습니다.',
+        rights: '청구항 범위가 협소하여 경쟁사의 변형 기술에 대한 대응이 어려운 상황입니다.',
+        biz: '동일 IPC 분야 경쟁 기술 증가로 시장 내 포지셔닝이 어려워지고 있습니다.',
+      },
+      evalBlocks: [
+        {
+          key: 'tech', title: '기술성', score: 61,
+          items: [
+            { id: 'ep21-rt-1', name: '차별성 및 파급성', score: 2, method: 'LLM 분석',
+              summary: '유사 솔루션 다수 출현, 차별화 포인트 약화.',
+              grounds: '유사한 모니터링 솔루션이 시장에 다수 출현하면서 본 기술만의 차별화 포인트가 명확하지 않습니다.',
+              sources: 'ETRI 유선 네트워크 기술 동향' },
+            { id: 'ep21-rt-2', name: '대체기술 및 경쟁성', score: 2, method: 'LLM 분석',
+              summary: '대형 경쟁사 점유율 압도적, 자사 시장 점유율 매우 낮음.',
+              grounds: '동일 IPC 분야 대형 경쟁 출원인의 합산 점유율이 높으며, 자사 시장 점유율이 매우 낮습니다.',
+              sources: 'KIPRIS IPC 표본 분석' },
+          ],
+        },
+        {
+          key: 'rights', title: '권리성', score: 57,
+          items: [
+            { id: 'ep21-rr-1', name: '권리의 충실성', score: 2, method: '자동산출',
+              summary: '청구항 3개, 해외출원 없음. 권리 보호 범위 협소.',
+              grounds: '청구항이 3개에 불과하고 해외출원이 없어 전반적인 권리 보호 범위가 협소합니다.',
+              sources: 'KIPRIS 자동산출' },
+            { id: 'ep21-rr-2', name: '회피설계 용이성', score: 2, method: 'LLM 분석',
+              summary: '한정적 구성요소로 회피설계 비교적 용이.',
+              grounds: '청구범위가 협소하여 경쟁사가 유사 기술을 개발할 때 청구범위 우회가 상대적으로 용이합니다.',
+              sources: 'KIPRIS 등록특허 10-2893083' },
+          ],
+        },
+        {
+          key: 'market', title: '시장성 및 사업성', score: 54,
+          items: [
+            { id: 'ep21-rm-1', name: '특허출원 활성도', score: 1, method: '자동산출',
+              summary: 'IPC 분야 출원 급감, 시장 관심도 하락.',
+              grounds: '동일 IPC 분야 출원이 지속 감소하고 있어 시장 활성도가 낮습니다.',
+              sources: 'KIPRIS 자동산출' },
+            { id: 'ep21-rm-2', name: '고객에 미치는 영향', score: 3, method: 'LLM 분석',
+              summary: '사업화 초기 단계로 고객 영향 아직 검증되지 않음.',
+              grounds: '사업화가 초기 기획 단계에 있어 실제 고객에게 미치는 영향이 아직 검증되지 않습니다.',
+              sources: '내부 기획 문서' },
+          ],
+        },
+      ],
+      project: {
+        commercialized: '기획 중',
+        service: '스마트 팩토리 미들웨어 솔루션 (기획 단계)',
+        history: '2021년 내부 검토 중, 외부 적용 이력 없음',
+        customer: '미정',
+        signal: '내부 기획 문서',
+        summary: '2021년 당시 본 특허의 사업화는 기획 단계에 머물러 있었습니다. 스마트 팩토리 미들웨어 솔루션으로의 적용이 검토되었으나, 실제 고객 적용 사례는 없었습니다.',
+        evidence: [
+          { title: '스마트 팩토리 구축을 위한 설비제어 데이터 표준화 및 통합 관제 플랫폼', url: '#' },
+        ],
+      },
+      similarPatents: [
+        { id: 301, similarityScore: 38.66, applicationNumber: '1020170069012', title: '실시간 병목 자동 분석 방법 및 이러한 방법을 수행하는 장치', applicant: '그린아일 주식회사', year: 2017, citations: 2, status: '유지', desc: '분석 대상 특허와 상세 비교 특허는 모두 병목 구간 모니터링 및 분석 방법에 대한 기술을 다룹니다. 이 시점에서는 기술적 차별화 포인트가 미흡하여 청구범위 보완이 필요한 상태였습니다.', detail: '기술적으로 겹치는 부분: 두 특허 모두 병목 구간 정보를 수집 및 분석하여 시스템 성능을 모니터링하고 개선하는 기능을 포함합니다.\n기술적 차이: 대상 특허는 미들웨어 레벨 모니터링, 비교 특허는 서버 레벨 성능 분석을 보다 중점적으로 수행합니다.\n청구범위 관점: 비교 특허는 11개 청구항을 보유하여 공식적인 청구 내용이 더 명확하며, 당시 대상 특허의 청구범위 보완이 권고되었습니다.\n유지 판단 시사점: 청구범위 보완을 조건으로 유지를 검토하되, 차별화된 기술 요소 명문화가 시급한 상황이었습니다.' },
+        { id: 302, similarityScore: 37.15, applicationNumber: '1020180028210', title: '네트워크 토폴로지 구조 분석 방법', applicant: '국방과학연구소', year: 2018, citations: 0, status: '유지', desc: '네트워크 토폴로지 분석 측면에서 기술적 겹침이 존재합니다. 군사용 네트워크와 산업용 미들웨어라는 적용 도메인의 차이로 직접 경쟁 가능성은 낮으나 영역 모니터링이 필요합니다.', detail: '기술적으로 겹치는 부분: 두 특허 모두 네트워크 구조를 분석하여 성능에 영향을 미치는 요소를 파악하는 기능을 공유합니다.\n기술적 차이: 대상 특허는 MOM 미들웨어 병목 감지에 특화되어 있으며, 비교 특허는 군사 네트워크 토폴로지의 구조적 분석에 초점을 맞춥니다.\n청구범위 관점: 비교 특허는 7개 청구항으로 구성되며 군용 특화 적용 범위로 인해 산업용 특허와 직접 충돌은 제한적입니다.\n유지 판단 시사점: 도메인 차별화가 명확하므로 위협 수준은 낮으나, 네트워크 분석 방법 특허의 포괄적 영역을 인지하고 청구범위 보완을 검토할 필요가 있습니다.' },
+        { id: 303, similarityScore: 37.04, applicationNumber: '1020150187276', title: '다종 네트워크 환경에서 동적 경로 상태를 측정하는 방법', applicant: '한국전자기술연구원', year: 2015, citations: 2, status: '소멸', desc: '다종 네트워크 환경에서 경로 상태를 측정하는 방법이 포함되어 있어 네트워크 품질 모니터링 측면에서 기술적 겹침이 있습니다. 현재 소멸된 특허이므로 직접적인 권리 충돌 위험은 없습니다.', detail: '기술적으로 겹치는 부분: 두 기술 모두 네트워크 경로의 상태를 주기적으로 측정·수집하여 성능 이상을 감지하는 기능을 포함합니다.\n기술적 차이: 대상 특허는 미들웨어 레이어에서 메시지 큐 병목을 실시간 감지하는 반면, 비교 특허는 이기종 네트워크 환경에서 동적 경로 상태를 측정하는 방법에 집중합니다.\n청구범위 관점: 비교 특허는 소멸 상태(2015년 출원)로 현재 권리 행사가 불가하며, 피인용 2건은 해당 기술의 기초적 참고 가치를 방증합니다.\n유지 판단 시사점: 소멸 특허로 직접적 위협은 없으나, 다종 네트워크 경로 측정 방법론이 선행기술로 인용될 가능성이 있으므로 기술 차별화 포인트를 문서화해 두는 것이 권장됩니다.' },
+        { id: 304, similarityScore: 36.83, applicationNumber: '1020170040115', title: '네트워크 자원을 고려한 가상 네트워크 관리장치 및 그 방법', applicant: '한국전자통신연구원', year: 2017, citations: 2, status: '소멸', desc: '', detail: '' },
+      ],
+      similarStats: { total: 4, registered: 2, pending: 0, rejectedExpired: 2, avgCitations: 1.5 },
+      similarSummary: 'KIPRIS 유사도 상위 4건 분석 결과, 등록/유지 2건, 거절/소멸 2건입니다. 유사 기술이 다수 등록되어 있어 차별화 확보가 어렵습니다.',
+      confirmItems: [
+        { title: '차별성 및 파급성', meta: ' · 기술성 · 2/5', desc: '유사 솔루션이 이미 시장에 다수 존재합니다. 차별화 포인트 재정립이 필요합니다.' },
+        { title: '대체기술 및 경쟁성', meta: ' · 기술성 · 2/5', desc: '대형 경쟁사의 점유율이 높습니다. 자사 포지셔닝 전략을 재검토하십시오.' },
+        { title: '특허출원 활성도', meta: ' · 시장성 · 1/5', desc: '해당 기술 분야 출원이 급격히 감소하고 있습니다. 시장 관심도 재평가가 필요합니다.' },
+        { title: '회피설계 용이성', meta: ' · 권리성 · 2/5', desc: '청구범위가 협소하여 경쟁사 회피 설계가 용이합니다. 포기 또는 청구범위 보강을 검토하십시오.' },
+      ],
+      refs: [
+        'OSGi 기반 미들웨어의 개발에 관한 연구 (한국지식정보기술학회)',
+        'ETRI 유선 네트워크 기술 동향 및 전망 보고서',
+        'KIPRIS IPC 표본 분석 (H04L, G06F)',
+        'KIPRIS 유사 특허 분석 결과: 10-2893083',
+      ],
+      feeRecords: [
+        { quarter: '제  1 -  3 년분', amount:  630000, paid: '2012-09-20' },
+        { quarter: '제  4 -  6 년분', amount: 1110000, paid: '2015-08-24' },
+      ],
+      history: [
+        { date: '2021-03-15', label: '출원', variant: 'file' },
+        { date: '2021-09-15', label: '공개', variant: 'pub' },
+      ],
+    },
+  },
+]
 
 const evalReportOpen = ref(false)
 const selectedEvalReport = ref<EvalReport | null>(null)
@@ -1780,8 +2089,7 @@ const evalPanelTotal = computed(() => {
   return Math.round((tech + rights + biz) / 3)
 })
 
-function openEvalReport(report: EvalReport | null) {
-  if (!report) return  // TODO: 확인 필요 - API에서 보고서 상세 로딩 필요
+function openEvalReport(report: EvalReport) {
   selectedEvalReport.value = report
   evalReportOpen.value = true
 }

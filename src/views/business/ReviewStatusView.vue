@@ -4,9 +4,8 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">{{ quarterLabel }}</p>
         <h2 class="page-header__title">
-          검토 현황
+          제출 현황
           <button class="btn-guide-icon" type="button" aria-label="재평가 안내" @click="showGuide = true">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" overflow="visible">
               <circle cx="12" cy="12" r="10"/>
@@ -27,6 +26,7 @@
 
     <!-- 프로그레스 바 -->
     <div class="progress-section">
+      <p class="progress-section__quarter">{{ quarterLabel }}</p>
       <div class="progress-section__top">
         <div class="dday-badge" :class="ddayValue <= 7 ? 'dday-badge--urgent' : ''">
           <p class="dday-badge__label">제출 마감</p>
@@ -35,7 +35,7 @@
         <div>
           <div class="progress-section__header">
             <span class="progress-section__text">
-              {{ quarterLabel }} 재평가 <strong>{{ totalCount }}건</strong> 중
+              재평가 <strong>{{ totalCount }}건</strong> 중
               <strong class="progress-section__done">{{ submittedCount }}건</strong> 제출 완료
             </span>
             <span class="progress-section__pct">{{ submitPct }}%</span>
@@ -306,8 +306,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePagination } from '@/composables/usePagination'
 import BasePagination from '@/components/ui/BasePagination.vue'
-import { businessReviewsApi } from '@/api/businessReviews'
-import type { BusinessReviewSummaryResponse } from '@/api/businessReviews'
+import { MOCK_PATENTS, MOCK_REEVAL } from '@/mocks/data'
 
 const router = useRouter()
 const route  = useRoute()
@@ -327,11 +326,10 @@ interface ReviewItem {
 }
 
 // ── 상태 ────────────────────────────────────────────
-const loading      = ref(false)
-const showGuide    = ref(false)
-const activeTab    = ref<'all' | 'done' | 'pending'>('all')
-const allItems     = ref<ReviewItem[]>([])
-const summaryData  = ref<BusinessReviewSummaryResponse | null>(null)
+const loading   = ref(false)
+const showGuide = ref(false)
+const activeTab = ref<'all' | 'done' | 'pending'>('all')
+const allItems  = ref<ReviewItem[]>([])
 
 // ── 계산값 ──────────────────────────────────────────
 const submittedCount = computed(() => allItems.value.filter(i => i.decision !== null).length)
@@ -348,17 +346,11 @@ const filteredItems = computed(() => {
 
 // ── 마감일 ───────────────────────────────────────────
 const ddayValue = computed(() => {
-  const endDate = summaryData.value?.reviewCycle?.endDate
-  if (endDate) {
-    return Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-  }
-  return 0 // TODO: 확인 필요 - summary 미로드 시 fallback
+  const deadline = new Date(2026, 5, 30) // 2026-06-30
+  return Math.max(0, Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
 })
 
-const quarterLabel = computed(() => {
-  const rc = summaryData.value?.reviewCycle
-  return rc ? `${rc.year}년 ${rc.quarter}분기` : '—'
-})
+const quarterLabel = computed(() => '2026년 2분기')
 
 // ── 탭 ──────────────────────────────────────────────
 const tabs = [
@@ -391,11 +383,18 @@ const flowSteps = [
   { label: '데이터 추출',      sub: '특허 메타데이터 및 원문 수집' },
   { label: 'AI 가치 평가',     sub: '기술성·권리성·시장성 자동 분석' },
   { label: '보고서 자동 생성', sub: '점수·근거·출처 포함 보고서 생성' },
-  { label: '사업부 검토',      sub: '담당자가 AI 보고서 기반 의견 제출' },
+  { label: '사업부 제출',      sub: '담당자가 AI 보고서 기반 의견 제출' },
   { label: '최종 결정',        sub: 'Legal팀 최종 포트폴리오 조정' },
 ]
 
 // ── 유틸 ────────────────────────────────────────────
+const GRADE_SCORE: Record<string, number> = { S: 91, A: 83, B: 67, C: 54 }
+
+function scoreClass(score: number) {
+  if (score >= 80) return 'score--high'
+  if (score >= 60) return 'score--mid'
+  return 'score--low'
+}
 
 function formatDate(d?: string | null) {
   if (!d) return '—'
@@ -405,15 +404,7 @@ function formatDate(d?: string | null) {
 function goDetail(id: number) { router.push(`/biz/review/${id}`) }
 
 // ── 데이터 로드 ──────────────────────────────────────
-async function fetchSummary() {
-  try {
-    summaryData.value = await businessReviewsApi.getBusinessReviewSummary()
-  } catch (err) {
-    console.error('검토 요약 조회 실패:', err)
-  }
-}
-
-async function fetchList(_p = 1) {
+function fetchList(_p = 1) {
   loading.value = true
   setPage(1)
   try {
@@ -445,7 +436,7 @@ async function fetchList(_p = 1) {
 onMounted(async () => {
   const filter = route.query.filter
   if (filter === 'pending' || filter === 'done') activeTab.value = filter
-  await Promise.all([fetchList(1), fetchSummary()])
+  fetchList(1)
 })
 </script>
 
@@ -487,11 +478,6 @@ onMounted(async () => {
   background: #f5f3ff;
 }
 
-.page-header__eyebrow {
-  font-size: 12px; font-weight: 600;
-  letter-spacing: .06em; text-transform: uppercase;
-  color: #6366f1; margin: 0 0 5px;
-}
 
 .page-header__title {
   display: flex; align-items: center; gap: 8px;
@@ -522,6 +508,14 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.progress-section__quarter {
+  margin: 0 0 12px;
+  padding-bottom: 12px;
+  font-size: 18px; font-weight: 800;
+  color: #0f172a; letter-spacing: -0.02em;
+  border-bottom: 1.5px solid rgba(15, 23, 42, 0.08);
+  width: 100%;
 }
 
 .progress-section__header {

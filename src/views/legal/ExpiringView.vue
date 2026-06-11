@@ -4,7 +4,6 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">{{ deptId ? '내 사업부 소멸 예정' : '소멸 예정 관리' }}</p>
         <h2 class="page-header__title">소멸 예정 특허</h2>
         <p class="page-header__desc">기간별 소멸 예정 특허를 확인하고 유지/포기를 결정하세요</p>
       </div>
@@ -187,9 +186,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { expiringApi } from '@/api/expiring'
 
 const props = defineProps<{ deptId?: number }>()
 const { deptId } = props
@@ -204,6 +202,8 @@ const view         = ref<'timeline' | 'calendar'>('timeline')
 const activeFilter = ref<'all' | '3m' | '6m' | '1y' | '3y' | '5y'>('5y')
 
 // ── 색상 ────────────────────────────────────────────
+const techColors = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#ABACED']
+
 const periodColors = [
   { label: '3개월 이내', color: '#E88989' },
   { label: '6개월 이내', color: '#FFBC5E' },
@@ -214,7 +214,25 @@ const periodColors = [
 
 const periodDays: Record<string, number> = { '3m': 90, '6m': 180, '1y': 365, '3y': 1095, '5y': 1825 }
 
-// ── 소멸 목록 ─────────────────────────────────────────
+const selectedBarLabel = computed(() => {
+  if (activeFilter.value === 'all') return '전체'
+  return (periodBarData.find(p => p.value === activeFilter.value)?.label ?? '') + ' 이내'
+})
+
+// ── 기간별 막대 차트 ─────────────────────────────────
+const periodBarData = [
+  { value: '3m',  label: '3개월', count: 8,   color: '#E88989' },
+  { value: '6m',  label: '6개월', count: 15,  color: '#FFBC5E' },
+  { value: '1y',  label: '1년',   count: 38,  color: '#ABACED' },
+  { value: '3y',  label: '3년',   count: 92,  color: '#84DBED' },
+  { value: '5y',  label: '5년',   count: 147, color: '#67E2AB' },
+]
+const maxPeriod = Math.max(...periodBarData.map(p => p.count))
+function periodBarH(count: number) {
+  return Math.round((count / maxPeriod) * 120) + 16
+}
+
+// ── 소멸 목록 (mock) ─────────────────────────────────
 interface ExpiryItem {
   id: number; title: string; applicationNumber: string
   techField: string; dept: string; deptId?: number; expiryDate: string
@@ -282,7 +300,7 @@ const selectedBarLabel = computed(() => {
 })
 
 const scopedItems = computed(() =>
-  props.deptId ? allItems.value.filter(i => i.deptId === props.deptId) : allItems.value
+  props.deptId ? allItems.filter(i => i.deptId === props.deptId) : allItems
 )
 
 const filteredItems = computed(() => {
@@ -292,32 +310,25 @@ const filteredItems = computed(() => {
     .sort((a, b) => a.dday - b.dday)
 })
 
-// ── 기술분야별 스택 바 (allItems로부터 계산) ─────────────
+// ── 기술분야별 스택 바 ───────────────────────────────
 const heatmapFields = ['반도체', '배터리', 'AI/SW', '소재']
 const fieldColors   = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED']
 
-const heatmapData = computed(() => {
-  const result: Record<string, Record<string, number>> = {}
-  for (const field of heatmapFields) {
-    result[field] = {
-      '3m': allItems.value.filter(i => i.techField === field && i.dday <= 90).length,
-      '6m': allItems.value.filter(i => i.techField === field && i.dday <= 180).length,
-      '1y': allItems.value.filter(i => i.techField === field && i.dday <= 365).length,
-      '3y': allItems.value.filter(i => i.techField === field && i.dday <= 1095).length,
-      '5y': allItems.value.filter(i => i.techField === field && i.dday <= 1825).length,
-    }
-  }
-  return result
-})
+const heatmapData: Record<string, Record<string, number>> = {
+  '반도체': { '3m': 5,  '6m': 9,  '1y': 18, '3y': 38, '5y': 58 },
+  '배터리': { '3m': 2,  '6m': 4,  '1y': 10, '3y': 26, '5y': 42 },
+  'AI/SW':  { '3m': 0,  '6m': 2,  '1y': 4,  '3y': 10, '5y': 19 },
+  '소재':   { '3m': 1,  '6m': 0,  '1y': 6,  '3y': 18, '5y': 28 },
+}
 
 const heatmapKey = computed(() => activeFilter.value === 'all' ? '5y' : activeFilter.value)
 const fieldStackTotal = computed(() =>
-  heatmapFields.reduce((sum, f) => sum + (heatmapData.value[f]?.[heatmapKey.value] ?? 0), 0)
+  heatmapFields.reduce((sum, f) => sum + (heatmapData[f]?.[heatmapKey.value] ?? 0), 0)
 )
 function fieldStackPct(field: string) {
   const total = fieldStackTotal.value
   if (!total) return 0
-  return Math.round((heatmapData.value[field]?.[heatmapKey.value] ?? 0) / total * 100)
+  return Math.round((heatmapData[field]?.[heatmapKey.value] ?? 0) / total * 100)
 }
 
 function formatDate(d: string) { return d.replace(/-/g, '.') }
@@ -376,10 +387,6 @@ const selectedMonthItems = computed(() =>
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-}
-.page-header__eyebrow {
-  font-size: 12px; font-weight: 600; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--color-primary); margin: 0 0 5px;
 }
 .page-header__title {
   font-size: 22px; font-weight: 700; color: var(--color-text);
