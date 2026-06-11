@@ -56,7 +56,7 @@
           <h3 class="card__title">미확인 회신</h3>
           <RouterLink to="/legal/reevaluation?tab=unread" class="card__link">전체 보기</RouterLink>
         </div>
-        <div v-if="loadingSummary" class="card__skeleton">
+        <div v-if="isLoading" class="card__skeleton">
           <div class="skel skel--row" v-for="n in 4" :key="n" />
         </div>
         <div v-else class="reply-list">
@@ -88,7 +88,7 @@
           <h3 class="card__title">사업부별 처리 현황</h3>
           <RouterLink to="/legal/reevaluation" class="card__link">전체 보기</RouterLink>
         </div>
-        <div v-if="loadingDepts" class="card__skeleton">
+        <div v-if="isLoading" class="card__skeleton">
           <div class="skel skel--row" v-for="n in 4" :key="n" />
         </div>
         <div v-else-if="deptItems.length" class="dept-table">
@@ -106,7 +106,7 @@
           >
             <span class="dept-row__name">
               <span class="dept-dot" />
-              {{ deptName(d.departmentId) }}
+              {{ d.departmentName }}
             </span>
             <span class="dept-row__num">{{ d.assigned }}</span>
             <span class="dept-row__num dept-row__num--done">{{ d.decided }}</span>
@@ -134,7 +134,7 @@
           <h3 class="card__title">기술 분야 분포</h3>
           <RouterLink to="/legal/portfolio" class="card__link">포트폴리오 분석</RouterLink>
         </div>
-        <div v-if="loadingDist" class="card__skeleton">
+        <div v-if="isLoading" class="card__skeleton">
           <div class="skel skel--treemap" />
         </div>
         <div v-else class="tech-dist">
@@ -163,7 +163,7 @@
           <h3 class="card__title">분기별 소멸 예정 특허</h3>
           <RouterLink to="/legal/expiring" class="card__link">소멸 예정 관리</RouterLink>
         </div>
-        <div v-if="loadingDist" class="card__skeleton">
+        <div v-if="isLoading" class="card__skeleton">
           <div class="skel skel--chart" />
         </div>
         <div v-else class="expiry-chart">
@@ -194,33 +194,22 @@
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useReadReplies } from '@/composables/useReadReplies'
-import { dashboardApi } from '@/api/misc'
-import type {
-  DashboardSummary,
-  DashboardAssignment,
-  DashboardDistribution,
-  DashboardDepartments,
-} from '@/types'
+import { dashboardApi, type LegalDashboardResponse } from '@/api/dashboard'
 
 const auth = useAuthStore()
 const router = useRouter()
-const { readIds, markRead: markReplyRead } = useReadReplies()
 
-// ── 로딩 상태 ────────────────────────────────────────
-const loadingSummary = ref(true)
-const loadingAssign  = ref(true)
-const loadingDist    = ref(true)
-const loadingDepts   = ref(true)
+// ── 로딩/에러 상태 ────────────────────────────────────
+const isLoading = ref(false)
+const error = ref<string | null>(null)
 
-// ── API 데이터 ───────────────────────────────────────
-const summary    = ref<DashboardSummary | null>(null)
-const assignment = ref<DashboardAssignment | null>(null)
-const distribution = ref<DashboardDistribution | null>(null)
-const departments  = ref<DashboardDepartments | null>(null)
+// ── API 데이터 ────────────────────────────────────────
+const dashboardData = ref<LegalDashboardResponse | null>(null)
 
 // ── 분기 레이블 ──────────────────────────────────────
 const quarterLabel = computed(() => {
+  const rc = dashboardData.value?.reviewCycle
+  if (rc) return `${rc.year}년 ${rc.quarter}분기`
   const d = new Date()
   const q = Math.ceil((d.getMonth() + 1) / 3)
   return `${d.getFullYear()}년 ${q}분기`
@@ -228,24 +217,27 @@ const quarterLabel = computed(() => {
 
 // ── KPI 카드 데이터 ──────────────────────────────────
 const kpiCards = computed(() => {
-  const s = summary.value
-  const a = assignment.value
-  const delayed = 7 // TODO: API에서 지연 건수 받으면 교체
+  const kpi = dashboardData.value?.kpi
+  const requested   = kpi?.requested   ?? 0
+  const decided     = kpi?.decided     ?? 0
+  const overdue     = kpi?.overdue     ?? 0
+  const unrequested = kpi?.unrequested ?? 0
+  const progressRate = requested ? Math.round((decided / requested) * 100) : 0
 
   return [
     {
       label: '분기 진행률',
-      value: s ? `${s.progressRate}%` : null,
-      progress: s?.progressRate ?? 0,
+      value: `${progressRate}%`,
+      progress: progressRate,
       progressColor: '#6366f1',
-      sub: `요청 ${s?.kpi.requested ?? 0}건 중 ${s?.kpi.decided ?? 0}건 회신`,
+      sub: `요청 ${requested}건 중 ${decided}건 회신`,
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
       iconBg: '#eef2ff', iconColor: '#6366f1',
       alert: false, alertCount: 0, valueColor: '#0f172a',
     },
     {
       label: '요청 완료',
-      value: s?.kpi.requested ?? null,
+      value: requested,
       sub: '사업부 전달 완료',
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>`,
       iconBg: '#f0fdf4', iconColor: '#22c55e',
@@ -254,9 +246,9 @@ const kpiCards = computed(() => {
     },
     {
       label: '지연',
-      value: delayed,
-      sub: `미회신 기한 초과`,
-      alertCount: delayed,
+      value: overdue,
+      sub: '미회신 기한 초과',
+      alertCount: overdue,
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
       iconBg: '#fef2f2', iconColor: '#dc2626',
       alert: true, valueColor: '#dc2626', progress: null, progressColor: '',
@@ -264,7 +256,7 @@ const kpiCards = computed(() => {
     },
     {
       label: '결정 완료',
-      value: s?.kpi.decided ?? null,
+      value: decided,
       sub: '회신 완료',
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
       iconBg: '#f0fdf4', iconColor: '#22c55e',
@@ -273,7 +265,7 @@ const kpiCards = computed(() => {
     },
     {
       label: '요청 전',
-      value: a?.unassigned ?? null,
+      value: unrequested,
       sub: '부서 배정 필요',
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>`,
       iconBg: '#f8fafc', iconColor: '#64748b',
@@ -283,51 +275,44 @@ const kpiCards = computed(() => {
   ]
 })
 
-// ── 퍼널 ─────────────────────────────────────────────
+// ── 퍼널 (템플릿 미사용) ──────────────────────────────
 const funnelSteps = computed(() => {
-  const a = assignment.value
-  if (!a) return []
+  const kpi = dashboardData.value?.kpi
+  if (!kpi) return []
   return [
-    { label: '미배정',      value: a.unassigned, color: '#94a3b8' },
-    { label: '배정 완료',   value: a.assigned,   color: '#6366f1' },
-    { label: '결정 완료',   value: a.completed,  color: '#22c55e' },
+    { label: '미배정',    value: kpi.unrequested, color: '#94a3b8' },
+    { label: '배정 완료', value: kpi.requested,   color: '#6366f1' },
+    { label: '결정 완료', value: kpi.decided,     color: '#22c55e' },
   ]
 })
 
 function funnelPct(v: number) {
-  const max = Math.max(...(funnelSteps.value.map(s => s.value)), 1)
+  const max = Math.max(...funnelSteps.value.map(s => s.value), 1)
   return Math.round((v / max) * 100)
 }
 
 // ── 사업부 ────────────────────────────────────────────
-const deptItems = computed(() => departments.value?.items ?? [])
+const deptItems = computed(() => dashboardData.value?.departments ?? [])
 
-// 부서 이름 매핑 (실제로는 /departments API로 조회)
-const deptNameMap: Record<number, string> = {
-  1: 'Legal AI팀', 2: '반도체 사업부', 3: '배터리 사업부',
-  4: 'AI 사업부', 5: '소재 사업부',
-}
-function deptName(id: number) { return deptNameMap[id] ?? `사업부 #${id}` }
 function deptPct(d: { assigned: number; decided: number }) {
   return d.assigned ? Math.round((d.decided / d.assigned) * 100) : 0
 }
 
 // ── 기술 분야 ─────────────────────────────────────────
 const techColors = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#ABACED']
-const techFieldItems = computed(() => distribution.value?.byTechField ?? [])
+const techFieldItems = computed(() => dashboardData.value?.byTechField ?? [])
 function techPct(count: number) {
   const max = Math.max(...techFieldItems.value.map(i => i.count), 1)
   return Math.round((count / max) * 100)
 }
 
 // ── 소멸 차트 ─────────────────────────────────────────
-const expiryItems = computed(() => distribution.value?.byExpiryQuarter ?? [])
+const expiryItems = computed(() => dashboardData.value?.byExpiryQuarter ?? [])
 function expiryBarH(count: number) {
   const max = Math.max(...expiryItems.value.map(i => i.count), 1)
-  return Math.round((count / max) * 36) + 4  // max 40px
+  return Math.round((count / max) * 36) + 4
 }
 function expiryColor(quarter: string) {
-  // 현재 분기 이후 가까울수록 주황
   const now = new Date()
   const q = Math.ceil((now.getMonth() + 1) / 3)
   const label = `${now.getFullYear()}Q${q}`
@@ -336,16 +321,16 @@ function expiryColor(quarter: string) {
   return '#6366f1'
 }
 
-// ── 최근 회신 (mock — 실제로는 /decisions?page=1&size=5) ──
-const allReplies = [
-  { id: 1, patent: 'NF3 가스 이물질 제거 시스템', dept: '반도체 사업부', decision: 'KEEP' },
-  { id: 2, patent: '플라즈마 식각 장치 및 제어 방법', dept: '반도체 사업부', decision: 'DISPOSE' },
-  { id: 3, patent: '배터리 전극 코팅 균일도 향상', dept: '배터리 사업부', decision: 'KEEP' },
-  { id: 4, patent: 'AI 기반 품질 검사 자동화', dept: 'AI 사업부', decision: 'DISPOSE' },
-]
-
+// ── 최근 회신 ─────────────────────────────────────────
 const recentReplies = computed(() =>
-  allReplies.filter(r => !readIds.value.has(r.id))
+  (dashboardData.value?.recentReplies ?? [])
+    .filter(r => !r.checked)
+    .map(r => ({
+      id: r.reviewId,
+      patent: r.title,
+      dept: r.departmentName,
+      decision: r.opinion, // TODO: 확인 필요 - opinion이 KEEP/DISPOSE 값인지 확인
+    }))
 )
 
 function decisionLabel(d: string) {
@@ -355,67 +340,21 @@ function openReply(id: number) {
   router.push(`/legal/reevaluation?tab=unread&open=${id}`)
 }
 
-// ── Mock fallback 데이터 ──────────────────────────────
-const mockSummary: DashboardSummary = {
-  progressRate: 62,
-  kpi: { requested: 124, reviewing: 18, decided: 77 },
-}
-
-const mockAssignment: DashboardAssignment = {
-  unassigned: 23,
-  assigned:   78,
-  completed:  48,
-}
-
-const mockDistribution: DashboardDistribution = {
-  byTechField: [
-    { name: '반도체', count: 82 },
-    { name: '배터리', count: 58 },
-    { name: '소재',   count: 42 },
-    { name: 'AI/SW',  count: 35 },
-    { name: '바이오', count: 18 },
-  ],
-  byExpiryQuarter: [
-    { quarter: '2026Q2', count: 12 },
-    { quarter: '2026Q3', count: 28 },
-    { quarter: '2026Q4', count: 38 },
-    { quarter: '2027Q1', count: 22 },
-    { quarter: '2027Q2', count: 15 },
-  ],
-}
-
-const mockDepartments: DashboardDepartments = {
-  items: [
-    { departmentId: 2, assigned: 42, reviewing: 8,  decided: 31 },
-    { departmentId: 3, assigned: 35, reviewing: 5,  decided: 24 },
-    { departmentId: 4, assigned: 28, reviewing: 4,  decided: 16 },
-    { departmentId: 5, assigned: 19, reviewing: 1,  decided: 6  },
-  ],
-}
-
 // ── 데이터 로드 ──────────────────────────────────────
-async function loadAll() {
-  await Promise.allSettled([
-    dashboardApi.getSummary()
-      .then(d => { summary.value = d })
-      .catch(() => { summary.value = mockSummary })
-      .finally(() => { loadingSummary.value = false }),
-    dashboardApi.getAssignment()
-      .then(d => { assignment.value = d })
-      .catch(() => { assignment.value = mockAssignment })
-      .finally(() => { loadingAssign.value = false }),
-    dashboardApi.getDistribution()
-      .then(d => { distribution.value = d })
-      .catch(() => { distribution.value = mockDistribution })
-      .finally(() => { loadingDist.value = false }),
-    dashboardApi.getDepartments()
-      .then(d => { departments.value = d })
-      .catch(() => { departments.value = mockDepartments })
-      .finally(() => { loadingDepts.value = false }),
-  ])
+async function loadDashboard() {
+  isLoading.value = true
+  error.value = null
+  try {
+    dashboardData.value = await dashboardApi.getLegalDashboard()
+  } catch (e) {
+    console.error('법무 대시보드 조회 실패:', e)
+    error.value = '데이터를 불러오지 못했습니다.'
+  } finally {
+    isLoading.value = false
+  }
 }
 
-onMounted(loadAll)
+onMounted(loadDashboard)
 </script>
 
 <style scoped>
