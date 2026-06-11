@@ -169,7 +169,7 @@
             <h2 class="section-heading">AI 평가 보고서</h2>
           </div>
 
-          <template v-if="patent.grade">
+          <template v-if="reportJson || patent.grade">
 
             <!-- 1. 평가 요약 -->
             <div class="rpt-part">
@@ -283,25 +283,24 @@
 
               <table class="rpt-info-table">
                 <tbody>
-                  <tr><th>사업화 여부</th><td>진행 중</td></tr>
-                  <tr><th>적용 사업·서비스</th><td>스마트 팩토리 시스템 통합 미들웨어 솔루션</td></tr>
-                  <tr><th>사업 적용 이력</th><td>2025년 이후 고객 사례와 함께 적용되고 있는 것으로 보임</td></tr>
-                  <tr><th>고객·파트너</th><td>반도체 소재 제조 업체 S사</td></tr>
-                  <tr><th>사업화 신호</th><td>고객 사례, 수상·인증</td></tr>
+                  <!-- TODO: 확인 필요 — section_3_project_utilization 필드명 서버 응답과 대조 필요 -->
+                  <tr><th>사업화 여부</th><td>{{ computedProjectInfo?.commercialized ?? '—' }}</td></tr>
+                  <tr><th>적용 사업·서비스</th><td>{{ computedProjectInfo?.service ?? '—' }}</td></tr>
+                  <tr><th>사업 적용 이력</th><td>{{ computedProjectInfo?.history ?? '—' }}</td></tr>
+                  <tr><th>고객·파트너</th><td>{{ computedProjectInfo?.customer ?? '—' }}</td></tr>
+                  <tr><th>사업화 신호</th><td>{{ computedProjectInfo?.signal ?? '—' }}</td></tr>
                 </tbody>
               </table>
 
               <div class="rpt-project-card">
                 <div class="rpt-project-card__name">요약 설명</div>
-                <p class="rpt-project-card__desc" style="margin-bottom:0">
-                  RAG 검색 결과, 이 특허와 연결되는 사내 활용 영역은 '스마트 팩토리 시스템 통합 미들웨어 솔루션'이며 사업화 상태는 '진행 중'입니다. iFacts DiFlow는 스마트 팩토리 시스템의 통합을 위한 미들웨어 솔루션으로, 자동화와 지능화를 통해 생산 프로세스를 최적화하고 효율성을 향상시킵니다. 현재 고객 사례를 통해 사업화가 진행 중입니다. 사업 적용 이력은 '2025년 이후 고객 사례와 함께 적용되고 있는 것으로 보임', 고객·파트너는 '반도체 소재 제조 업체 S사'로 확인됩니다. 사업화 신호는 고객 사례, 수상·인증입니다.
-                </p>
+                <p class="rpt-project-card__desc" style="margin-bottom:0">{{ computedProjectInfo?.summary ?? '' }}</p>
               </div>
 
               <div class="rpt-project-card">
                 <div class="rpt-project-card__name">근거 자료</div>
                 <ol class="rpt-evidence-list">
-                  <li v-for="(ev, i) in MOCK_PROJECT_EVIDENCE" :key="i">
+                  <li v-for="(ev, i) in (computedProjectInfo?.evidence ?? [])" :key="i">
                     <a class="rpt-evidence-link" :href="ev.url" target="_blank" rel="noopener">{{ ev.title }}</a>
                   </li>
                 </ol>
@@ -314,20 +313,21 @@
 
               <!-- 통계 -->
               <div class="rpt-stat-row">
-                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#2563eb">{{ MOCK_SIMILAR_PATENTS.length }}</span><span class="rpt-stat-label">분석 대상</span></div>
-                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#166534">6</span><span class="rpt-stat-label">등록/유지</span></div>
-                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#6b7280">1</span><span class="rpt-stat-label">공개/심사중</span></div>
-                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#374151">3</span><span class="rpt-stat-label">거절/소멸</span></div>
-                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#854d0e">2.2</span><span class="rpt-stat-label">평균 피인용수</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#2563eb">{{ computedSimilarPatents.length }}</span><span class="rpt-stat-label">분석 대상</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#166534">{{ computedSimilarStats.registered }}</span><span class="rpt-stat-label">등록/유지</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#6b7280">{{ computedSimilarStats.pending }}</span><span class="rpt-stat-label">공개/심사중</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#374151">{{ computedSimilarStats.rejected }}</span><span class="rpt-stat-label">거절/소멸</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#854d0e">{{ computedSimilarStats.avgCitations }}</span><span class="rpt-stat-label">평균 피인용수</span></div>
               </div>
 
               <!-- 요약 (통계 바로 아래) -->
+              <!-- TODO: 확인 필요 — similar_patents 요약 문구는 JSON에 별도 필드 없어 건수만 동적 처리 -->
               <div class="rpt-opinion-box">
-                <p>KIPRIS 유사도 상위 {{ MOCK_SIMILAR_PATENTS.length }}건 중 등록/유지 6건, 공개/심사중 1건, 거절/소멸 3건으로 나타납니다. 분석 대상 특허는 '실시간 병목 자동 분석 방법'과 '차량 네트워크에서 ASIL에 기초한 통신 방법'과 같은 비교 특허와 네트워크 시스템의 병목 구간 모니터링에서 기술적 겹침이 나타납니다. 그러나 메시지 지향 미들웨어에서의 병목 모니터링에 집중한다는 점에서 차별화됩니다.</p>
+                <p>KIPRIS 유사도 상위 {{ computedSimilarPatents.length }}건 중 등록/유지 {{ computedSimilarStats.registered }}건, 공개/심사중 {{ computedSimilarStats.pending }}건, 거절/소멸 {{ computedSimilarStats.rejected }}건으로 나타납니다.</p>
               </div>
 
               <!-- 상위 3개 상세 카드 (유사도 내림차순 이미 정렬됨) -->
-              <div v-for="(s, si) in [...MOCK_SIMILAR_PATENTS].sort((a,b) => b.similarityScore - a.similarityScore).slice(0, 3)" :key="s.id" class="rpt-similar-card">
+              <div v-for="(s, si) in [...computedSimilarPatents].sort((a,b) => b.similarityScore - a.similarityScore).slice(0, 3)" :key="s.id" class="rpt-similar-card">
                 <div class="rpt-similar-card__top">
                   <div class="rpt-similar-card__info">
                     <div class="rpt-similar-card__name">#{{ si + 1 }} {{ s.title }}</div>
@@ -361,7 +361,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="s in [...MOCK_SIMILAR_PATENTS].sort((a,b) => b.similarityScore - a.similarityScore)" :key="s.id">
+                    <tr v-for="s in [...computedSimilarPatents].sort((a,b) => b.similarityScore - a.similarityScore)" :key="s.id">
                       <td><span class="mono text-muted-sm">{{ s.applicationNumber }}</span></td>
                       <td class="rpt-item-name">{{ s.title }}</td>
                       <td><span class="similar-applicant">{{ s.applicant }}</span></td>
@@ -1027,9 +1027,7 @@ interface ChatMessage {
   typing?: boolean
 }
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
-// TODO: AI 서버 연동 후 교체 필요 — MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS, MOCK_PROJECT_EVIDENCE
 import {
-  MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS, MOCK_PROJECT_EVIDENCE,
   COUNTRY_LABEL, TECH_FIELD_CLAIMS, AI_REPORT_COMMENTS, AI_GRADE_SCORES, DEPT_MAP,
   type MockSimilarPatent,
 } from '@/mocks/data'
@@ -1053,6 +1051,7 @@ const patentData = ref<PatentDetail | null>(null)
 const reviewData = ref<ReviewResponse | null>(null)
 const businessReviewData = ref<BusinessReviewDetailResponse | null>(null)
 const evalHistory = ref<EvalHistoryItem[]>([])
+const reportJson = ref<any>(null)
 
 function mapStatus(status?: string): 'REGISTERED' | 'EXPIRED' | 'ABANDONED' {
   if (!status) return 'REGISTERED'
@@ -1303,6 +1302,19 @@ function addMonths(dateStr: string, months: number) {
 
 // ── AI 점수 / 코멘트 ─────────────────────────────────
 const aiScores = computed(() => {
+  const scores = reportJson.value?.valuation?.scores
+  if (scores) {
+    const avgScore = (dims: string[]) => {
+      const filtered = scores.filter((s: any) => dims.includes(s.dim))
+      if (!filtered.length) return 0
+      return Math.round(filtered.reduce((acc: number, s: any) => acc + s.score, 0) / filtered.length / 5 * 100)
+    }
+    return {
+      tech: avgScore(['기술성']),
+      rights: avgScore(['권리성']),
+      biz: avgScore(['시장성', '사업성']),
+    }
+  }
   const g = patent.value?.grade
   if (!g) return { tech: 0, rights: 0, biz: 0 }
   const base = AI_GRADE_SCORES[g] ?? { tech: 50, rights: 50, biz: 50 }
@@ -1315,6 +1327,21 @@ const aiScores = computed(() => {
 })
 
 const aiComments = computed(() => {
+  const scores = reportJson.value?.valuation?.scores
+  if (scores) {
+    const joinReasons = (dims: string[]) =>
+      scores
+        .filter((s: any) => dims.includes(s.dim))
+        .map((s: any) => s.reason || s.basis || '')
+        .filter(Boolean)
+        .join(' ')
+    return {
+      tech: joinReasons(['기술성']),
+      rights: joinReasons(['권리성']),
+      biz: joinReasons(['시장성', '사업성']),
+      bizSubmit: joinReasons(['시장성', '사업성']),
+    }
+  }
   const g = patent.value?.grade
   if (!g) return { tech: '', rights: '', biz: '', bizSubmit: '' }
   return AI_REPORT_COMMENTS[g] ?? AI_REPORT_COMMENTS['B']
@@ -1327,6 +1354,9 @@ const miniScores = computed(() => [
 ])
 
 const totalScore = computed(() => {
+  if (reportJson.value?.valuation?.total_score != null) {
+    return reportJson.value.valuation.total_score
+  }
   const { tech, rights, biz } = aiScores.value
   return Math.round((tech + rights + biz) / 3)
 })
@@ -1506,8 +1536,20 @@ const opinionOptions = [
   { value: 'DISPOSE', label: '포기' },
 ]
 
+async function fetchLatestReport() {
+  try {
+    const report = await reportsApi.getLatestReport(props.patentId)
+    if (report.url) {
+      const res = await fetch(report.url)
+      reportJson.value = await res.json()
+    }
+  } catch (e) {
+    console.error('AI 보고서 조회 실패:', e)
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([fetchPatent(), fetchReviewData(), fetchEvalHistory()])
+  await Promise.all([fetchPatent(), fetchReviewData(), fetchEvalHistory(), fetchLatestReport()])
   await nextTick()
 
   if (patent.value && isBusiness.value && businessReviewData.value?.opinion) {
@@ -1580,148 +1622,92 @@ const reportOpenRows = reactive<Record<string, boolean>>({})
 interface RptItem { id: string; name: string; score: number; method: string; summary: string; grounds: string; sources: string }
 interface RptBlock { key: string; title: string; score: number; items: RptItem[] }
 
-const REPORT_EVAL_BLOCKS: RptBlock[] = [
-  {
-    key: 'tech', title: '기술성', score: 65,
-    items: [
-      {
-        id: 'rt-1', name: '차별성 및 파급성', score: 3, method: 'LLM 분석',
-        summary: '트랜잭션 분석 기반 병목 감지는 단일시장 적용 가능하나 차별성 제한적.',
-        grounds: '모니터링 시스템은 특정 노드 간 메시지의 전송 과정에서 트랜잭션 정보를 분석하여 병목 구간의 발생 여부를 확인하고, 이를 기반으로 모니터링 화면의 정보를 갱신합니다. 이러한 기능은 단일시장에서 여러 신제품에 적용 가능하나, 제한된 차별성으로 보입니다. 현재 시장에서 유사한 모니터링 기능을 제공하는 솔루션이 다수 존재하여, 본 기술만의 독자적 차별화 포인트를 추가 확보하지 않으면 파급 효과가 제한될 수 있습니다.',
-        sources: '비면허 주파수 관리 정책의 경제적 파급효과 (한국전자파학회 논문지, 2024); 메시지 지향 미들웨어(MOM) 개요 (Oracle 기술문서)',
-      },
-      {
-        id: 'rt-2', name: '혁신성 및 개척성', score: 4, method: 'LLM 분석',
-        summary: '토폴로지 기반 동적 상태 갱신 구조로 기술적 개척성 상당 부분 인정.',
-        grounds: '본 발명은 메시지 지향 미들웨어에서의 토폴로지 기반 시스템 상태 및 병목 구간 모니터링 방법을 제시하며, 트랜잭션 정보를 기반으로 모니터링 화면을 갱신하고 병목 구간 발생 시 표시 방식을 가변시키는 혁신적 요소가 포함됩니다. 기존의 정적 모니터링 방식에서 벗어나 토폴로지 기반의 동적 상태 갱신 구조를 채택한 점은 기술적 개척성 측면에서 긍정적으로 평가됩니다.',
-        sources: 'OSGi 기반 미들웨어의 개발에 관한 연구 (한국지식정보기술학회); ETRI 유선 네트워크 기술 동향 및 전망 보고서; 스마트제조혁신 생태계 고도화방안 (관계부처 합동)',
-      },
-      {
-        id: 'rt-3', name: '대체기술 및 경쟁성', score: 2, method: 'LLM 분석',
-        summary: '삼성·LG·퀄컴 등 대형 경쟁사 점유율 압도적, 자사 점유율 1.17%로 낮음.',
-        grounds: '동일 IPC 분야(H04L, G06F) 내 등록 특허 표본 기준으로 자사 점유율은 1.17%에 불과하며, 상위 5개 경쟁 출원인(삼성전자, 엘지전자, 퀄컴, KT, 삼성디스플레이)의 합산 점유율이 17.9%에 달해 경쟁 우위를 확보하기 어려운 구조입니다.\n\nKIPRIS 근거: 동일 IPC 전체 검색 464,967건, 등록 표본 1,363건, 출원인 567개, 자사 순위 11위.',
-        sources: 'Samsung Newsroom Korea; KIPRIS IPC 표본 분석 (H04L, G06F)',
-      },
-      {
-        id: 'rt-4', name: '기술 모방 및 회피설계 난이도', score: 4, method: 'LLM 분석',
-        summary: '병목 감지 로직과 화면 표시 연계 구조로 모방·회피설계 모두 어려움.',
-        grounds: '기술적 모방이 어렵고, 노드 간 메시지의 전송 과정에서 트랜잭션 정보를 분석하여 병목 구간을 확인하는 복잡성이 존재합니다. 트랜잭션 실패 건수 기반 병목 감지 로직과 토폴로지 화면 표시 방식의 연계 구조는 구현 단계에서 상당한 기술적 이해를 요구하며, 이를 유사 기능으로 대체하더라도 동일한 성능을 달성하기 어렵습니다.',
-        sources: 'KIPRIS 한국 등록특허 10-2893083',
-      },
-    ],
-  },
-  {
-    key: 'rights', title: '권리성', score: 66,
-    items: [
-      {
-        id: 'rr-1', name: 'IP 원천성', score: 3, method: '자동산출',
-        summary: '심사관 인용 선행기술 3건, 피인용수 0건.',
-        grounds: '심사관 인용 선행기술 3건이 확인되었으며, 피인용수는 0건입니다. 이는 원천 특허로서의 파급력이 아직 형성되지 않았음을 의미합니다.',
-        sources: '별도 출처 없음 (KIPRIS 자동산출)',
-      },
-      {
-        id: 'rr-2', name: '권리의 충실성', score: 3, method: '자동산출',
-        summary: '청구항 3개, 카테고리 3개, 해외출원 없음.',
-        grounds: '청구항 수 3개, 카테고리 3개로 구성되어 있으며 해외출원이 없습니다. 청구항 수가 적고 해외 보호 범위가 없어 권리의 충실성이 보통 수준입니다.',
-        sources: '별도 출처 없음 (KIPRIS 자동산출)',
-      },
-      {
-        id: 'rr-3', name: '권리행사 제한 가능성', score: 5, method: '자동산출',
-        summary: '출원인 1명, 심판이력 0건으로 제한 요소 없음.',
-        grounds: '출원인이 1명이며 심판이력이 0건입니다. 공동출원인에 의한 권리행사 제한 또는 무효심판 등의 제약 요소가 전혀 없어 최고 점수를 부여합니다.',
-        sources: '별도 출처 없음 (KIPRIS 자동산출)',
-      },
-      {
-        id: 'rr-4', name: '무효 가능성', score: 3, method: 'LLM 분석',
-        summary: '선행기술 3건 존재로 무효 가능성 완전 배제 어려움.',
-        grounds: '모니터링 시스템의 구체적인 단계가 명시되어 있으나, 동일 IPC 분야에 선행기술이 다수 존재하고 심사관 인용 선행기술이 3건 확인된 점은 무효 가능성을 완전히 배제하기 어렵게 만드는 요인입니다.',
-        sources: 'KIPRIS 한국 등록특허 10-2893083',
-      },
-      {
-        id: 'rr-5', name: '회피설계 용이성', score: 3, method: 'LLM 분석',
-        summary: '한정적 구성요소로 우회 설계 이론적 가능, 난이도 보통.',
-        grounds: '청구범위에 한정적인 구성요소가 일부 있어서 회피설계 난이도가 보통 수준입니다. \'특정 노드 간 메시지 전송\'이라는 구체적 구성이 명시된 만큼, 이를 우회하는 설계가 이론적으로는 가능합니다.',
-        sources: 'KIPRIS 한국 등록특허 10-2893083',
-      },
-      {
-        id: 'rr-6', name: '권리범위 적절성', score: 3, method: 'LLM 분석',
-        summary: '특정 기능 흐름 중심 청구항으로 전체 사업화 범위 보호 불충분.',
-        grounds: '청구항이 모니터링 시스템의 특정 기능 흐름에 집중되어 있어, 기술이 다양한 환경에 적용되더라도 권리 범위로 포섭되지 않을 가능성이 있습니다.',
-        sources: 'KIPRIS 한국 등록특허 10-2893083',
-      },
-      {
-        id: 'rr-7', name: '권리의 구성요소', score: 4, method: 'LLM 분석',
-        summary: '핵심 기능 명확히 기재, 비본질적 요소 최소화로 청구범위 실효성 높음.',
-        grounds: '모니터링 시스템의 핵심 기능이 명확하게 설명되어 있으며, 비본질적인 구성요소가 거의 포함되지 않았습니다. 병목 구간 발생 여부 확인과 모니터링 화면 갱신 기능에 대한 기술적 세부사항이 포함되어 독립항의 완결성이 높습니다.',
-        sources: 'KIPRIS 한국 등록특허 10-2893083',
-      },
-      {
-        id: 'rr-8', name: '권리의 추상성', score: 3, method: 'LLM 분석',
-        summary: '일부 구성이 실시예 수준으로 기재, 청구범위가 좁아질 가능성.',
-        grounds: '독립항의 일부 구성요소가 실시예에 가깝게 기재되어 있습니다. \'특정 노드 간 메시지의 전송 과정에서 트랜잭션 정보를 분석하여, 병목 구간의 발생 여부를 확인함\'은 구체적인 실시예에 가까운 내용으로, 독립항의 범위가 과도하게 좁아져 경쟁사의 변형 기술을 포섭하지 못할 위험이 있습니다.',
-        sources: 'KIPRIS 한국 등록특허 10-2893083',
-      },
-      {
-        id: 'rr-9', name: 'IP 포트폴리오 구축 적절성', score: 3, method: 'LLM 분석',
-        summary: '국내 개량IP 복수 보유하나 해외 출원 없어 글로벌 보호 한계.',
-        grounds: '복수의 국내 개량IP가 포함되어 있으며, 보통 수준으로 제품 및 서비스 보호가 가능합니다. 다만 해외 출원이 없어 글로벌 시장에서의 권리 보호 측면에서 한계로 작용할 수 있습니다.',
-        sources: 'KIPRIS 한국 등록특허 10-2893083',
-      },
-      {
-        id: 'rr-10', name: '침해 발견 및 입증 용이성', score: 3, method: 'LLM 분석',
-        summary: '실험으로 침해 확인 가능하나 내부 동작의 블랙박스 특성으로 감정 필요 가능.',
-        grounds: '정밀한 실험이나 조사를 통해 침해 발견 및 입증이 가능합니다. 다만, 시스템 내부 동작(트랜잭션 분석, 병목 감지 로직)은 외부에서 직접 관찰하기 어려운 블랙박스적 특성이 있어, 실제 침해 입증 과정에서 기술 감정이 필요할 수 있습니다.',
-        sources: 'KIPRIS 한국 등록특허 10-2893083',
-      },
-    ],
-  },
-  {
-    key: 'market', title: '시장성 및 사업성', score: 60,
-    items: [
-      {
-        id: 'rm-1', name: '특허출원 활성도', score: 1, method: '자동산출',
-        summary: 'KIPRIS IPC 출원 증가율 -78.1% (전체 -81.2%).',
-        grounds: 'KIPRIS IPC 출원 증가율 -78.1% (전체 -81.2%). 해당 기술 분야의 특허 출원이 급격히 감소하고 있어 시장 활성도가 매우 낮습니다.',
-        sources: '별도 출처 없음 (KIPRIS 자동산출)',
-      },
-      {
-        id: 'rm-2', name: '매출 성장성', score: 4, method: '자동산출 (KOSIS)',
-        summary: 'KOSIS 전자부품·컴퓨터·통신장비제조업 5년 평균 성장률 8.32%.',
-        grounds: 'KOSIS 전자부품·컴퓨터·통신장비제조업 5년 평균 성장률 8.32%로 양호한 시장 성장세를 보이고 있습니다. 제조 데이터 분석 기반의 미들웨어 솔루션 수요는 지속 증가 추세입니다.',
-        sources: '별도 출처 없음 (KOSIS 자동산출)',
-      },
-      {
-        id: 'rm-3', name: '고객에 미치는 영향', score: 4, method: 'LLM 분석',
-        summary: '마이크로서비스 운영 기업에 실시간 병목 시각화로 운영 효율성 직접 기여.',
-        grounds: '토폴로지 타입의 모니터링 화면 내 노드 간 연결 상태 및 병목 구간의 발생 여부를 직관적으로 확인할 수 있어 고객이 기술사용에 따른 이익을 실감할 수 있습니다. 특히 복잡한 마이크로서비스 아키텍처를 운영하는 기업 고객의 경우, 실시간 병목 시각화 기능이 운영 효율성 개선에 직접적인 가치를 제공합니다.',
-        sources: '4차 산업혁명 관련 新특허분류체계 Z코드 및 기술설명서 (특허청); OSGi 기반 미들웨어의 개발에 관한 연구 (한국지식정보기술학회)',
-      },
-    ],
-  },
-]
+const DIM_KEY_MAP: Record<string, string> = { '기술성': 'tech', '권리성': 'rights', '시장성': 'market', '사업성': 'market' }
+const DIM_TITLE_MAP: Record<string, string> = { '기술성': '기술성', '권리성': '권리성', '시장성': '시장성 및 사업성', '사업성': '시장성 및 사업성' }
 
-const REPORT_CONFIRM_ITEMS = [
-  { title: '특허출원 활성도', meta: ' · 시장성 및 사업성 · 1/5', desc: 'KIPRIS IPC 출원 증가율 -78.1% (전체 -81.2%). 해당 기술 분야의 출원이 급격히 감소하고 있어 시장 관심도 하락 여부를 추가 검토하십시오.' },
-  { title: '대체기술 및 경쟁성', meta: ' · 기술성 · 2/5', desc: '삼성전자, 엘지전자, 퀄컴 등 대형 경쟁 출원인의 합산 점유율이 17.9%에 달합니다. 자사 시장 점유 전략 및 차별화 포인트의 구체화가 필요합니다.' },
-  { title: 'IP 원천성', meta: ' · 권리성 · 3/5', desc: '심사관 인용 선행기술 3건이 존재하며 피인용수 0건입니다. 선행기술과의 기술적 차별성 문서화 및 개량 청구항 검토를 권장합니다.' },
-  { title: '권리의 충실성', meta: ' · 권리성 · 3/5', desc: '청구항 3개, 카테고리 3개로 구성되어 있고 해외출원이 없습니다. 사업화 범위 확대를 위한 추가 청구항 또는 해외 출원(PCT) 검토가 필요합니다.' },
-  { title: '차별성 및 파급성', meta: ' · 기술성 · 3/5', desc: '유사 모니터링 솔루션 대비 본 기술만의 독자적 차별화 포인트가 명확하지 않습니다. 성능 벤치마크 또는 특화 시장 설정을 통한 포지셔닝 보강을 권장합니다.' },
-]
+const REPORT_EVAL_BLOCKS = computed<RptBlock[]>(() => {
+  const scores = reportJson.value?.valuation?.scores
+  if (!scores) return []
 
-const REPORT_REFS = [
-  '비면허 주파수 관리 정책의 경제적 파급효과: 기술기준 개정을 중심으로 (변희섭, 한국전자파학회 논문지, 2024)',
-  '메시지 지향 미들웨어(MOM) 개요 (Oracle 기술문서)',
-  'OSGi 기반 미들웨어의 개발에 관한 연구 (한국지식정보기술학회 논문지)',
-  '유선 네트워크 기술 동향 및 전망 (ETRI 기술기획보고서)',
-  '스마트제조혁신 생태계 고도화방안 (관계부처 합동, 대한민국 정책브리핑)',
-  '통신 장비 시장 규모·점유율·전망 보고서 2025–2032 (Consegic Business Intelligence)',
-  '삼성전자, AI·초연결로 HVAC 시장 주도권 잡는다 (Samsung Newsroom Korea)',
-  '4차 산업혁명 관련 新특허분류체계 Z코드 및 기술설명서 (특허청)',
-  '스마트 팩토리 구축을 위한 설비제어 데이터 표준화 및 통합 관제 플랫폼 (skax.co.kr)',
-  '스마트 팩토리 시스템의 통합을 실현하는 미들웨어 솔루션 (skax.co.kr)',
-  '제조 데이터 분석 기반 스마트 팩토리 구축 및 고도화 (skax.co.kr)',
-  'KIPRIS 유사 특허 분석 결과: 10-2893083',
-]
+  const groups: Record<string, any[]> = {}
+  for (const s of scores) {
+    if (!groups[s.dim]) groups[s.dim] = []
+    groups[s.dim].push(s)
+  }
+
+  const seen = new Set<string>()
+  const blocks: RptBlock[] = []
+
+  for (const dim of ['기술성', '권리성', '시장성', '사업성']) {
+    if (!groups[dim] || seen.has(dim)) continue
+    const siblingDim = dim === '시장성' ? '사업성' : dim === '사업성' ? '시장성' : null
+    let allItems = [...groups[dim]]
+    if (siblingDim && groups[siblingDim]) {
+      allItems = [...allItems, ...groups[siblingDim]]
+      seen.add(siblingDim)
+    }
+    seen.add(dim)
+
+    const blockScore = Math.round(allItems.reduce((acc, s) => acc + s.score, 0) / allItems.length / 5 * 100)
+    const key = DIM_KEY_MAP[dim]
+
+    blocks.push({
+      key,
+      title: DIM_TITLE_MAP[dim],
+      score: blockScore,
+      items: allItems.map((s, i) => {
+        const text = s.reason || s.basis || ''
+        return {
+          id: `${key}-${i}`,
+          name: s.item,
+          score: s.score,
+          method: s.method,
+          summary: text.slice(0, 50),
+          grounds: text,
+          sources: (s.sources ?? []).map((src: any) => `${src.title} (${src.url})`).filter((v: string) => v !== ' ()').join('; '),
+        }
+      }),
+    })
+  }
+
+  return blocks
+})
+
+const REPORT_CONFIRM_ITEMS = computed(() => {
+  const scores = reportJson.value?.valuation?.scores
+  if (!scores) return []
+  return scores
+    .filter((s: any) => s.score <= 3)
+    .map((s: any) => ({
+      title: s.item,
+      meta: ` · ${DIM_TITLE_MAP[s.dim] ?? s.dim} · ${s.score}/5`,
+      desc: s.reason || s.basis || '',
+    }))
+})
+
+const REPORT_REFS = computed<string[]>(() => {
+  const refs = reportJson.value?.valuation?.report?.section_6_references
+  if (!refs) return []
+  return refs.map((r: any) => (typeof r === 'string' ? r : r.title || JSON.stringify(r)))
+})
+
+const computedSimilarPatents = computed<any[]>(() => {
+  return reportJson.value?.valuation?.similar_patents ?? []
+})
+
+const computedProjectInfo = computed(() => {
+  return reportJson.value?.valuation?.report?.section_3_project_utilization ?? null
+})
+
+const computedSimilarStats = computed(() => {
+  const patents = computedSimilarPatents.value
+  if (!patents.length) return { registered: 0, pending: 0, rejected: 0, avgCitations: 0 }
+  const registered = patents.filter((s: any) => s.status === '유지' || s.status === '등록').length
+  const pending = patents.filter((s: any) => s.status === '공개' || s.status === '심사중').length
+  const rejected = patents.filter((s: any) => s.status === '소멸' || s.status === '거절').length
+  const avg = patents.reduce((acc: number, s: any) => acc + (s.citations ?? 0), 0) / patents.length
+  return { registered, pending, rejected, avgCitations: Math.round(avg * 10) / 10 }
+})
 
 // ── 평가이력 ─────────────────────────────────────────
 interface EvalFeeRecord   { quarter: string; amount: number; paid: string }
