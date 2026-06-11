@@ -294,6 +294,7 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePatentApplications, type PatentApplication } from '@/composables/usePatentApplications'
 import { useAuthStore } from '@/stores/auth'
+import { patentsApi, type PatentCreateRequest } from '@/api/patents'
 
 const router = useRouter()
 const route  = useRoute()
@@ -330,6 +331,9 @@ const myApplications = computed(() =>
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const uploadedFile = ref<File | null>(null)
 const showSuccessModal = ref(false)
+const isExtracting = ref(false)
+const extractJobId = ref<number | null>(null)
+let extractPollTimer: ReturnType<typeof setInterval> | null = null
 const resubmitTargetId = ref<number | null>(null)
 const resubmitTargetTitle = ref('')
 
@@ -406,7 +410,7 @@ async function handleFileSelect(e: Event) {
     })
 
     const result = await patentsApi.getExtractJobResult(jobId)
-    fillFormFromResult(result.result)
+    if (result.result) fillFormFromResult(result.result)
   } catch (err) {
     console.error('BizPatentRegisterView/handleFileSelect:', err)
   } finally {
