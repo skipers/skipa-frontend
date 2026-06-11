@@ -7,6 +7,7 @@ export type UserRole = 'ADMIN' | 'LEGAL' | 'BUSINESS'
 export interface User {
   id: string
   departmentId?: number
+  departmentName?: string
   name: string
   email: string
   role: UserRole
