@@ -507,7 +507,7 @@ async function handleFileSelect(e: Event) {
 
     // 5. 결과 조회 후 폼 자동 입력
     const result = await patentsApi.getExtractJobResult(jobId)
-    fillFormFromResult(result.result)
+    if (result.result) fillFormFromResult(result.result)
   } catch (err) {
     console.error('PDF 추출 오류:', err)
   } finally {
