@@ -573,7 +573,7 @@ function reviewStatusLabel(s: string) {
 }
 
 function decisionLabel(d: string) {
-  return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
+  return { KEEP: '유지', MAINTAIN: '유지', DISPOSE: '포기', ABANDON: '포기' }[d] ?? d
 }
 
 // ── 데이터 로드 ──────────────────────────────────────
@@ -1310,14 +1310,16 @@ onMounted(async () => {
 .item-decision { display: flex; align-items: center; justify-content: center; }
 
 .decision-badge {
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-size: 12.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 700;
 }
-.decision-badge--keep    { background: var(--color-success-bg); color: var(--color-success-dark); }
-.decision-badge--sell    { background: var(--color-primary-bg); color: var(--color-primary-darker); }
-.decision-badge--dispose { background: var(--color-danger-bg); color: var(--color-danger); }
+.decision-badge--keep     { background: var(--color-success-bg); color: var(--color-success-dark); }
+.decision-badge--maintain { background: var(--color-success-bg); color: var(--color-success-dark); }
+.decision-badge--sell     { background: var(--color-primary-bg); color: var(--color-primary-darker); }
+.decision-badge--dispose  { background: var(--color-danger-bg); color: var(--color-danger); }
+.decision-badge--abandon  { background: var(--color-danger-bg); color: var(--color-danger); }
 
 .decision-pending { font-size: 12.5px; color: var(--c-slate-300); }
 
