@@ -967,14 +967,14 @@
     </template>
 
     <!-- ── 챗봇 FAB ── -->
-    <button v-if="!chatbotOpen" class="chat-fab" type="button" aria-label="AI 챗봇에게 질문하기" @click="toggleChatbot">
+    <button v-if="showChatbot && !chatbotOpen" class="chat-fab" type="button" aria-label="AI 챗봇에게 질문하기" @click="toggleChatbot">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
     </button>
 
     <!-- ── 챗봇 패널 ── -->
-    <aside class="chat-panel" :class="{ open: chatbotOpen, expanded: chatbotExpanded }">
+    <aside v-if="showChatbot" class="chat-panel" :class="{ open: chatbotOpen, expanded: chatbotExpanded }">
       <div class="chat-shell">
         <header class="chat-header">
           <button class="icon-button" type="button" @click="chatbotExpanded = !chatbotExpanded">
@@ -1016,15 +1016,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, reactive } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { patentChatHistories, nextChatId, type ChatMessage } from '@/composables/usePatentChat'
 
 type ChatRole = 'assistant' | 'user'
-interface ChatMessage {
-  id: number
-  role: ChatRole
-  text: string
-  typing?: boolean
-}
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
 import {
   MOCK_PATENTS, MOCK_REEVAL, MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS, MOCK_PROJECT_EVIDENCE,
@@ -1035,9 +1031,11 @@ import {
 
 const props = defineProps<{ patentId: number }>()
 const auth  = useAuthStore()
+const route = useRoute()
 
 const isLegal    = computed(() => auth.isLegal || auth.isAdmin)
 const isBusiness = computed(() => auth.isBusiness)
+const showChatbot = computed(() => route.name === 'ReviewPatentDetail')
 const myDept     = computed(() => DEPT_MAP[auth.user?.departmentId ?? 0] ?? null)
 
 // ── 특허 데이터 ──────────────────────────────────────
@@ -1334,12 +1332,15 @@ function setupObserver() {
 const chatbotOpen     = ref(false)
 const chatbotExpanded = ref(false)
 const chatInput       = ref('')
-const chatMessages    = ref<ChatMessage[]>([
-  { id: 1, role: 'assistant', text: `${patent.value?.title ?? '이 특허'}에 대해 궁금한 점을 질문해주세요.` },
-])
-const chatViewport  = ref<HTMLElement | null>(null)
-const messageId     = ref(2)
-const pendingTimers = new Set<number>()
+const chatViewport    = ref<HTMLElement | null>(null)
+const pendingTimers   = new Set<number>()
+
+if (!patentChatHistories[props.patentId]) {
+  patentChatHistories[props.patentId] = [
+    { id: nextChatId(), role: 'assistant', text: `${patent.value?.title ?? '이 특허'}에 대해 궁금한 점을 질문해주세요.` },
+  ]
+}
+const chatMessages = computed(() => patentChatHistories[props.patentId])
 
 const chatPanelWidth = computed(() =>
   chatbotOpen.value ? (chatbotExpanded.value ? '100vw' : '480px') : '0px'
@@ -1349,9 +1350,7 @@ function scrollChatToBottom() {
   if (chatViewport.value) chatViewport.value.scrollTop = chatViewport.value.scrollHeight
 }
 
-function nextMessageId() {
-  return messageId.value++
-}
+function nextMessageId() { return nextChatId() }
 
 async function toggleChatbot() {
   chatbotOpen.value = !chatbotOpen.value
@@ -1367,18 +1366,19 @@ async function sendChatMessage() {
   if (!text) return
   if (!chatbotOpen.value) { chatbotOpen.value = true; await nextTick() }
 
-  chatMessages.value.push({ id: nextMessageId(), role: 'user', text })
+  const history = patentChatHistories[props.patentId]
+  history.push({ id: nextMessageId(), role: 'user', text })
   chatInput.value = ''
 
   const typingId = nextMessageId()
-  chatMessages.value.push({ id: typingId, role: 'assistant', text: '', typing: true })
+  history.push({ id: typingId, role: 'assistant', text: '', typing: true })
   await nextTick()
   scrollChatToBottom()
 
   const timerId = window.setTimeout(() => {
-    const idx = chatMessages.value.findIndex((m) => m.id === typingId)
+    const idx = history.findIndex((m) => m.id === typingId)
     if (idx !== -1) {
-      chatMessages.value.splice(idx, 1, {
+      history.splice(idx, 1, {
         id: nextMessageId(),
         role: 'assistant',
         text: '해당 특허의 평가 결과를 분석한 결과, 기술적 독창성이 높게 평가되었습니다. 추가적으로 궁금한 점이 있으시면 질문해주세요.',

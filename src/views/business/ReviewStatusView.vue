@@ -508,9 +508,12 @@ onMounted(() => {
   gap: 10px;
 }
 .progress-section__quarter {
-  margin: 0 0 2px;
+  margin: 0 0 12px;
+  padding-bottom: 12px;
   font-size: 18px; font-weight: 800;
   color: #0f172a; letter-spacing: -0.02em;
+  border-bottom: 1.5px solid rgba(15, 23, 42, 0.08);
+  width: 100%;
 }
 
 .progress-section__header {

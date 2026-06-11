@@ -875,9 +875,12 @@ onMounted(async () => {
 }
 
 .progress-bar-card__quarter {
-  margin: 0 0 2px;
+  margin: 0 0 12px;
+  padding-bottom: 12px;
   font-size: 18px; font-weight: 800;
   color: var(--color-text); letter-spacing: -0.02em;
+  border-bottom: 1.5px solid var(--color-border);
+  width: 100%;
 }
 
 .progress-bar-card__top {

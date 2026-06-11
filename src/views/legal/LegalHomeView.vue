@@ -19,32 +19,50 @@
 
     <!-- KPI 카드 행 -->
     <div class="kpi-row">
-      <component
-        :is="kpi.tab ? 'RouterLink' : 'div'"
-        v-for="kpi in kpiCards"
-        :key="kpi.label"
-        :to="kpi.tab ? `/legal/reevaluation?tab=${kpi.tab}` : undefined"
-        class="kpi-card"
-        :class="{ 'kpi-card--alert': kpi.alert, 'kpi-card--link': !!kpi.tab }"
-      >
+      <!-- 분기 진행률 (독립 카드) -->
+      <div class="kpi-card kpi-card--progress">
         <div class="kpi-card__header">
-          <span class="kpi-card__label">{{ kpi.label }}</span>
-          <span class="kpi-card__icon" :style="{ background: kpi.iconBg, color: kpi.iconColor }">
-            <span v-html="kpi.icon" />
+          <span class="kpi-card__label">{{ progressCard.label }}</span>
+          <span class="kpi-card__icon" :style="{ background: progressCard.iconBg, color: progressCard.iconColor }">
+            <span v-html="progressCard.icon" />
           </span>
         </div>
-        <p class="kpi-card__value" :style="{ color: kpi.valueColor }">
-          {{ kpi.value ?? '—' }}
-        </p>
-        <div v-if="kpi.sub" class="kpi-card__sub">
-          <span v-if="kpi.alert" class="kpi-card__alert-badge">{{ kpi.alertCount }}건 지연</span>
-          <span v-else>{{ kpi.sub }}</span>
+        <p class="kpi-card__value">{{ progressCard.value ?? '—' }}</p>
+        <div v-if="progressCard.sub" class="kpi-card__sub">{{ progressCard.sub }}</div>
+        <div class="kpi-progress">
+          <div class="kpi-progress__fill" :style="{ width: progressCard.progress + '%', background: progressCard.progressColor }" />
         </div>
-        <!-- 진행 바 (진행률 카드) -->
-        <div v-if="kpi.progress != null" class="kpi-progress">
-          <div class="kpi-progress__fill" :style="{ width: kpi.progress + '%', background: kpi.progressColor }" />
+      </div>
+
+      <!-- 세로 구분선 -->
+      <div class="kpi-vdivider" />
+
+      <!-- 흐름 카드: 요청 전 > 요청 완료 > 지연 > 결정 완료 -->
+      <template v-for="(kpi, i) in kpiCards" :key="kpi.label">
+        <component
+          :is="kpi.tab ? 'RouterLink' : 'div'"
+          :to="kpi.tab ? `/legal/reevaluation?tab=${kpi.tab}` : undefined"
+          class="kpi-card"
+          :class="{ 'kpi-card--alert': kpi.alert, 'kpi-card--link': !!kpi.tab }"
+        >
+          <div class="kpi-card__header">
+            <span class="kpi-card__label">{{ kpi.label }}</span>
+            <span class="kpi-card__icon" :style="{ background: kpi.iconBg, color: kpi.iconColor }">
+              <span v-html="kpi.icon" />
+            </span>
+          </div>
+          <p class="kpi-card__value" :style="{ color: kpi.valueColor }">{{ kpi.value ?? '—' }}</p>
+          <div v-if="kpi.sub" class="kpi-card__sub">
+            <span v-if="kpi.alert" class="kpi-card__alert-badge">{{ kpi.alertCount }}건 지연</span>
+            <span v-else>{{ kpi.sub }}</span>
+          </div>
+        </component>
+        <div v-if="i < kpiCards.length - 1" class="kpi-arrow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
         </div>
-      </component>
+      </template>
     </div>
 
     <!-- 중간 행: 미확인 회신 + 사업부별 처리 현황 + 배정 현황 -->
@@ -119,6 +137,43 @@
           </RouterLink>
         </div>
         <div v-else class="card__empty">데이터가 없습니다.</div>
+      </div>
+
+      <!-- 유지·포기 현황 -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">유지 · 포기 현황</h3>
+          <span class="card__badge">결정 완료 {{ decidedTotal }}건</span>
+        </div>
+        <div class="decision-donut-wrap">
+          <svg class="decision-donut-svg" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#67E2AB" stroke-width="20"
+              :stroke-dasharray="`${keepDash} ${314 - keepDash}`"
+              :stroke-dashoffset="keepOffset"
+              stroke-linecap="butt" />
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#E88989" stroke-width="20"
+              :stroke-dasharray="`${disposeDash} ${314 - disposeDash}`"
+              :stroke-dashoffset="disposeOffset"
+              stroke-linecap="butt" />
+            <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="800" fill="#0f172a">{{ decidedTotal }}</text>
+            <text x="60" y="70" text-anchor="middle" font-size="9" font-weight="600" fill="#475569">건</text>
+          </svg>
+          <div class="decision-legend">
+            <div class="decision-legend__item">
+              <span class="legend-dot" style="background:#67E2AB" />
+              <span class="decision-legend__label">유지</span>
+              <span class="decision-legend__count">{{ decisionResult.keep }}건</span>
+              <span class="decision-legend__pct">{{ keepPct }}%</span>
+            </div>
+            <div class="decision-legend__item">
+              <span class="legend-dot" style="background:#E88989" />
+              <span class="decision-legend__label">포기</span>
+              <span class="decision-legend__count">{{ decisionResult.dispose }}건</span>
+              <span class="decision-legend__pct">{{ disposePct }}%</span>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -262,6 +317,20 @@ const quarterLabel = computed(() => {
 })
 
 // ── KPI 카드 데이터 ──────────────────────────────────
+const progressCard = computed(() => {
+  const s = summary.value
+  return {
+    label: '분기 진행률',
+    value: s ? `${s.progressRate}%` : null,
+    progress: s?.progressRate ?? 0,
+    progressColor: '#6366f1',
+    sub: `요청 ${s?.kpi.requested ?? 0}건 중 ${s?.kpi.decided ?? 0}건 회신`,
+    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+    iconBg: '#eef2ff', iconColor: '#6366f1',
+    alert: false, alertCount: 0, valueColor: '#0f172a',
+  }
+})
+
 const kpiCards = computed(() => {
   const s = summary.value
   const a = assignment.value
@@ -269,14 +338,13 @@ const kpiCards = computed(() => {
 
   return [
     {
-      label: '분기 진행률',
-      value: s ? `${s.progressRate}%` : null,
-      progress: s?.progressRate ?? 0,
-      progressColor: '#6366f1',
-      sub: `요청 ${s?.kpi.requested ?? 0}건 중 ${s?.kpi.decided ?? 0}건 회신`,
-      icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
-      iconBg: '#eef2ff', iconColor: '#6366f1',
-      alert: false, alertCount: 0, valueColor: '#0f172a',
+      label: '요청 전',
+      value: a?.unassigned ?? null,
+      sub: '부서 배정 필요',
+      icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>`,
+      iconBg: '#f8fafc', iconColor: '#64748b',
+      alert: false, alertCount: 0, valueColor: '#0f172a', progress: null, progressColor: '',
+      tab: 'unassigned',
     },
     {
       label: '요청 완료',
@@ -290,7 +358,7 @@ const kpiCards = computed(() => {
     {
       label: '지연',
       value: delayed,
-      sub: `미회신 기한 초과`,
+      sub: '미회신 기한 초과',
       alertCount: delayed,
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
       iconBg: '#fef2f2', iconColor: '#dc2626',
@@ -305,15 +373,6 @@ const kpiCards = computed(() => {
       iconBg: '#f0fdf4', iconColor: '#22c55e',
       alert: false, alertCount: 0, valueColor: '#0f172a', progress: null, progressColor: '',
       tab: 'done',
-    },
-    {
-      label: '요청 전',
-      value: a?.unassigned ?? null,
-      sub: '부서 배정 필요',
-      icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>`,
-      iconBg: '#f8fafc', iconColor: '#64748b',
-      alert: false, alertCount: 0, valueColor: '#0f172a', progress: null, progressColor: '',
-      tab: 'unassigned',
     },
   ]
 })
@@ -401,6 +460,17 @@ function decisionLabel(d: string) {
 function openReply(id: number) {
   router.push(`/legal/reevaluation?tab=unread&open=${id}`)
 }
+
+// ── 유지·포기 현황 ────────────────────────────────────
+const decisionResult = ref({ keep: 58, dispose: 19 })
+
+const decidedTotal  = computed(() => decisionResult.value.keep + decisionResult.value.dispose)
+const keepPct       = computed(() => decidedTotal.value ? Math.round(decisionResult.value.keep    / decidedTotal.value * 100) : 0)
+const disposePct    = computed(() => decidedTotal.value ? Math.round(decisionResult.value.dispose / decidedTotal.value * 100) : 0)
+const keepDash      = computed(() => Math.round(decisionResult.value.keep    / decidedTotal.value * 314))
+const disposeDash   = computed(() => Math.round(decisionResult.value.dispose / decidedTotal.value * 314))
+const keepOffset    = computed(() => -314 / 4)
+const disposeOffset = computed(() => -314 / 4 - keepDash.value)
 
 // ── Mock fallback 데이터 ──────────────────────────────
 const mockSummary: DashboardSummary = {
@@ -510,15 +580,43 @@ onMounted(loadAll)
 
 /* ── KPI 카드 ────────────────────────────────────── */
 .kpi-row {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
 }
 
-@media (max-width: 1200px) { .kpi-row { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 720px)  { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+.kpi-vdivider {
+  width: 1px;
+  background: var(--color-border);
+  margin: 0 16px;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+.kpi-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  color: #cbd5e1;
+}
+
+.kpi-card--progress {
+  flex: 0 0 180px;
+}
+
+@media (max-width: 900px) {
+  .kpi-row { flex-wrap: wrap; }
+  .kpi-card { flex: 1 1 calc(50% - 40px); min-width: 140px; }
+  .kpi-arrow { display: none; }
+}
+@media (max-width: 500px) {
+  .kpi-card { flex: 1 1 100%; }
+}
 
 .kpi-card {
+  flex: 1;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 14px;
@@ -636,6 +734,53 @@ onMounted(loadAll)
   color: var(--color-text-subtle);
 }
 
+.card__badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-muted);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+/* ── 유지·포기 도넛 ──────────────────────────────── */
+.decision-donut-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex: 1;
+}
+
+.decision-donut-svg {
+  width: 130px;
+  height: 130px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+.decision-donut-svg text {
+  transform: rotate(90deg);
+  transform-origin: 60px 60px;
+}
+
+.decision-legend {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.decision-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.decision-legend__label { flex: 1; color: var(--color-text-secondary); font-weight: 500; }
+.decision-legend__count { font-weight: 700; color: var(--color-text); }
+.decision-legend__pct   { font-weight: 600; color: var(--color-text-secondary); min-width: 34px; text-align: right; }
+
 .card__skeleton { display: flex; flex-direction: column; gap: 10px; }
 
 .skel {
@@ -655,7 +800,7 @@ onMounted(loadAll)
   display: flex;
   gap: 16px;
 }
-.mid-row > .card { flex: 1; }
+.mid-row > .card { flex: 1; min-width: 0; }
 .mid-row > .card--wide { flex: 2; }
 
 /* ── 퍼널 ────────────────────────────────────────── */

@@ -201,7 +201,7 @@
       <!-- 연도별 출원·등록·소멸 추이 -->
       <div class="chart-card">
         <div class="chart-card__header">
-          <h3 class="chart-card__title">연도별 출원 · 등록 · 소멸 추이</h3>
+          <h3 class="chart-card__title">연도별 등록 · 소멸 추이</h3>
           <div class="chart-legend chart-legend--inline">
             <div v-for="(s, i) in trendSeries" :key="s.key" class="legend-item">
               <span class="legend-dot" :style="{ background: trendColors[i] }" />{{ s.label }}
@@ -276,61 +276,68 @@
     </div>
 
 
-    <!-- 재평가 결정 분석: 연도별 + 사업부/기술분야별 -->
-    <div class="decision-row">
-
-      <!-- 연도별 유지·포기 비율 (스택 바) -->
-      <div class="chart-card">
-        <div class="chart-card__header">
-          <h3 class="chart-card__title">분기별 재평가 결정 비율</h3>
-          <div class="chart-legend chart-legend--inline">
-            <div class="legend-item"><span class="legend-dot" style="background: var(--color-keep)" />유지</div>
-            <div class="legend-item"><span class="legend-dot" style="background: var(--color-dispose)" />포기</div>
-          </div>
-        </div>
-        <div class="decision-chart" style="position: relative">
-          <div
-            v-for="d in decisionData"
-            :key="d.year"
-            class="decision-bar-group"
-            @mouseenter="showTooltip($event, d)"
-            @mouseleave="hideTooltip"
-          >
-            <div class="decision-bar-stack" :class="{ 'decision-bar-stack--inprogress': d.inProgress }">
-              <div class="decision-bar-seg decision-bar-seg--keep" :style="{ height: keepPct(d) + '%' }" />
-              <div class="decision-bar-seg decision-bar-seg--dispose" :style="{ height: disposePct(d) + '%' }" />
-            </div>
-            <p class="decision-bar-label">{{ d.inProgress ? `${d.year} (진행중)` : d.year }}</p>
-          </div>
-          <div v-if="tooltip.visible" class="decision-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
-            <p class="decision-tooltip__year">{{ tooltip.year }}</p>
-            <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-keep)" />유지 {{ tooltip.keep }}건 ({{ tooltip.keepPct }}%)</div>
-            <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-dispose)" />포기 {{ tooltip.dispose }}건 ({{ tooltip.disposePct }}%)</div>
-          </div>
+    <!-- 재평가 결정 분석 -->
+    <div class="chart-card">
+      <div class="chart-card__header">
+        <h3 class="chart-card__title">유지 · 포기 비율 분석</h3>
+        <div class="chart-legend chart-legend--inline">
+          <div class="legend-item"><span class="legend-dot" style="background: var(--color-keep)" />유지</div>
+          <div class="legend-item"><span class="legend-dot" style="background: var(--color-dispose)" />포기</div>
         </div>
       </div>
 
-      <!-- 사업부별 / 기술분야별 유지·포기 비율 (탭 전환) -->
-      <div class="chart-card">
-        <div class="chart-card__header">
-          <h3 class="chart-card__title">유지 · 포기 비율 분석</h3>
-          <div class="breakdown-tabs">
-            <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'dept' }" @click="breakdownTab = 'dept'">사업부별</button>
-            <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'tech' }" @click="breakdownTab = 'tech'">기술분야별</button>
+      <div class="decision-split">
+        <!-- 왼쪽: 분기별 전체 스택 바 (클릭으로 분기 선택) -->
+        <div class="decision-split__left">
+          <p class="decision-split__subtitle">분기별 전체 비율</p>
+          <div class="decision-chart" style="position: relative">
+            <div
+              v-for="d in decisionData"
+              :key="d.year"
+              class="decision-bar-group"
+              :class="{ 'decision-bar-group--selected': selectedQuarter === d.year }"
+              @click="selectedQuarter = d.year"
+              @mouseenter="showTooltip($event, d)"
+              @mouseleave="hideTooltip"
+            >
+              <div class="decision-bar-stack" :class="{ 'decision-bar-stack--inprogress': d.inProgress }">
+                <div class="decision-bar-seg decision-bar-seg--keep"    :style="{ height: keepPct(d) + '%' }" />
+                <div class="decision-bar-seg decision-bar-seg--dispose" :style="{ height: disposePct(d) + '%' }" />
+              </div>
+              <p class="decision-bar-label">{{ d.year }}</p>
+            </div>
+            <div v-if="tooltip.visible" class="decision-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
+              <p class="decision-tooltip__year">{{ tooltip.year }}</p>
+              <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-keep)" />유지 {{ tooltip.keep }}건 ({{ tooltip.keepPct }}%)</div>
+              <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-dispose)" />포기 {{ tooltip.dispose }}건 ({{ tooltip.disposePct }}%)</div>
+            </div>
           </div>
         </div>
-        <div class="hbar-list">
-          <div v-for="d in breakdownTab === 'dept' ? deptDecision : techDecision" :key="d.name" class="hbar-item">
-            <span class="hbar-item__label">{{ d.name }}</span>
-            <div class="hbar-track">
-              <div class="hbar-seg hbar-seg--keep"    :style="{ width: Math.round(d.keep/(d.keep+d.dispose)*100) + '%' }" :title="`유지 ${d.keep}건`" />
-              <div class="hbar-seg hbar-seg--dispose" :style="{ width: Math.round(d.dispose/(d.keep+d.dispose)*100) + '%' }" :title="`포기 ${d.dispose}건`" />
+
+        <!-- 구분선 -->
+        <div class="decision-split__divider" />
+
+        <!-- 오른쪽: 선택된 분기의 사업부별/기술분야별 -->
+        <div class="decision-split__right">
+          <div class="decision-split__right-header">
+            <p class="decision-split__subtitle">{{ selectedQuarter }} 상세 분석</p>
+            <div class="breakdown-tabs">
+              <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'dept' }" @click="breakdownTab = 'dept'">사업부별</button>
+              <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'tech' }" @click="breakdownTab = 'tech'">기술분야별</button>
             </div>
-            <span class="hbar-item__pct">{{ Math.round(d.keep/(d.keep+d.dispose)*100) }}%</span>
+          </div>
+          <div class="hbar-list">
+            <div v-for="d in sortedBreakdown" :key="d.name" class="hbar-item">
+              <span class="hbar-item__label">{{ d.name }}</span>
+              <div class="hbar-track">
+                <div class="hbar-seg hbar-seg--keep"    :style="{ width: Math.round(d.keep/(d.keep+d.dispose)*100) + '%' }" />
+                <div class="hbar-seg hbar-seg--dispose" :style="{ width: Math.round(d.dispose/(d.keep+d.dispose)*100) + '%' }" />
+              </div>
+              <span class="hbar-item__pct">{{ Math.round(d.keep/(d.keep+d.dispose)*100) }}%</span>
+            </div>
           </div>
         </div>
       </div>
-
     </div>
 
 
@@ -343,7 +350,7 @@ import { ANNUITY_DATA } from '@/mocks/data'
 
 // ── 색상 팔레트 ──────────────────────────────────────
 const techColors  = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#6366f1', '#ABACED', '#67E2AB']
-const trendColors = ['#ABACED', '#67E2AB', '#FFBC5E']
+const trendColors = ['#67E2AB', '#FFBC5E']
 
 // ── 요약 카운트 ──────────────────────────────────────
 const summaryCounts = [
@@ -408,7 +415,7 @@ const trendData = [
   { year: '2025', filed: 45, registered: 38, expired: 8 },
   { year: '2026', filed: 29, registered: 22, expired: 4 },
 ]
-const maxTrend = computed(() => Math.max(...trendData.flatMap(d => [d.filed, d.registered, d.expired])))
+const maxTrend = computed(() => Math.max(...trendData.flatMap(d => [d.registered, d.expired])))
 
 // ── 꺾은선 차트 설정 ─────────────────────────────────
 const svgW = 540
@@ -424,9 +431,8 @@ function trendY(v: number, max: number) {
   return pad.t + (1 - v / max) * plotH
 }
 
-type TrendKey = 'filed' | 'registered' | 'expired'
+type TrendKey = 'registered' | 'expired'
 const trendSeries: { key: TrendKey; label: string }[] = [
-  { key: 'filed',      label: '출원' },
   { key: 'registered', label: '등록' },
   { key: 'expired',    label: '소멸' },
 ]
@@ -462,8 +468,165 @@ const decisionData = [
 function keepPct(d: typeof decisionData[0])    { return Math.round(d.keep    / (d.keep + d.dispose) * 100) }
 function disposePct(d: typeof decisionData[0]) { return Math.round(d.dispose / (d.keep + d.dispose) * 100) }
 
-// ── 툴팁 ─────────────────────────────────────────────
+// ── 분기별 사업부/기술분야 결정 데이터 ───────────────────
+type BreakdownItem = { name: string; keep: number; dispose: number }
+const quarterBreakdown: Record<string, { dept: BreakdownItem[]; tech: BreakdownItem[] }> = {
+  '2024Q3': {
+    dept: [
+      { name: '반도체 사업부', keep: 10, dispose: 5 },
+      { name: '배터리 사업부', keep: 6,  dispose: 4 },
+      { name: 'AI 사업부',    keep: 4,  dispose: 2 },
+      { name: '소재 사업부',  keep: 2,  dispose: 1 },
+      { name: '디스플레이',   keep: 3,  dispose: 2 },
+      { name: '모빌리티',     keep: 2,  dispose: 1 },
+      { name: '바이오',       keep: 1,  dispose: 1 },
+      { name: '로보틱스',     keep: 1,  dispose: 0 },
+      { name: '에너지',       keep: 2,  dispose: 1 },
+      { name: '클라우드',     keep: 1,  dispose: 1 },
+    ],
+    tech: [
+      { name: '반도체', keep: 9,  dispose: 4 },
+      { name: '배터리', keep: 5,  dispose: 3 },
+      { name: 'AI/SW',  keep: 4,  dispose: 3 },
+      { name: '소재',   keep: 3,  dispose: 1 },
+      { name: '기타',   keep: 1,  dispose: 1 },
+    ],
+  },
+  '2024Q4': {
+    dept: [
+      { name: '반도체 사업부', keep: 14, dispose: 4 },
+      { name: '배터리 사업부', keep: 8,  dispose: 3 },
+      { name: 'AI 사업부',    keep: 5,  dispose: 2 },
+      { name: '소재 사업부',  keep: 3,  dispose: 1 },
+      { name: '디스플레이',   keep: 4,  dispose: 2 },
+      { name: '모빌리티',     keep: 3,  dispose: 1 },
+      { name: '바이오',       keep: 2,  dispose: 1 },
+      { name: '로보틱스',     keep: 2,  dispose: 1 },
+      { name: '에너지',       keep: 3,  dispose: 1 },
+      { name: '클라우드',     keep: 2,  dispose: 0 },
+    ],
+    tech: [
+      { name: '반도체', keep: 13, dispose: 4 },
+      { name: '배터리', keep: 8,  dispose: 3 },
+      { name: 'AI/SW',  keep: 5,  dispose: 2 },
+      { name: '소재',   keep: 3,  dispose: 1 },
+      { name: '기타',   keep: 1,  dispose: 0 },
+    ],
+  },
+  '2025Q1': {
+    dept: [
+      { name: '반도체 사업부', keep: 8,  dispose: 6 },
+      { name: '배터리 사업부', keep: 6,  dispose: 4 },
+      { name: 'AI 사업부',    keep: 4,  dispose: 3 },
+      { name: '소재 사업부',  keep: 2,  dispose: 1 },
+      { name: '디스플레이',   keep: 3,  dispose: 2 },
+      { name: '모빌리티',     keep: 2,  dispose: 2 },
+      { name: '바이오',       keep: 1,  dispose: 1 },
+      { name: '로보틱스',     keep: 1,  dispose: 1 },
+      { name: '에너지',       keep: 2,  dispose: 1 },
+      { name: '클라우드',     keep: 1,  dispose: 0 },
+    ],
+    tech: [
+      { name: '반도체', keep: 8,  dispose: 5 },
+      { name: '배터리', keep: 5,  dispose: 4 },
+      { name: 'AI/SW',  keep: 4,  dispose: 3 },
+      { name: '소재',   keep: 2,  dispose: 1 },
+      { name: '기타',   keep: 1,  dispose: 1 },
+    ],
+  },
+  '2025Q2': {
+    dept: [
+      { name: '반도체 사업부', keep: 16, dispose: 4 },
+      { name: '배터리 사업부', keep: 9,  dispose: 2 },
+      { name: 'AI 사업부',    keep: 6,  dispose: 2 },
+      { name: '소재 사업부',  keep: 3,  dispose: 1 },
+      { name: '디스플레이',   keep: 5,  dispose: 1 },
+      { name: '모빌리티',     keep: 4,  dispose: 1 },
+      { name: '바이오',       keep: 2,  dispose: 1 },
+      { name: '로보틱스',     keep: 2,  dispose: 0 },
+      { name: '에너지',       keep: 3,  dispose: 1 },
+      { name: '클라우드',     keep: 2,  dispose: 1 },
+    ],
+    tech: [
+      { name: '반도체', keep: 15, dispose: 3 },
+      { name: '배터리', keep: 9,  dispose: 2 },
+      { name: 'AI/SW',  keep: 6,  dispose: 2 },
+      { name: '소재',   keep: 3,  dispose: 1 },
+      { name: '기타',   keep: 1,  dispose: 1 },
+    ],
+  },
+  '2025Q3': {
+    dept: [
+      { name: '반도체 사업부', keep: 10, dispose: 6 },
+      { name: '배터리 사업부', keep: 7,  dispose: 4 },
+      { name: 'AI 사업부',    keep: 5,  dispose: 2 },
+      { name: '소재 사업부',  keep: 2,  dispose: 1 },
+      { name: '디스플레이',   keep: 3,  dispose: 2 },
+      { name: '모빌리티',     keep: 3,  dispose: 2 },
+      { name: '바이오',       keep: 2,  dispose: 1 },
+      { name: '로보틱스',     keep: 1,  dispose: 1 },
+      { name: '에너지',       keep: 2,  dispose: 1 },
+      { name: '클라우드',     keep: 1,  dispose: 1 },
+    ],
+    tech: [
+      { name: '반도체', keep: 10, dispose: 5 },
+      { name: '배터리', keep: 6,  dispose: 4 },
+      { name: 'AI/SW',  keep: 5,  dispose: 2 },
+      { name: '소재',   keep: 2,  dispose: 1 },
+      { name: '기타',   keep: 1,  dispose: 1 },
+    ],
+  },
+  '2025Q4': {
+    dept: [
+      { name: '반도체 사업부', keep: 15, dispose: 3 },
+      { name: '배터리 사업부', keep: 8,  dispose: 2 },
+      { name: 'AI 사업부',    keep: 6,  dispose: 2 },
+      { name: '소재 사업부',  keep: 3,  dispose: 1 },
+      { name: '디스플레이',   keep: 5,  dispose: 1 },
+      { name: '모빌리티',     keep: 4,  dispose: 1 },
+      { name: '바이오',       keep: 3,  dispose: 1 },
+      { name: '로보틱스',     keep: 2,  dispose: 0 },
+      { name: '에너지',       keep: 3,  dispose: 0 },
+      { name: '클라우드',     keep: 2,  dispose: 1 },
+    ],
+    tech: [
+      { name: '반도체', keep: 14, dispose: 3 },
+      { name: '배터리', keep: 8,  dispose: 2 },
+      { name: 'AI/SW',  keep: 6,  dispose: 2 },
+      { name: '소재',   keep: 3,  dispose: 1 },
+      { name: '기타',   keep: 1,  dispose: 0 },
+    ],
+  },
+  '2026Q1': {
+    dept: [
+      { name: '반도체 사업부', keep: 8,  dispose: 5 },
+      { name: '배터리 사업부', keep: 5,  dispose: 3 },
+      { name: 'AI 사업부',    keep: 4,  dispose: 2 },
+      { name: '소재 사업부',  keep: 2,  dispose: 1 },
+      { name: '디스플레이',   keep: 3,  dispose: 2 },
+      { name: '모빌리티',     keep: 2,  dispose: 1 },
+      { name: '바이오',       keep: 1,  dispose: 1 },
+      { name: '로보틱스',     keep: 1,  dispose: 1 },
+      { name: '에너지',       keep: 2,  dispose: 1 },
+      { name: '클라우드',     keep: 1,  dispose: 0 },
+    ],
+    tech: [
+      { name: '반도체', keep: 8,  dispose: 4 },
+      { name: '배터리', keep: 5,  dispose: 3 },
+      { name: 'AI/SW',  keep: 3,  dispose: 2 },
+      { name: '소재',   keep: 2,  dispose: 1 },
+      { name: '기타',   keep: 1,  dispose: 1 },
+    ],
+  },
+}
+
+const selectedQuarter = ref(decisionData[decisionData.length - 1].year)
+const activeBreakdown = computed(() => quarterBreakdown[selectedQuarter.value] ?? { dept: [], tech: [] })
 const breakdownTab = ref<'dept' | 'tech'>('dept')
+const sortedBreakdown = computed(() => {
+  const list = breakdownTab.value === 'dept' ? activeBreakdown.value.dept : activeBreakdown.value.tech
+  return [...list].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+})
 
 // ── 도넛 툴팁 ────────────────────────────────────────
 const donutTooltip = ref({ visible: false, x: 0, y: 0, name: '', count: 0, pct: 0, color: '' })
@@ -508,20 +671,7 @@ function showTooltip(e: MouseEvent, d: typeof decisionData[0]) {
 }
 function hideTooltip() { tooltip.value.visible = false }
 
-// ── 사업부별 / 기술분야별 유지·포기 데이터 ───────────
-const deptDecision = [
-  { name: '반도체 사업부', keep: 52, dispose: 18 },
-  { name: '배터리 사업부', keep: 38, dispose: 15 },
-  { name: 'AI 사업부',    keep: 29, dispose: 8  },
-  { name: '소재 사업부',  keep: 19, dispose: 9  },
-]
-const techDecision = [
-  { name: '반도체',  keep: 48, dispose: 14 },
-  { name: '배터리',  keep: 35, dispose: 12 },
-  { name: 'AI/SW',  keep: 26, dispose: 7  },
-  { name: '소재',   keep: 18, dispose: 8  },
-  { name: '기타',   keep: 11, dispose: 5  },
-]
+
 
 // ── 사업부 도넛 ──────────────────────────────────────
 const deptItems = [
@@ -708,14 +858,58 @@ const insights = [
   flex-wrap: wrap;
 }
 
-/* ── 연도별 추이 2-컬럼 ─────────────────────────── */
-.decision-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  align-items: start;
+/* ── 결정 분석 좌우 분할 ─────────────────────────── */
+.decision-split {
+  display: flex;
+  gap: 0;
+  align-items: flex-start;
+  min-height: 220px;
 }
-@media (max-width: 860px) { .decision-row { grid-template-columns: 1fr; } }
+.decision-split__left {
+  flex: 0 0 50%;
+  display: flex;
+  flex-direction: column;
+  padding-right: 20px;
+}
+.decision-split__divider {
+  width: 1px;
+  background: var(--color-border);
+  flex-shrink: 0;
+  margin: 0 20px 0 0;
+}
+.decision-split__right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.decision-split__subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin: 0 0 10px;
+}
+.decision-split__right-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.decision-split__right-header .decision-split__subtitle { margin: 0; }
+.decision-bar-group--selected .decision-bar-stack {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.decision-bar-group { cursor: pointer; }
+
+/* ── 탭 전환 버튼 ────────────────────────────────── */
+.breakdown-tabs { display: flex; gap: 2px; background: var(--color-surface-muted); border-radius: 8px; padding: 3px; }
+.breakdown-tab {
+  background: none; border: none; border-radius: 6px;
+  padding: 3px 12px; font-size: 12px; cursor: pointer;
+  color: var(--color-text-muted); transition: all 0.12s;
+}
+.breakdown-tab--active { background: var(--color-surface); color: var(--color-text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 
 /* ── 연도별 재평가 결정 스택 바 ──────────────────── */
 .decision-chart {
@@ -875,14 +1069,6 @@ const insights = [
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
 }
 
-/* ── 탭 전환 버튼 ────────────────────────────────── */
-.breakdown-tabs { display: flex; gap: 2px; background: var(--color-surface-muted); border-radius: 8px; padding: 3px; }
-.breakdown-tab {
-  background: none; border: none; border-radius: 6px;
-  padding: 3px 12px; font-size: 12px; cursor: pointer;
-  color: var(--color-text-muted); transition: all 0.12s;
-}
-.breakdown-tab--active { background: var(--color-surface); color: var(--color-text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 
 /* ── 가로 스택 바 ─────────────────────────────────── */
 .hbar-list { display: flex; flex-direction: column; gap: 12px; max-height: 260px; overflow-y: auto; }
