@@ -313,7 +313,7 @@
 
               <!-- 통계 -->
               <div class="rpt-stat-row">
-                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#2563eb">{{ computedSimilarPatents.length }}</span><span class="rpt-stat-label">분석 대상</span></div>
+                <div class="rpt-stat"><span class="rpt-stat-num" style="color:#2563eb">{{ computedSimilarStats.total }}</span><span class="rpt-stat-label">분석 대상</span></div>
                 <div class="rpt-stat"><span class="rpt-stat-num" style="color:#166534">{{ computedSimilarStats.registered }}</span><span class="rpt-stat-label">등록/유지</span></div>
                 <div class="rpt-stat"><span class="rpt-stat-num" style="color:#6b7280">{{ computedSimilarStats.pending }}</span><span class="rpt-stat-label">공개/심사중</span></div>
                 <div class="rpt-stat"><span class="rpt-stat-num" style="color:#374151">{{ computedSimilarStats.rejected }}</span><span class="rpt-stat-label">거절/소멸</span></div>
@@ -321,9 +321,8 @@
               </div>
 
               <!-- 요약 (통계 바로 아래) -->
-              <!-- TODO: 확인 필요 — similar_patents 요약 문구는 JSON에 별도 필드 없어 건수만 동적 처리 -->
               <div class="rpt-opinion-box">
-                <p>KIPRIS 유사도 상위 {{ computedSimilarPatents.length }}건 중 등록/유지 {{ computedSimilarStats.registered }}건, 공개/심사중 {{ computedSimilarStats.pending }}건, 거절/소멸 {{ computedSimilarStats.rejected }}건으로 나타납니다.</p>
+                <p>{{ computedSimilarSummary }}</p>
               </div>
 
               <!-- 상위 3개 상세 카드 (유사도 내림차순 이미 정렬됨) -->
@@ -1294,34 +1293,34 @@ function addMonths(dateStr: string, months: number) {
 
 // ── AI 점수 / 코멘트 ─────────────────────────────────
 const aiScores = computed(() => {
-  const scores = reportJson.value?.valuation?.scores
-  if (!scores) return { tech: 0, rights: 0, biz: 0 }
-  const avgScore = (dims: string[]) => {
-    const filtered = scores.filter((s: any) => dims.includes(s.dim))
-    if (!filtered.length) return 0
-    return Math.round(filtered.reduce((acc: number, s: any) => acc + s.score, 0) / filtered.length / 5 * 100)
-  }
+  const dims: any[] = reportJson.value?.report?.evaluation?.dimensions ?? []
+  if (!dims.length) return { tech: 0, rights: 0, biz: 0 }
+  const getDimScore = (key: string) => dims.find((d: any) => d.key === key)?.score_out_of_100 ?? 0
+  const market = getDimScore('시장성')
+  const biz = getDimScore('사업성')
+  const bizScores = [market, biz].filter(v => v > 0)
   return {
-    tech: avgScore(['기술성']),
-    rights: avgScore(['권리성']),
-    biz: avgScore(['시장성', '사업성']),
+    tech:   getDimScore('기술성'),
+    rights: getDimScore('권리성'),
+    biz:    bizScores.length ? Math.round(bizScores.reduce((a, b) => a + b, 0) / bizScores.length) : 0,
   }
 })
 
 const aiComments = computed(() => {
-  const scores = reportJson.value?.valuation?.scores
-  if (!scores) return { tech: '', rights: '', biz: '', bizSubmit: '' }
-  const joinReasons = (dims: string[]) =>
-    scores
-      .filter((s: any) => dims.includes(s.dim))
-      .map((s: any) => s.reason || s.basis || '')
-      .filter(Boolean)
-      .join(' ')
+  const dims: any[] = reportJson.value?.report?.evaluation?.dimensions ?? []
+  if (!dims.length) return { tech: '', rights: '', biz: '', bizSubmit: '' }
+  const getDimComment = (key: string) => {
+    const dim = dims.find((d: any) => d.key === key)
+    if (!dim) return ''
+    const llmItem = (dim.items ?? []).find((item: any) => item.method === 'llm')
+    return llmItem?.judgment_summary ?? dim.items?.[0]?.judgment_summary ?? ''
+  }
+  const bizComment = getDimComment('시장성') || getDimComment('사업성')
   return {
-    tech:      joinReasons(['기술성']),
-    rights:    joinReasons(['권리성']),
-    biz:       joinReasons(['시장성', '사업성']),
-    bizSubmit: joinReasons(['시장성', '사업성']),
+    tech:      getDimComment('기술성'),
+    rights:    getDimComment('권리성'),
+    biz:       bizComment,
+    bizSubmit: bizComment,
   }
 })
 
@@ -1331,9 +1330,9 @@ const miniScores = computed(() => [
   { label: '사업성', value: aiScores.value.biz },
 ])
 
-const reportGrade = computed<string | null>(() => reportJson.value?.valuation?.grade ?? null)
+const reportGrade = computed<string | null>(() => reportJson.value?.report?.summary?.overall_grade ?? null)
 
-const totalScore = computed(() => reportJson.value?.valuation?.total_score ?? 0)
+const totalScore = computed(() => reportJson.value?.report?.summary?.overall_score_out_of_100 ?? 0)
 
 // ── 재평가 레코드 ────────────────────────────────────
 const REVIEW_STATUS_MAP: Record<string, 'unassigned' | 'requested' | 'overdue' | 'done'> = {
@@ -1609,87 +1608,131 @@ const DIM_KEY_MAP: Record<string, string> = { '기술성': 'tech', '권리성': 
 const DIM_TITLE_MAP: Record<string, string> = { '기술성': '기술성', '권리성': '권리성', '시장성': '시장성 및 사업성', '사업성': '시장성 및 사업성' }
 
 const REPORT_EVAL_BLOCKS = computed<RptBlock[]>(() => {
-  const scores = reportJson.value?.valuation?.scores
-  if (!scores) return []
-
-  const groups: Record<string, any[]> = {}
-  for (const s of scores) {
-    if (!groups[s.dim]) groups[s.dim] = []
-    groups[s.dim].push(s)
-  }
+  const dims: any[] = reportJson.value?.report?.evaluation?.dimensions ?? []
+  if (!dims.length) return []
 
   const seen = new Set<string>()
   const blocks: RptBlock[] = []
 
-  for (const dim of ['기술성', '권리성', '시장성', '사업성']) {
-    if (!groups[dim] || seen.has(dim)) continue
-    const siblingDim = dim === '시장성' ? '사업성' : dim === '사업성' ? '시장성' : null
-    let allItems = [...groups[dim]]
-    if (siblingDim && groups[siblingDim]) {
-      allItems = [...allItems, ...groups[siblingDim]]
-      seen.add(siblingDim)
+  const mapItems = (items: any[], blockKey: string) =>
+    (items ?? []).map((item: any, i: number) => ({
+      id: `${blockKey}-${i}`,
+      name: item.name,
+      score: item.score,
+      method: item.method ?? '',
+      summary: (item.judgment_summary ?? '').slice(0, 50),
+      grounds: item.judgment_basis ?? '',
+      sources: (item.sources ?? [])
+        .map((src: any) => `${src.title} (${src.url})`)
+        .filter((v: string) => v !== ' ()')
+        .join('; '),
+    }))
+
+  for (const dim of dims) {
+    const key: string = dim.key
+    if (seen.has(key)) continue
+
+    if (key === '시장성' || key === '사업성') {
+      const sibling = dims.find((d: any) => d.key === (key === '시장성' ? '사업성' : '시장성'))
+      const sibScore = sibling?.score_out_of_100 ?? 0
+      const avgScore = sibScore ? Math.round((dim.score_out_of_100 + sibScore) / 2) : dim.score_out_of_100
+      const allItems = [...(dim.items ?? []), ...(sibling?.items ?? [])]
+      seen.add('시장성')
+      seen.add('사업성')
+      blocks.push({ key: 'market', title: '시장성 및 사업성', score: avgScore, items: mapItems(allItems, 'market') })
+    } else {
+      seen.add(key)
+      blocks.push({
+        key: DIM_KEY_MAP[key] ?? key,
+        title: DIM_TITLE_MAP[key] ?? key,
+        score: dim.score_out_of_100,
+        items: mapItems(dim.items ?? [], DIM_KEY_MAP[key] ?? key),
+      })
     }
-    seen.add(dim)
-
-    const blockScore = Math.round(allItems.reduce((acc, s) => acc + s.score, 0) / allItems.length / 5 * 100)
-    const key = DIM_KEY_MAP[dim]
-
-    blocks.push({
-      key,
-      title: DIM_TITLE_MAP[dim],
-      score: blockScore,
-      items: allItems.map((s, i) => {
-        const text = s.reason || s.basis || ''
-        return {
-          id: `${key}-${i}`,
-          name: s.item,
-          score: s.score,
-          method: s.method,
-          summary: text.slice(0, 50),
-          grounds: text,
-          sources: (s.sources ?? []).map((src: any) => `${src.title} (${src.url})`).filter((v: string) => v !== ' ()').join('; '),
-        }
-      }),
-    })
   }
 
   return blocks
 })
 
 const REPORT_CONFIRM_ITEMS = computed(() => {
-  const scores = reportJson.value?.valuation?.scores
-  if (!scores) return []
-  return scores
-    .filter((s: any) => s.score <= 3)
-    .map((s: any) => ({
-      title: s.item,
-      meta: ` · ${DIM_TITLE_MAP[s.dim] ?? s.dim} · ${s.score}/5`,
-      desc: s.reason || s.basis || '',
-    }))
+  const items: any[] = reportJson.value?.report?.risks?.items ?? []
+  if (!items.length) return []
+  return items.map((item: any) => ({
+    title: item.name,
+    meta: ` · ${item.dimension ?? ''} · ${item.name}`,
+    desc: item.judgment_basis ?? '',
+  }))
 })
 
 const REPORT_REFS = computed<string[]>(() => {
-  const refs = reportJson.value?.valuation?.report?.section_6_references
-  if (!refs) return []
-  return refs.map((r: any) => (typeof r === 'string' ? r : r.title || JSON.stringify(r)))
+  const refs: any[] = reportJson.value?.report?.references?.sources?.tech_market ?? []
+  if (!refs.length) return []
+  return refs.map((r: any) => r.title ?? '')
 })
 
+function mapSimilarLegalStatus(status: string): string {
+  if (!status) return '—'
+  if (['거절', '소멸', '취하'].some(s => status.includes(s))) return '소멸'
+  if (['등록', '유지'].some(s => status.includes(s))) return '유지'
+  return status
+}
+
 const computedSimilarPatents = computed<any[]>(() => {
-  return reportJson.value?.valuation?.similar_patents ?? []
+  const patents: any[] = reportJson.value?.report?.similar_patents?.patents ?? []
+  return patents.map((p: any, i: number) => ({
+    id: i,
+    title: p.title ?? '',
+    applicant: p.applicant ?? '',
+    applicationNumber: p.application_number ?? '',
+    year: p.application_year ?? '',
+    similarityScore: p.kipris_similarity_score ?? 0,
+    citations: p.citation_count ?? 0,
+    status: mapSimilarLegalStatus(p.legal_status ?? ''),
+    applicationDate: p.application_year ? `${p.application_year}-01-01` : '',
+  }))
 })
 
 const computedProjectInfo = computed(() => {
-  return reportJson.value?.valuation?.report?.section_3_project_utilization ?? null
+  const proj = reportJson.value?.report?.project_association ?? null
+  if (!proj) return null
+  return {
+    commercialized: proj.commercialization_status ?? '—',
+    service: proj.applied_services ?? '—',
+    history: proj.application_history ?? '—',
+    customer: proj.customers_partners ?? '—',
+    signal: null as string | null, // TODO: 확인 필요 — project_association에 사업화 신호 필드 없음
+    summary: proj.summary ?? '',
+    evidence: (proj.sources ?? []).map((s: any) => ({ title: s.title ?? '', url: s.url ?? '#' })),
+  }
 })
 
 const computedSimilarStats = computed(() => {
+  const summary = reportJson.value?.report?.similar_patents?.summary ?? {}
   const patents = computedSimilarPatents.value
-  if (!patents.length) return { registered: 0, pending: 0, rejected: 0, avgCitations: 0 }
-  const registered = patents.filter((s: any) => s.status === '유지' || s.status === '등록').length
-  const pending = patents.filter((s: any) => s.status === '공개' || s.status === '심사중').length
-  const rejected = patents.filter((s: any) => s.status === '소멸' || s.status === '거절').length
+  if (Object.keys(summary).length) {
+    return {
+      total: summary.total_similar_patents ?? patents.length,
+      registered: summary.active_count ?? 0,
+      pending: summary.published_or_pending_count ?? 0,
+      rejected: summary.rejected_or_expired_count ?? 0,
+      avgCitations: summary.avg_citation_count ?? 0,
+    }
+  }
+  // fallback: compute from patents array
+  if (!patents.length) return { total: 0, registered: 0, pending: 0, rejected: 0, avgCitations: 0 }
+  const registered = patents.filter((s: any) => s.status === '유지').length
+  const rejected = patents.filter((s: any) => s.status === '소멸').length
+  const pending = patents.length - registered - rejected
   const avg = patents.reduce((acc: number, s: any) => acc + (s.citations ?? 0), 0) / patents.length
-  return { registered, pending, rejected, avgCitations: Math.round(avg * 10) / 10 }
+  return { total: patents.length, registered, pending, rejected, avgCitations: Math.round(avg * 10) / 10 }
+})
+
+const computedSimilarSummary = computed(() => {
+  const analysis = reportJson.value?.report?.similar_patents?.competitive_analysis
+  if (analysis?.analysis_summary) return analysis.analysis_summary
+  // fallback: 통계 기반 자동 생성
+  const st = computedSimilarStats.value
+  return `KIPRIS 유사도 상위 ${st.total}건 중 등록/유지 ${st.registered}건, 공개/심사중 ${st.pending}건, 거절/소멸 ${st.rejected}건으로 나타납니다.`
 })
 
 // ── 평가이력 ─────────────────────────────────────────
