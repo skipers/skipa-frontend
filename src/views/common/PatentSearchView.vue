@@ -160,7 +160,6 @@ const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = us
 
 // ── 상태 ────────────────────────────────────────────
 const loading = ref(false)
-const error = ref<string | null>(null)
 const tableItems = ref<PatentRow[]>([])
 const departments = ref<Department[]>([])
 
@@ -222,19 +221,17 @@ const mockPatentRows: PatentRow[] = [
 // ── 특허 목록 로드 ───────────────────────────────────
 async function fetchPatents(p = page.value) {
   loading.value = true
-  error.value = null
   setPage(p)
   try {
-    const res = await patentsApi.getPatents({
-      keyword: filters.q || undefined,
+    const params: Record<string, unknown> = {
+      ...pageQuery.value,
+      q: filters.q || undefined,
       status: filters.status || undefined,
-      filingCountry: filters.country || undefined,
-      techField: filters.techField || undefined,
+      filingCountry: filters.country && filters.country !== '전체' ? filters.country : undefined,
       sort: filters.sort || undefined,
       departmentId: filters.departmentId,
-      page: page.value,
-      size: size.value,
-    })
+    }
+    const res = await patentsApi.list(params as any)
     tableItems.value = res.items as PatentRow[]
     setTotal(res.totalItems, res.totalPages)
   } catch {

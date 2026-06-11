@@ -101,7 +101,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { businessReviewsApi } from '@/api/businessReviews'
+import { MOCK_PATENTS, MOCK_REEVAL } from '@/mocks/data'
 
 const router  = useRouter()
 const loading = ref(false)
@@ -114,28 +114,27 @@ interface SubmissionItem {
 
 const allHistory = ref<SubmissionItem[]>([])
 
-async function fetchHistory() {
-  loading.value = true
-  try {
-    const res = await businessReviewsApi.getBusinessReviewHistory({ size: 200 })
-    allHistory.value = res.items
-      .filter(r => r.opinion != null && r.submittedAt != null)
-      .map(r => ({
-        id: r.id,
+function toQuarterLabel(dateStr: string): string {
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}년 ${Math.ceil((d.getMonth() + 1) / 3)}분기`
+}
+
+function fetchHistory() {
+  const done = MOCK_REEVAL.filter(r => r.deptId === 2 && r.decision !== null && r.decidedAt)
+  allHistory.value = done
+    .map(r => {
+      const patent = MOCK_PATENTS.find(p => p.id === r.patentId)!
+      return {
+        id: r.patentId,
         patentId: r.patentId,
-        patentTitle: r.title,
-        applicationNumber: r.applicationNumber,
-        decision: r.opinion === 'MAINTAIN' ? 'KEEP' : 'DISPOSE',
-        decidedAt: r.submittedAt!,
-        quarter: `${r.reviewCycle.year}년 ${r.reviewCycle.quarter}분기`,
-      }))
-      .sort((a, b) => b.decidedAt.localeCompare(a.decidedAt))
-  } catch (err) {
-    console.error('제출 이력 조회 실패:', err)
-    allHistory.value = []
-  } finally {
-    loading.value = false
-  }
+        patentTitle: patent.title,
+        applicationNumber: patent.applicationNumber,
+        decision: r.decision!,
+        decidedAt: r.decidedAt!,
+        quarter: toQuarterLabel(r.decidedAt!),
+      }
+    })
+    .sort((a, b) => b.decidedAt.localeCompare(a.decidedAt))
 }
 
 // ── 필터 상태 ──────────────────────────────────────────

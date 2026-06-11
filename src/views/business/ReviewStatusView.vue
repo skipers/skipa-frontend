@@ -306,8 +306,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePagination } from '@/composables/usePagination'
 import BasePagination from '@/components/ui/BasePagination.vue'
-import { businessReviewsApi } from '@/api/businessReviews'
-import type { BusinessReviewSummaryResponse } from '@/api/businessReviews'
+import { MOCK_PATENTS, MOCK_REEVAL } from '@/mocks/data'
 
 const router = useRouter()
 const route  = useRoute()
@@ -327,11 +326,10 @@ interface ReviewItem {
 }
 
 // ── 상태 ────────────────────────────────────────────
-const loading      = ref(false)
-const showGuide    = ref(false)
-const activeTab    = ref<'all' | 'done' | 'pending'>('all')
-const allItems     = ref<ReviewItem[]>([])
-const summaryData  = ref<BusinessReviewSummaryResponse | null>(null)
+const loading   = ref(false)
+const showGuide = ref(false)
+const activeTab = ref<'all' | 'done' | 'pending'>('all')
+const allItems  = ref<ReviewItem[]>([])
 
 // ── 계산값 ──────────────────────────────────────────
 const submittedCount = computed(() => allItems.value.filter(i => i.decision !== null).length)
@@ -348,17 +346,11 @@ const filteredItems = computed(() => {
 
 // ── 마감일 ───────────────────────────────────────────
 const ddayValue = computed(() => {
-  const endDate = summaryData.value?.reviewCycle?.endDate
-  if (endDate) {
-    return Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-  }
-  return 0 // TODO: 확인 필요 - summary 미로드 시 fallback
+  const deadline = new Date(2026, 5, 30) // 2026-06-30
+  return Math.max(0, Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
 })
 
-const quarterLabel = computed(() => {
-  const rc = summaryData.value?.reviewCycle
-  return rc ? `${rc.year}년 ${rc.quarter}분기` : '—'
-})
+const quarterLabel = computed(() => '2026년 2분기')
 
 // ── 탭 ──────────────────────────────────────────────
 const tabs = [
@@ -396,6 +388,13 @@ const flowSteps = [
 ]
 
 // ── 유틸 ────────────────────────────────────────────
+const GRADE_SCORE: Record<string, number> = { S: 91, A: 83, B: 67, C: 54 }
+
+function scoreClass(score: number) {
+  if (score >= 80) return 'score--high'
+  if (score >= 60) return 'score--mid'
+  return 'score--low'
+}
 
 function formatDate(d?: string | null) {
   if (!d) return '—'
@@ -405,47 +404,37 @@ function formatDate(d?: string | null) {
 function goDetail(id: number) { router.push(`/biz/review/${id}`) }
 
 // ── 데이터 로드 ──────────────────────────────────────
-async function fetchSummary() {
-  try {
-    summaryData.value = await businessReviewsApi.getBusinessReviewSummary()
-  } catch (err) {
-    console.error('검토 요약 조회 실패:', err)
-  }
-}
-
-async function fetchList(_p = 1) {
+function fetchList(_p = 1) {
   loading.value = true
   setPage(1)
-  try {
-    const res = await businessReviewsApi.getBusinessReviews({ size: 200 })
-    allItems.value = res.items.map(r => ({
-      decisionId:        r.id,
-      patentId:          r.patentId,
-      title:             r.title,
-      applicationNumber: r.applicationNumber,
-      expiryDate:        null, // TODO: 확인 필요 - BusinessReviewResponse에 expiryDate 없음
-      decision:          r.opinion
-        ? (r.opinion === 'MAINTAIN' ? 'KEEP' : 'DISPOSE')
-        : null,
-      decidedAt:         r.submittedAt ?? null,
-      aiScore:           r.totalScore ?? null,
-      grade:             r.valueGrade ?? null,
-      tags:              r.keywords ?? [],
-    }))
-    setTotal(res.totalItems, res.totalPages)
-  } catch (err) {
-    console.error('검토 목록 조회 실패:', err)
-    allItems.value = []
-    setTotal(0, 0)
-  } finally {
-    loading.value = false
-  }
+
+  const items: ReviewItem[] = MOCK_REEVAL
+    .filter(r => r.deptId === 2 && r.isCurrent !== false)
+    .map(r => {
+      const patent = MOCK_PATENTS.find(p => p.id === r.patentId)!
+      return {
+        decisionId:        r.patentId,
+        patentId:          r.patentId,
+        title:             patent.title,
+        applicationNumber: patent.applicationNumber,
+        expiryDate:        patent.expiryDate,
+        decision:          r.decision,
+        decidedAt:         r.decidedAt,
+        aiScore:           patent.grade ? GRADE_SCORE[patent.grade] ?? null : null,
+        grade:             patent.grade ?? null,
+        tags:              patent.tags,
+      }
+    })
+
+  allItems.value = items
+  setTotal(items.length, 1)
+  loading.value = false
 }
 
-onMounted(async () => {
+onMounted(() => {
   const filter = route.query.filter
   if (filter === 'pending' || filter === 'done') activeTab.value = filter
-  await Promise.all([fetchList(1), fetchSummary()])
+  fetchList(1)
 })
 </script>
 

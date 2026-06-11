@@ -256,17 +256,17 @@
             stroke="#f1f5f9" stroke-width="1"
           />
           <rect
-            v-for="(d, i) in annuityData" :key="d.year"
+            v-for="(d, i) in ANNUITY_DATA" :key="d.year"
             :x="annBarX(i)" :y="annBarY(d.amount)"
             :width="annBarW" :height="annBarH(d.amount)"
             rx="3" ry="3"
-            :fill="i === annuityData.length - 1 ? '#a5b4fc' : '#6366f1'"
+            :fill="i === ANNUITY_DATA.length - 1 ? '#a5b4fc' : '#6366f1'"
           />
-          <text v-for="(d, i) in annuityData" :key="`amt-${i}`"
+          <text v-for="(d, i) in ANNUITY_DATA" :key="`amt-${i}`"
             :x="annBarX(i) + annBarW / 2" :y="annBarY(d.amount) - 4"
             text-anchor="middle" font-size="7.5" font-weight="700" fill="#475569"
           >{{ (d.amount / 100000000).toFixed(1) }}</text>
-          <text v-for="(d, i) in annuityData" :key="`yr-${i}`"
+          <text v-for="(d, i) in ANNUITY_DATA" :key="`yr-${i}`"
             :x="annBarX(i) + annBarW / 2" :y="annH - 2"
             text-anchor="middle" font-size="8" fill="#64748b"
           >{{ d.year }}</text>
@@ -339,98 +339,77 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
-import { portfolioApi } from '@/api/portfolio'
-import type {
-  TechFieldItem, CountryItem, DepartmentItem, GradeDistributionItem,
-  YearlyTrendItem, AnnuityTrendItem, QuarterDecisionItem, BreakdownDecisionItem,
-  PortfolioInsightItem,
-} from '@/api/portfolio'
+import { computed, ref } from 'vue'
+import { ANNUITY_DATA } from '@/mocks/data'
 
 // ── 색상 팔레트 ──────────────────────────────────────
 const techColors  = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#6366f1', '#ABACED', '#67E2AB']
 const trendColors = ['#ABACED', '#67E2AB', '#FFBC5E']
 
-// ── 분포 데이터 ──────────────────────────────────────
-const totalPatents = ref(0)
-const treemapItems = ref<TechFieldItem[]>([])
-const countryItems = ref<CountryItem[]>([])
-const deptItems    = ref<DepartmentItem[]>([])
-const allFieldDist = ref<GradeDistributionItem[]>([])
+// ── 요약 카운트 ──────────────────────────────────────
+const summaryCounts = [
+  { value: '247', label: '총 보유 특허' },
+  { value: '38',  label: '소멸 예정 (1년)' },
+  { value: '4',   label: '국가' },
+  { value: '5',   label: '기술 분야' },
+]
 
-// ── 추이 데이터 ──────────────────────────────────────
-const trendData    = ref<YearlyTrendItem[]>([])
-const annuityData  = ref<AnnuityTrendItem[]>([])
+const totalPatents = 247
 
-// ── 결정 데이터 ──────────────────────────────────────
-const decisionData = ref<QuarterDecisionItem[]>([])
-const deptDecision = ref<BreakdownDecisionItem[]>([])
-const techDecision = ref<BreakdownDecisionItem[]>([])
+// ── 트리맵 데이터 ────────────────────────────────────
+const treemapItems = [
+  { name: '반도체', count: 82 },
+  { name: '배터리', count: 58 },
+  { name: '소재',   count: 42 },
+  { name: 'AI/SW',  count: 35 },
+  { name: '바이오', count: 18 },
+  { name: '기타',   count: 12 },
+]
 
-// ── 인사이트 ─────────────────────────────────────────
-const insights = ref<PortfolioInsightItem[]>([])
-
-async function fetchAll() {
-  try {
-    const [dist, trends, decisions, ins] = await Promise.all([
-      portfolioApi.getPortfolioDistribution(),
-      portfolioApi.getPortfolioTrends(),
-      portfolioApi.getPortfolioDecisions(),
-      portfolioApi.getPortfolioInsights(),
-    ])
-    totalPatents.value = dist.totalPatents
-    treemapItems.value = dist.techFields
-    countryItems.value = dist.countries
-    deptItems.value    = dist.departments
-    allFieldDist.value = dist.gradeDistribution
-    trendData.value    = trends.yearlyTrends
-    annuityData.value  = trends.annuityTrends
-    decisionData.value = decisions.quarters
-    deptDecision.value = decisions.byDepartment
-    techDecision.value = decisions.byTechField
-    insights.value     = ins
-  } catch (err) {
-    console.error('포트폴리오 데이터 조회 실패:', err)
-  }
-}
-
-onMounted(() => fetchAll())
-
-// ── 도넛 세그먼트 ────────────────────────────────────
-const totalCountry = computed(() => countryItems.value.reduce((s, i) => s + i.count, 0))
-
+// ── 기술 분야 도넛 세그먼트 ──────────────────────────
 const techDonutSegments = computed(() => {
   const circ = 314
   let offset = -circ / 4
-  return treemapItems.value.map(item => {
-    const dash = Math.round((item.count / (totalPatents.value || 1)) * circ)
+  return treemapItems.map(item => {
+    const dash = Math.round((item.count / totalPatents) * circ)
     const seg = { dash, offset }
     offset -= dash
     return seg
   })
 })
+
+// ── 국가별 ───────────────────────────────────────────
+const countryItems = [
+  { country: 'KR', flag: '🇰🇷', count: 142 },
+  { country: 'US', flag: '🇺🇸', count: 58 },
+  { country: 'JP', flag: '🇯🇵', count: 28 },
+  { country: 'EP', flag: '🇪🇺', count: 12 },
+  { country: 'CN', flag: '🇨🇳', count: 7 },
+]
+const totalCountry = countryItems.reduce((s, i) => s + i.count, 0)
 
 const countryDonutSegments = computed(() => {
   const circ = 314
   let offset = -circ / 4
-  return countryItems.value.map(item => {
-    const dash = Math.round((item.count / (totalCountry.value || 1)) * circ)
+  return countryItems.map(item => {
+    const dash = Math.round((item.count / totalCountry) * circ)
     const seg = { dash, offset }
     offset -= dash
     return seg
   })
 })
 
-const donutSegments = computed(() => {
-  const circ = 314
-  let offset = -circ / 4
-  return deptItems.value.map(d => {
-    const dash = Math.round((d.count / (totalPatents.value || 1)) * circ)
-    const seg = { dash, offset }
-    offset -= dash
-    return seg
-  })
-})
+// ── 연도별 추이 ──────────────────────────────────────
+const trendData = [
+  { year: '2020', filed: 18, registered: 14, expired: 3 },
+  { year: '2021', filed: 24, registered: 19, expired: 5 },
+  { year: '2022', filed: 31, registered: 26, expired: 7 },
+  { year: '2023', filed: 38, registered: 30, expired: 9 },
+  { year: '2024', filed: 42, registered: 35, expired: 11 },
+  { year: '2025', filed: 45, registered: 38, expired: 8 },
+  { year: '2026', filed: 29, registered: 22, expired: 4 },
+]
+const maxTrend = computed(() => Math.max(...trendData.flatMap(d => [d.filed, d.registered, d.expired])))
 
 // ── 꺾은선 차트 설정 ─────────────────────────────────
 const svgW = 540
@@ -439,15 +418,8 @@ const pad = { t: 14, b: 26, l: 8, r: 8 }
 const plotW = svgW - pad.l - pad.r
 const plotH = svgH - pad.t - pad.b
 
-const maxTrend = computed(() =>
-  trendData.value.length
-    ? Math.max(...trendData.value.flatMap(d => [d.filed, d.registered, d.expired]))
-    : 1
-)
-
 function trendX(i: number) {
-  const len = trendData.value.length
-  return len > 1 ? pad.l + (i / (len - 1)) * plotW : pad.l
+  return pad.l + (i / (trendData.length - 1)) * plotW
 }
 function trendY(v: number, max: number) {
   return pad.t + (1 - v / max) * plotH
@@ -463,13 +435,13 @@ const trendSeries: { key: TrendKey; label: string }[] = [
 const trendLines = computed(() =>
   trendSeries.map((s, si) => ({
     color: trendColors[si],
-    points: trendData.value.map((d, i) => `${trendX(i)},${trendY(d[s.key], maxTrend.value)}`).join(' '),
+    points: trendData.map((d, i) => `${trendX(i)},${trendY(d[s.key], maxTrend.value)}`).join(' '),
   }))
 )
 
 const trendDots = computed(() =>
   trendSeries.flatMap((s, si) =>
-    trendData.value.map((d, di) => ({
+    trendData.map((d, di) => ({
       x: trendX(di),
       y: trendY(d[s.key], maxTrend.value),
       color: trendColors[si],
@@ -478,9 +450,18 @@ const trendDots = computed(() =>
   )
 )
 
-// ── 분기별 재평가 결정 ────────────────────────────────
-function keepPct(d: { keep: number; dispose: number })    { return Math.round(d.keep    / (d.keep + d.dispose) * 100) }
-function disposePct(d: { keep: number; dispose: number }) { return Math.round(d.dispose / (d.keep + d.dispose) * 100) }
+// ── 분기별 재평가 결정 데이터 ─────────────────────────
+const decisionData = [
+  { year: '2024Q3', keep: 22, dispose: 12, inProgress: false },
+  { year: '2024Q4', keep: 30, dispose: 10, inProgress: false },
+  { year: '2025Q1', keep: 20, dispose: 14, inProgress: false },
+  { year: '2025Q2', keep: 34, dispose: 9,  inProgress: false },
+  { year: '2025Q3', keep: 24, dispose: 13, inProgress: false },
+  { year: '2025Q4', keep: 32, dispose: 8,  inProgress: false },
+  { year: '2026Q1', keep: 19, dispose: 11, inProgress: true  },
+]
+function keepPct(d: typeof decisionData[0])    { return Math.round(d.keep    / (d.keep + d.dispose) * 100) }
+function disposePct(d: typeof decisionData[0]) { return Math.round(d.dispose / (d.keep + d.dispose) * 100) }
 
 // ── 툴팁 ─────────────────────────────────────────────
 const breakdownTab = ref<'dept' | 'tech'>('dept')
@@ -512,7 +493,7 @@ const tooltip = ref<{
   year: string; keep: number; dispose: number; keepPct: number; disposePct: number
 }>({ visible: false, x: 0, y: 0, year: '', keep: 0, dispose: 0, keepPct: 0, disposePct: 0 })
 
-function showTooltip(e: MouseEvent, d: { year: string; keep: number; dispose: number; inProgress: boolean }) {
+function showTooltip(e: MouseEvent, d: typeof decisionData[0]) {
   const rect = (e.currentTarget as HTMLElement).closest('.decision-chart')!.getBoundingClientRect()
   const el = (e.currentTarget as HTMLElement).getBoundingClientRect()
   tooltip.value = {
@@ -528,7 +509,50 @@ function showTooltip(e: MouseEvent, d: { year: string; keep: number; dispose: nu
 }
 function hideTooltip() { tooltip.value.visible = false }
 
+// ── 사업부별 / 기술분야별 유지·포기 데이터 ───────────
+const deptDecision = [
+  { name: '반도체 사업부', keep: 52, dispose: 18 },
+  { name: '배터리 사업부', keep: 38, dispose: 15 },
+  { name: 'AI 사업부',    keep: 29, dispose: 8  },
+  { name: '소재 사업부',  keep: 19, dispose: 9  },
+]
+const techDecision = [
+  { name: '반도체',  keep: 48, dispose: 14 },
+  { name: '배터리',  keep: 35, dispose: 12 },
+  { name: 'AI/SW',  keep: 26, dispose: 7  },
+  { name: '소재',   keep: 18, dispose: 8  },
+  { name: '기타',   keep: 11, dispose: 5  },
+]
+
+// ── 사업부 도넛 ──────────────────────────────────────
+const deptItems = [
+  { name: '반도체 사업부', count: 98  },
+  { name: '배터리 사업부', count: 72  },
+  { name: 'AI 사업부',    count: 44  },
+  { name: '소재 사업부',  count: 33  },
+]
+
+const donutSegments = computed(() => {
+  const circ = 314
+  let offset = -circ / 4
+  return deptItems.map(d => {
+    const dash = Math.round((d.count / totalPatents) * circ)
+    const seg = { dash, offset }
+    offset -= dash
+    return seg
+  })
+})
+
 // ── 가치 등급 ────────────────────────────────────────
+const gradeItems = [
+  { grade: 'S', label: '핵심 특허',  count: 28,  bg: '#f0f0fa', color: '#ABACED' },
+  { grade: 'A', label: '고가치',     count: 62,  bg: '#edfdf6', color: '#67E2AB' },
+  { grade: 'B', label: '보통',       count: 89,  bg: '#fff8ed', color: '#FFBC5E' },
+  { grade: 'C', label: '낮은 가치',  count: 45,  bg: '#eaf8fd', color: '#84DBED' },
+  { grade: 'D', label: '포기 권장',  count: 23,  bg: '#fdf0f0', color: '#E88989' },
+]
+
+// ── 기술분야별 등급 분포 ──────────────────────────────
 const gradeColorMap: Record<string, string> = {
   S: '#ABACED', A: '#67E2AB', B: '#FFBC5E', C: '#84DBED', D: '#E88989',
 }
@@ -539,27 +563,59 @@ const gradeLabel: Record<string, string> = {
   S: '핵심 특허', A: '고가치', B: '보통', C: '낮은 가치', D: '포기 권장',
 }
 
+const techGradeDist = [
+  { name: '반도체', S: 12, A: 22, B: 30, C: 13, D: 5,  total: 82 },
+  { name: '배터리', S: 8,  A: 18, B: 20, C: 8,  D: 4,  total: 58 },
+  { name: '소재',   S: 4,  A: 12, B: 16, C: 7,  D: 3,  total: 42 },
+  { name: 'AI/SW',  S: 6,  A: 14, B: 10, C: 4,  D: 1,  total: 35 },
+  { name: '바이오', S: 2,  A: 5,  B: 8,  C: 2,  D: 1,  total: 18 },
+  { name: '기타',   S: 1,  A: 2,  B: 5,  C: 3,  D: 1,  total: 12 },
+]
+const allFieldDist = [
+  { name: '전체', S: 28, A: 62, B: 89, C: 45, D: 23, total: 247 },
+  ...techGradeDist,
+]
+
 const selectedField = ref('전체')
-const selectedFieldData = computed(() => allFieldDist.value.find(f => f.name === selectedField.value))
+const selectedFieldData = computed(() => allFieldDist.find(f => f.name === selectedField.value))
 
 // ── 연차료 추이 ──────────────────────────────────────
 const annW = 260, annH = 150
 const annPad = { t: 22, b: 24, l: 8, r: 8 }
 const annPlotH = annH - annPad.t - annPad.b
 const annPlotW = annW - annPad.l - annPad.r
-const annSlotW = computed(() => annPlotW / (annuityData.value.length || 1))
-const annBarW  = computed(() => annSlotW.value * 0.65)
-const annMax   = computed(() => Math.max(...annuityData.value.map(d => d.amount), 1))
+const annSlotW = annPlotW / ANNUITY_DATA.length
+const annBarW = annSlotW * 0.65
+const annMax = Math.max(...ANNUITY_DATA.map(d => d.amount))
 
 function annBarX(i: number) {
-  return annPad.l + i * annSlotW.value + (annSlotW.value - annBarW.value) / 2
+  return annPad.l + i * annSlotW + (annSlotW - annBarW) / 2
 }
 function annBarY(amount: number) {
-  return annPad.t + (1 - amount / annMax.value) * annPlotH
+  return annPad.t + (1 - amount / annMax) * annPlotH
 }
 function annBarH(amount: number) {
-  return (amount / annMax.value) * annPlotH
+  return (amount / annMax) * annPlotH
 }
+
+// ── AI 인사이트 ──────────────────────────────────────
+const insights = [
+  {
+    type: 'warn',
+    icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+    text: '반도체 분야 특허 38건이 1년 이내 소멸 예정입니다. 유지 여부 검토가 필요합니다.',
+  },
+  {
+    type: 'info',
+    icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    text: 'S·A 등급 핵심 특허 90건 중 US 등록 비율이 42%로 해외 권리화가 양호합니다.',
+  },
+  {
+    type: 'suggest',
+    icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+    text: 'D 등급 특허 23건은 연차료 대비 가치가 낮아 포기 검토를 권장합니다.',
+  },
+]
 </script>
 
 <style scoped>
