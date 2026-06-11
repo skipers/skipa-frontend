@@ -13,7 +13,6 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">보유 특허 전체</p>
         <h2 class="page-header__title">포트폴리오 분석</h2>
         <p class="page-header__desc">보유 특허의 기술 분야, 국가, 가치 등급 분포를 분석합니다</p>
       </div>
@@ -635,11 +634,6 @@ const insights = [
   gap: 12px;
 }
 
-.page-header__eyebrow {
-  font-size: 12px; font-weight: 600;
-  letter-spacing: .06em; text-transform: uppercase;
-  color: var(--color-primary); margin: 0 0 5px;
-}
 .page-header__title {
   font-size: 22px; font-weight: 700;
   color: var(--color-text); margin: 0 0 4px; letter-spacing: -0.02em;

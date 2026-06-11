@@ -4,7 +4,6 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">{{ auth.user?.name ?? '사업부' }}</p>
         <h2 class="page-header__title">담당 특허 관리</h2>
         <p class="page-header__desc">담당 특허 현황과 검토 제출 이력을 확인하세요</p>
       </div>
@@ -483,10 +482,6 @@ onMounted(() => {
 }
 
 /* ── 페이지 헤더 ─────────────────────────────────── */
-.page-header__eyebrow {
-  font-size: 12px; font-weight: 600; letter-spacing: .06em;
-  text-transform: uppercase; color: #6366f1; margin: 0 0 5px;
-}
 .page-header__title {
   font-size: 22px; font-weight: 700; color: #0f172a;
   margin: 0 0 4px; letter-spacing: -0.02em;

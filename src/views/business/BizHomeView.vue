@@ -3,7 +3,6 @@
 
     <!-- 인사 헤더 -->
     <div class="greeting">
-      <p class="greeting__eyebrow">{{ quarterLabel }} 검토 현황</p>
       <h2 class="greeting__title">안녕하세요, <span>{{ auth.user?.name ?? '사업부' }}</span> 👋</h2>
       <p class="greeting__desc">담당 특허의 유지/포기 의견을 제출해주세요</p>
     </div>
@@ -330,14 +329,6 @@ onMounted(() => { loading.value = false })
 /* ── 인사 헤더 ───────────────────────────────────────── */
 .greeting { margin-bottom: 4px; }
 
-.greeting__eyebrow {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: #6366f1;
-  margin: 0 0 5px;
-}
 
 .greeting__title {
   font-size: 24px;

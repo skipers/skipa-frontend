@@ -4,7 +4,6 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">{{ quarterLabel }}</p>
         <h2 class="page-header__title">
           검토 현황
           <button class="btn-guide-icon" type="button" aria-label="재평가 안내" @click="showGuide = true">
@@ -27,6 +26,7 @@
 
     <!-- 프로그레스 바 -->
     <div class="progress-section">
+      <p class="progress-section__quarter">{{ quarterLabel }}</p>
       <div class="progress-section__top">
         <div class="dday-badge" :class="ddayValue <= 7 ? 'dday-badge--urgent' : ''">
           <p class="dday-badge__label">제출 마감</p>
@@ -35,7 +35,7 @@
         <div>
           <div class="progress-section__header">
             <span class="progress-section__text">
-              {{ quarterLabel }} 재평가 <strong>{{ totalCount }}건</strong> 중
+              재평가 <strong>{{ totalCount }}건</strong> 중
               <strong class="progress-section__done">{{ submittedCount }}건</strong> 제출 완료
             </span>
             <span class="progress-section__pct">{{ submitPct }}%</span>
@@ -476,11 +476,6 @@ onMounted(() => {
   background: #f5f3ff;
 }
 
-.page-header__eyebrow {
-  font-size: 12px; font-weight: 600;
-  letter-spacing: .06em; text-transform: uppercase;
-  color: #6366f1; margin: 0 0 5px;
-}
 
 .page-header__title {
   display: flex; align-items: center; gap: 8px;
@@ -511,6 +506,11 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.progress-section__quarter {
+  margin: 0 0 2px;
+  font-size: 18px; font-weight: 800;
+  color: #0f172a; letter-spacing: -0.02em;
 }
 
 .progress-section__header {

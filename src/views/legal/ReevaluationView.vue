@@ -4,7 +4,6 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">{{ quarterLabel }}</p>
         <h2 class="page-header__title">재평가 관리</h2>
         <p class="page-header__desc">이번 분기 처리할 특허 목록을 관리하고 사업부에 검토를 요청합니다</p>
       </div>
@@ -765,14 +764,6 @@ onMounted(async () => {
   gap: 12px;
 }
 
-.page-header__eyebrow {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-  margin: 0 0 5px;
-}
 
 .page-header__title {
   font-size: 22px;
