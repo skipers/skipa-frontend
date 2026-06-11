@@ -366,24 +366,59 @@ onBeforeUnmount(() => {
       <!-- 상단 바 -->
       <div class="top-bar">
         <div class="top-bar__left">
-          <div class="top-bar__title-row">
-            <div>
-              <p class="top-bar__title">사전 평가 Lab</p>
-              <p class="top-bar__sub">출원 전 발명을 AI로 사전 진단합니다.</p>
-            </div>
-            <button class="btn-new-eval" type="button" @click="resetAssessment">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-              새 평가
-            </button>
-          </div>
+          <p class="top-bar__title">사전 평가 Lab</p>
+          <p class="top-bar__sub">출원 전 발명을 AI로 사전 진단합니다.</p>
         </div>
 
-        <!-- 드롭다운 외부 클릭 닫기 -->
-        <div v-if="historyDropdownOpen" class="dropdown-backdrop" @click="historyDropdownOpen = false" />
+        <div class="top-bar__actions">
+          <button class="btn-new-eval" type="button" @click="resetAssessment">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            새 평가
+          </button>
+
+        <!-- 평가 이력 드롭다운 -->
+        <div class="history-dropdown" :class="{ 'history-dropdown--open': historyDropdownOpen }">
+          <button class="btn-history" type="button" @click="historyDropdownOpen = !historyDropdownOpen">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            평가 이력
+            <span class="history-count">{{ history.length }}</span>
+            <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+
+          <div class="history-dropdown__menu">
+            <ul class="dropdown-list">
+              <li v-if="!history.length" class="dropdown-empty">평가 이력이 없습니다.</li>
+              <li
+                v-for="item in history"
+                :key="item.id"
+                class="dropdown-item"
+                :class="{ 'dropdown-item--active': selectedHistoryId === item.id }"
+                @click="selectHistoryFromDropdown(item.id)"
+              >
+                <p class="dropdown-item__name">{{ item.patentName }}</p>
+                <div class="dropdown-item__meta">
+                  <span class="dropdown-item__date">{{ formatDate(item.evaluatedAt) }}</span>
+                  <span class="grade-pill" :class="`grade-pill--${item.evaluation.grade.toLowerCase()}`">
+                    {{ item.evaluation.grade }}
+                  </span>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div><!-- /history-dropdown -->
+        </div><!-- /top-bar__actions -->
+
       </div>
 
+      <!-- 드롭다운 외부 클릭 닫기 -->
+      <div v-if="historyDropdownOpen" class="dropdown-backdrop" @click="historyDropdownOpen = false" />
 
       <!-- 2열 그리드 -->
       <main class="lab-grid">
@@ -635,12 +670,15 @@ onBeforeUnmount(() => {
 .top-bar {
   position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 20px;
 }
-.top-bar__title-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+.top-bar__left { flex: 1; min-width: 0; }
+.top-bar__actions {
+  display: flex; align-items: center; gap: 8px; position: relative; flex-shrink: 0;
 }
 .top-bar__title { font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 4px; letter-spacing: -0.02em; }
 .top-bar__sub   { font-size: 13.5px; color: #94a3b8; margin: 0; }
@@ -689,9 +727,9 @@ onBeforeUnmount(() => {
 .history-dropdown__menu {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
   right: 0;
-  width: auto;
+  left: auto;
+  width: 300px;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
@@ -711,7 +749,7 @@ onBeforeUnmount(() => {
 
 .dropdown-list {
   list-style: none; margin: 0; padding: 6px 0;
-  max-height: 480px; overflow-y: auto;
+  max-height: 320px; overflow-y: auto;
 }
 .dropdown-list::-webkit-scrollbar { width: 4px; }
 .dropdown-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }

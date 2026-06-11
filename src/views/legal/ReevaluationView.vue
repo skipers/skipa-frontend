@@ -21,12 +21,18 @@
 
     <!-- 진행 요약 바 -->
     <div class="progress-bar-card">
-      <div class="progress-bar-card__info">
-        <span class="progress-bar-card__label">처리 현황</span>
-        <span class="progress-bar-card__pct">{{ progressPct }}%</span>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" :style="{ width: progressPct + '%' }" />
+      <p class="progress-bar-card__quarter">{{ quarterLabel }}</p>
+      <div class="progress-bar-card__top">
+        <div class="progress-bar-card__info">
+          <span class="progress-bar-card__label">
+            전체 <strong>{{ statusCounts.all }}</strong>건 중
+            <strong class="progress-bar-card__done">{{ statusCounts.done }}</strong>건 완료
+          </span>
+          <span class="progress-bar-card__pct">{{ progressPct }}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" :style="{ width: progressPct + '%' }" />
+        </div>
       </div>
       <div class="progress-bar-card__legend">
         <span v-for="seg in progressSegments" :key="seg.label" class="legend-item">
@@ -868,13 +874,27 @@ onMounted(async () => {
   gap: 10px;
 }
 
+.progress-bar-card__quarter {
+  margin: 0 0 2px;
+  font-size: 18px; font-weight: 800;
+  color: var(--color-text); letter-spacing: -0.02em;
+}
+
+.progress-bar-card__top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .progress-bar-card__info {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.progress-bar-card__label { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); }
+.progress-bar-card__label { font-size: 13.5px; font-weight: 500; color: var(--color-text-secondary); }
+.progress-bar-card__label strong { color: var(--color-text); font-weight: 700; }
+.progress-bar-card__done  { color: var(--color-primary) !important; }
 .progress-bar-card__pct   { font-size: 15px; font-weight: 800; color: var(--color-primary); }
 
 .progress-track {
