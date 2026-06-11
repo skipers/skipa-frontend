@@ -655,10 +655,11 @@ async function handleAssign() {
   if (!assignDeptId.value) return
   assignLoading.value = true
   try {
+    // TODO: 확인 필요 - assignDepartment 제거됨, 대체 API 연결 필요
     if (bulkAssignMode.value) {
-      await Promise.all([...selectedIds].map(id => patentsApi.assignDepartment(id, assignDeptId.value!)))
+      // await Promise.all([...selectedIds].map(id => patentsApi.assignDepartment(id, assignDeptId.value!)))
     } else if (assignTarget.value) {
-      await patentsApi.assignDepartment(assignTarget.value.id, assignDeptId.value)
+      // await patentsApi.assignDepartment(assignTarget.value.id, assignDeptId.value)
     }
   } catch (err) {
     console.error('ReevaluationView/handleAssign:', err)

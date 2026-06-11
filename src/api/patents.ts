@@ -1,5 +1,5 @@
 import apiClient from './axios'
-import type { AiReport, Report, ReportWithUrl, Job, PatentDepartment, PatentLegalStatus, Annuity } from '@/types'
+import type { Report, ReportWithUrl, PatentLegalStatus, Annuity } from '@/types'
 
 // ── List / Detail Types ─────────────────────────────────────
 
@@ -157,50 +157,6 @@ export const patentsApi = {
     return apiClient.patch(`/patents/${patentId}/department`, { departmentId })
   },
 
-  // ── PDF ─────────────────────────────────────────────────
-
-  uploadPdf: async (patentId: number, file: File): Promise<{ patentId: number; originalPdfKey: string }> => {
-    const form = new FormData()
-    form.append('file', file)
-    return apiClient.post(`/patents/${patentId}/documents`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-  },
-
-  extractMetadata: async (patentId: number): Promise<{ jobId: string; status: string }> => {
-    return apiClient.post(`/patents/${patentId}/documents/extract`)
-  },
-
-  extractFromPdf: async (file: File): Promise<Partial<PatentCreateRequest>> => {
-    const form = new FormData()
-    form.append('file', file)
-    return apiClient.post('/patents/extract', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-  },
-
-  deletePdf: async (patentId: number): Promise<void> => {
-    return apiClient.delete(`/patents/${patentId}/documents`)
-  },
-
-  // ── Department ─────────────────────────────────────────
-
-  getDepartments: async (patentId: number): Promise<{ items: PatentDepartment[] }> => {
-    return apiClient.get(`/patents/${patentId}/departments`)
-  },
-
-  assignDepartment: async (patentId: number, departmentId: number): Promise<PatentDepartment> => {
-    return apiClient.post(`/patents/${patentId}/departments`, { departmentId })
-  },
-
-  changeDepartment: async (patentId: number, deptId: number, newDepartmentId: number) => {
-    return apiClient.patch(`/patents/${patentId}/departments/${deptId}`, { departmentId: newDepartmentId })
-  },
-
-  removeDepartment: async (patentId: number, deptId: number): Promise<void> => {
-    return apiClient.delete(`/patents/${patentId}/departments/${deptId}`)
-  },
-
   // ── Legal Status ───────────────────────────────────────
 
   getLegalStatus: async (patentId: number): Promise<{ items: PatentLegalStatus[] }> => {
@@ -225,16 +181,6 @@ export const patentsApi = {
     return apiClient.patch(`/patents/${patentId}/annuities/${annuityId}`, body)
   },
 
-  // ── AI Report ──────────────────────────────────────────
-
-  getAiReport: async (patentId: number): Promise<AiReport> => {
-    return apiClient.get(`/patents/${patentId}/ai-report`)
-  },
-
-  retryAiReport: async (patentId: number): Promise<{ patentId: number; status: string }> => {
-    return apiClient.post(`/patents/${patentId}/ai-report/retry`)
-  },
-
   // ── Evaluation Reports ─────────────────────────────────
 
   getReports: async (patentId: number): Promise<{ items: Report[] }> => {
@@ -251,12 +197,6 @@ export const patentsApi = {
 
   getReportStatus: async (patentId: number, reportId: number): Promise<{ id: number; status: string }> => {
     return apiClient.get(`/patents/${patentId}/reports/${reportId}/status`)
-  },
-
-  // ── Decisions ──────────────────────────────────────────
-
-  sendDecisionRequest: async (patentId: number, departmentId: number) => {
-    return apiClient.post(`/patents/${patentId}/decisions`, { departmentId })
   },
 
   // ── Extract Jobs ───────────────────────────────────────
