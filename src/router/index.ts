@@ -70,9 +70,15 @@ const routes: RouteRecordRaw[] = [
         props: (route) => ({ patentId: Number(route.params.patentId) }),
       },
       {
-        path: 'patents/new',
-        name: 'LegalPatentRegister',
+        path: 'patent-manage',
+        name: 'LegalPatentManage',
         component: () => import('@/views/legal/LegalPatentRegisterView.vue'),
+      },
+      {
+        path: 'patent-manage/review/:appId',
+        name: 'LegalReviewDetail',
+        component: () => import('@/views/legal/LegalReviewDetailView.vue'),
+        props: (route) => ({ appId: Number(route.params.appId) }),
       },
     ],
   },
@@ -147,9 +153,15 @@ const routes: RouteRecordRaw[] = [
         props: (route) => ({ patentId: Number(route.params.patentId) }),
       },
       {
-        path: 'patents/new',
+        path: 'register',
         name: 'BizPatentRegister',
         component: () => import('@/views/business/BizPatentRegisterView.vue'),
+      },
+      {
+        path: 'register/history/:appId',
+        name: 'BizApplicationDetail',
+        component: () => import('@/views/business/BizApplicationDetailView.vue'),
+        props: (route) => ({ appId: Number(route.params.appId) }),
       },
       {
         path: 'patents/:id',
