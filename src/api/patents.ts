@@ -116,6 +116,13 @@ export interface PatentCreateRequest {
 
 export type PatentUpdateRequest = Partial<PatentCreateRequest>
 
+export interface PatentExtractResultResponse {
+  extractJobId: number
+  objectKey: string
+  status: string
+  result?: Partial<PatentCreateRequest>
+}
+
 // ── API ─────────────────────────────────────────────────────
 
 export const patentsApi = {
@@ -234,7 +241,7 @@ export const patentsApi = {
     return apiClient.get(`/patents/${patentId}/reports`)
   },
 
-  generateReport: async (patentId: number): Promise<{ reportId: number; status: string }> => {
+  generateReport: async (patentId: number): Promise<{ id: number; patentId: number; status: string; createdAt: string; updatedAt: string }> => {
     return apiClient.post(`/patents/${patentId}/reports`)
   },
 
@@ -242,7 +249,7 @@ export const patentsApi = {
     return apiClient.get(`/patents/${patentId}/reports/${reportId}`)
   },
 
-  getReportStatus: async (patentId: number, reportId: number): Promise<{ reportId: number; status: string }> => {
+  getReportStatus: async (patentId: number, reportId: number): Promise<{ id: number; status: string }> => {
     return apiClient.get(`/patents/${patentId}/reports/${reportId}/status`)
   },
 
@@ -254,7 +261,7 @@ export const patentsApi = {
 
   // ── Extract Jobs ───────────────────────────────────────
 
-  createExtractUploadUrl: async (): Promise<{ extractJobId: number; uploadUrl: string; key: string }> => {
+  createExtractUploadUrl: async (): Promise<{ extractJobId: number; uploadUrl: string; objectKey: string }> => {
     return apiClient.post('/patent-extract-jobs/upload-url')
   },
 
@@ -266,7 +273,7 @@ export const patentsApi = {
     return apiClient.get(`/patent-extract-jobs/${extractJobId}/status`)
   },
 
-  getExtractJobResult: async (extractJobId: number): Promise<Partial<PatentCreateRequest>> => {
+  getExtractJobResult: async (extractJobId: number): Promise<PatentExtractResultResponse> => {
     return apiClient.get(`/patent-extract-jobs/${extractJobId}/result`)
   },
 

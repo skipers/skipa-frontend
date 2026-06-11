@@ -406,7 +406,7 @@ async function handleFileSelect(e: Event) {
     })
 
     const result = await patentsApi.getExtractJobResult(jobId)
-    fillFormFromResult(result)
+    fillFormFromResult(result.result)
   } catch (err) {
     console.error('BizPatentRegisterView/handleFileSelect:', err)
   } finally {

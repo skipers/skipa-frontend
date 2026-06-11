@@ -1281,7 +1281,7 @@ async function fetchReviewData() {
 async function fetchEvalHistory() {
   try {
     const data = await reportsApi.getReportHistory(props.patentId)
-    evalHistory.value = data.map(r => ({
+    evalHistory.value = data.items.map(r => ({
       date: r.evaluatedAt ? formatDate(r.evaluatedAt) : '—',
       grade: (r.valueGrade ?? 'C') as EvalHistoryItem['grade'],
       score: r.totalScore ?? 0,
