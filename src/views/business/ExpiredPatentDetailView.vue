@@ -1,8 +1,13 @@
 <template>
   <div class="expired-detail">
 
+    <!-- 로딩 -->
+    <div v-if="isLoading" class="not-found">
+      <p style="color:#64748b">불러오는 중...</p>
+    </div>
+
     <!-- 특허 없음 / 접근 불가 -->
-    <div v-if="!patent || isActivePatent" class="not-found">
+    <div v-else-if="!patent || isActivePatent" class="not-found">
       <div class="not-found__icon">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -53,9 +58,9 @@
                   <span class="meta-chip meta-chip--dept">{{ patent.dept }}</span>
                 </div>
               </div>
-              <div v-if="patent.grade" class="grade-badge" :class="`grade-badge--${patent.grade.toLowerCase()}`">
+              <div v-if="reportGrade" class="grade-badge" :class="`grade-badge--${reportGrade.toLowerCase()}`">
                 <span class="grade-badge__label">AI 종합 등급</span>
-                <span class="grade-badge__value">{{ patent.grade }}</span>
+                <span class="grade-badge__value">{{ reportGrade }}</span>
               </div>
               <div v-else class="grade-badge grade-badge--none">
                 <span class="grade-badge__label">AI 종합 등급</span>
@@ -154,11 +159,11 @@
             <h2 class="section-heading">AI 평가 보고서</h2>
           </div>
 
-          <template v-if="patent.grade">
-            <div class="grade-card" :class="`grade-card--${patent.grade.toLowerCase()}`">
+          <template v-if="reportJson">
+            <div class="grade-card" :class="reportGrade ? `grade-card--${reportGrade.toLowerCase()}` : ''">
               <div class="grade-card__left">
                 <p class="grade-card__label">AI 종합 평가 등급</p>
-                <div class="grade-card__grade">{{ patent.grade }}</div>
+                <div class="grade-card__grade">{{ reportGrade ?? '—' }}</div>
                 <p class="grade-card__opinion">{{ patent.aiOpinion ?? '—' }}</p>
               </div>
               <div class="grade-card__scores">
@@ -230,7 +235,7 @@
         <section id="section-similar" data-section="similar" class="content-section">
           <div class="section-header">
             <h2 class="section-heading">유사 특허 분석</h2>
-            <span class="badge-count">{{ MOCK_SIMILAR_PATENTS.length }}건 검색됨</span>
+            <span class="badge-count">{{ computedSimilarPatents.length }}건 검색됨</span>
           </div>
           <div class="table-wrap">
             <table class="data-table">
@@ -244,7 +249,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="s in MOCK_SIMILAR_PATENTS" :key="s.id">
+                <tr v-for="s in computedSimilarPatents" :key="s.id">
                   <td>
                     <div class="similarity-cell">
                       <span class="similarity-score" :class="similarityClass(s.similarityScore)">{{ s.similarityScore }}%</span>
@@ -269,10 +274,10 @@
         <section id="section-projects" data-section="projects" class="content-section">
           <div class="section-header">
             <h2 class="section-heading">사내 프로젝트 연관 정보</h2>
-            <span class="badge-count">{{ MOCK_RELATED_PROJECTS.length }}건</span>
+            <span class="badge-count">{{ computedRelatedProjects.length }}건</span>
           </div>
           <div class="project-cards">
-            <div v-for="proj in MOCK_RELATED_PROJECTS" :key="proj.id" class="project-card">
+            <div v-for="proj in computedRelatedProjects" :key="proj.id" class="project-card">
               <div class="project-card__header">
                 <div class="project-card__title-row">
                   <span class="project-card__icon">
@@ -338,17 +343,53 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
+import { patentsApi, type PatentDetail } from '@/api/patents'
+import { reportsApi } from '@/api/reports'
+import { patentHistoryApi, type PatentAnnuityResponse } from '@/api/patentHistory'
 import {
-  MOCK_PATENTS, PATENT_INVENTORS, TECH_FIELD_IPC,
-  COUNTRY_LABEL, TECH_FIELD_SUMMARY, TECH_FIELD_CLAIMS,
-  AI_REPORT_COMMENTS, AI_GRADE_SCORES,
-  MOCK_SIMILAR_PATENTS, MOCK_RELATED_PROJECTS,
+  COUNTRY_LABEL,
   MOCK_OPINION_HISTORIES,
 } from '@/mocks/data'
 
 const props = defineProps<{ patentId: number }>()
 
-const patent = computed(() => MOCK_PATENTS.find(p => p.id === props.patentId) ?? null)
+const isLoading = ref(false)
+const loadError = ref<string | null>(null)
+const patentData = ref<PatentDetail | null>(null)
+const reportJson = ref<any>(null)
+const reportGrade = computed<string | null>(() => reportJson.value?.valuation?.grade ?? null)
+const annuityData = ref<PatentAnnuityResponse[]>([])
+
+function scoreToGrade(score?: number): string | null {
+  if (score == null) return null
+  if (score >= 90) return 'S'
+  if (score >= 75) return 'A'
+  if (score >= 60) return 'B'
+  return 'C'
+}
+
+const patent = computed(() => {
+  const d = patentData.value
+  if (!d) return null
+  return {
+    id: d.id,
+    title: d.title,
+    applicationNumber: d.applicationNumber,
+    applicationDate: d.applicationDate,
+    registrationDate: d.registrationDate,
+    expiryDate: d.expiryDate,
+    techField: d.techField ?? '',
+    status: d.latestLegalStatus === 'LAPSED' ? 'EXPIRED' : (d.latestLegalStatus ?? 'EXPIRED'),
+    dept: d.currentDepartmentName ?? '',
+    grade: scoreToGrade(d.latestReportScore),
+    aiOpinion: null as string | null,
+    tags: d.keywords ?? [],
+    inventor: d.inventor ?? '—',
+    ipcCodes: d.ipcCodes ?? [],
+    summary: d.summary ?? '',
+    filingCountry: d.filingCountry,
+  }
+})
 
 const isActivePatent = computed(() =>
   !!patent.value && patent.value.status !== 'EXPIRED' && patent.value.status !== 'ABANDONED'
@@ -356,20 +397,23 @@ const isActivePatent = computed(() =>
 
 const patentCountry = computed(() => {
   if (!patent.value) return ''
-  const code = patent.value.applicationNumber.split('-')[0]
+  const code = patent.value.filingCountry ?? patent.value.applicationNumber.split('-')[0]
   return COUNTRY_LABEL[code] ?? code
 })
 
-const inventor = computed(() => PATENT_INVENTORS[props.patentId] ?? '—')
-const ipcCode  = computed(() => patent.value ? (TECH_FIELD_IPC[patent.value.techField] ?? '—') : '—')
-const summary  = computed(() => patent.value ? (TECH_FIELD_SUMMARY[patent.value.techField] ?? '') : '')
-const claims   = computed(() => patent.value ? (TECH_FIELD_CLAIMS[patent.value.techField] ?? []) : [])
+const inventor  = computed(() => patent.value?.inventor ?? '—')
+const ipcCode   = computed(() => patent.value?.ipcCodes[0] ?? '—')
+const summary   = computed(() => patent.value?.summary ?? '')
+// TODO: AI 서버 연동 후 교체 필요 — 청구항 데이터는 AI 서버에서 제공
+const claims    = computed<string[]>(() => [])
 
 const registrationDate = computed(() => {
-  if (!patent.value) return '—'
-  const d = new Date(patent.value.applicationDate)
-  d.setMonth(d.getMonth() + 18)
-  return d.toISOString().slice(0, 10).replace(/-/g, '.')
+  const d = patent.value?.registrationDate
+  if (d) return d.slice(0, 10).replace(/-/g, '.')
+  if (!patent.value?.applicationDate) return '—'
+  const dt = new Date(patent.value.applicationDate)
+  dt.setMonth(dt.getMonth() + 18)
+  return dt.toISOString().slice(0, 10).replace(/-/g, '.')
 })
 
 const statusStripClass = computed(() =>
@@ -384,21 +428,35 @@ const statusSub = computed(() => {
 })
 
 const aiScores = computed(() => {
-  const g = patent.value?.grade
-  if (!g) return { tech: 0, rights: 0, biz: 0 }
-  const base = AI_GRADE_SCORES[g] ?? { tech: 50, rights: 50, biz: 50 }
-  const v = (props.patentId % 7) - 3
+  const scores = reportJson.value?.valuation?.scores
+  if (!scores) return { tech: 0, rights: 0, biz: 0 }
+  const avgScore = (dims: string[]) => {
+    const filtered = scores.filter((s: any) => dims.includes(s.dim))
+    if (!filtered.length) return 0
+    return Math.round(filtered.reduce((acc: number, s: any) => acc + s.score, 0) / filtered.length / 5 * 100)
+  }
   return {
-    tech:   Math.min(99, Math.max(1, base.tech + v)),
-    rights: Math.min(99, Math.max(1, base.rights + Math.round(v * 0.7))),
-    biz:    Math.min(99, Math.max(1, base.biz + Math.round(v * 0.5))),
+    tech:   avgScore(['기술성']),
+    rights: avgScore(['권리성']),
+    biz:    avgScore(['시장성', '사업성']),
   }
 })
 
 const aiComments = computed(() => {
-  const g = patent.value?.grade
-  if (!g) return { tech: '', rights: '', biz: '', bizSubmit: '' }
-  return AI_REPORT_COMMENTS[g] ?? AI_REPORT_COMMENTS['B']
+  const scores = reportJson.value?.valuation?.scores
+  if (!scores) return { tech: '', rights: '', biz: '', bizSubmit: '' }
+  const joinReasons = (dims: string[]) =>
+    scores
+      .filter((s: any) => dims.includes(s.dim))
+      .map((s: any) => s.reason || s.basis || '')
+      .filter(Boolean)
+      .join(' ')
+  return {
+    tech:      joinReasons(['기술성']),
+    rights:    joinReasons(['권리성']),
+    biz:       joinReasons(['시장성', '사업성']),
+    bizSubmit: joinReasons(['시장성', '사업성']),
+  }
 })
 
 const miniScores = computed(() => [
@@ -407,10 +465,8 @@ const miniScores = computed(() => [
   { label: '사업성', value: aiScores.value.biz },
 ])
 
-const opinionHistories = computed(() => {
-  if (!patent.value) return []
-  return MOCK_OPINION_HISTORIES[props.patentId] ?? []
-})
+// TODO: AI 서버 연동 후 교체 필요 — businessReviewsApi.getBusinessReviewHistory() 연결 필요
+const opinionHistories = computed(() => MOCK_OPINION_HISTORIES[props.patentId] ?? [])
 
 // ── 탭 & 스크롤 스파이 ───────────────────────────────
 const activeTab = ref('info')
@@ -467,9 +523,62 @@ function setupObserver() {
   }
 }
 
+async function fetchLatestReport() {
+  try {
+    const report = await reportsApi.getLatestReport(props.patentId)
+    if (report.url) {
+      const res = await fetch(report.url)
+      reportJson.value = await res.json()
+    }
+  } catch (e) {
+    console.error('AI 보고서 조회 실패:', e)
+  }
+}
+
+async function fetchAnnuityHistory() {
+  try {
+    const res = await patentHistoryApi.getAnnuityHistory(props.patentId)
+    annuityData.value = res.items
+  } catch (e) {
+    console.error('연차료 이력 조회 실패:', e)
+  }
+}
+
+const computedSimilarPatents = computed<any[]>(() => {
+  return reportJson.value?.valuation?.similar_patents ?? []
+})
+
+const computedRelatedProjects = computed<any[]>(() => {
+  const proj = reportJson.value?.valuation?.report?.section_3_project_utilization
+  if (!proj) return []
+  // TODO: 확인 필요 — section_3_project_utilization이 배열인지 단일 객체인지 서버 응답 확인 필요
+  const items = Array.isArray(proj) ? proj : [proj]
+  return items.map((p: any, i: number) => ({
+    id: i,
+    projectName: p.projectName ?? p.service ?? '—',
+    department:  p.department ?? '—',
+    relevance:   (p.relevance ?? '상') as '상' | '중' | '하',
+    description: p.description ?? p.summary ?? '—',
+  }))
+})
+
 onMounted(async () => {
-  await nextTick()
-  setupObserver()
+  isLoading.value = true
+  loadError.value = null
+  try {
+    await Promise.all([
+      patentsApi.getPatent(props.patentId).then(d => { patentData.value = d }),
+      fetchLatestReport(),
+      fetchAnnuityHistory(),
+    ])
+  } catch (e) {
+    console.error('ExpiredPatentDetailView/onMounted:', e)
+    loadError.value = '특허 정보를 불러오는 데 실패했습니다.'
+  } finally {
+    isLoading.value = false
+    await nextTick()
+    setupObserver()
+  }
 })
 
 onUnmounted(() => {

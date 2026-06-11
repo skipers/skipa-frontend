@@ -236,7 +236,8 @@ const loading  = ref(false)
 async function fetchItems() {
   loading.value = true
   try {
-    const res = await expiringApi.getExpiringPatents({ size: 500, departmentId: props.deptId })
+    // TODO: 확인 필요 - departmentId 파라미터 Swagger 명세에서 제거됨
+    const res = await expiringApi.getExpiringPatents({ size: 500 })
     allItems.value = res.items.map(item => {
       const dday = computeDday(item.expiryDate)
       return {

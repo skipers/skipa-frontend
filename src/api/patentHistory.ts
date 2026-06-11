@@ -1,4 +1,5 @@
 import apiClient from './axios'
+import type { PageResponse } from './patents'
 
 // ── Types ────────────────────────────────────────────
 
@@ -6,49 +7,47 @@ export interface PatentLegalStatusResponse {
   id: number
   patentId: number
   status: string    // e.g. '출원' | '공개' | '등록' | '소멸' | '취하' | '거절' | '무효'
-  variant: string   // 'file' | 'pub' | 'reg' | 'expired' | 'withdraw' | 'rejected' | 'invalid'
-  date: string      // YYYY-MM-DD
-  description?: string
+  changedAt: string
+  updatedAt: string
   createdAt: string
 }
 
 export interface CreateLegalStatusRequest {
   status: string
-  variant: string
-  date: string
-  description?: string
+  changedAt: string
 }
 
 export interface PatentAnnuityResponse {
   id: number
   patentId: number
-  yearRange: string   // e.g. '제  1 -  3 년분'
+  startYear: number
+  endYear: number
   amount: number
-  paidAt: string      // YYYY-MM-DD
+  dueDate: string
+  paidDate: string
   status?: string
 }
 
 export interface PayAnnuityRequest {
-  yearRange: string
+  paymentYears: number
   amount: number
-  paidAt: string
 }
 
 // ── API ──────────────────────────────────────────────
 
 export const patentHistoryApi = {
   getLegalStatusHistory: async (patentId: number): Promise<PatentLegalStatusResponse[]> => {
-    return apiClient.get(`/patents/${patentId}/legal-statuses`)
+    return apiClient.get(`/patents/${patentId}/legal-status`)
   },
 
   createLegalStatus: async (
     patentId: number,
     data: CreateLegalStatusRequest,
   ): Promise<PatentLegalStatusResponse> => {
-    return apiClient.post(`/patents/${patentId}/legal-statuses`, data)
+    return apiClient.post(`/patents/${patentId}/legal-status`, data)
   },
 
-  getAnnuityHistory: async (patentId: number): Promise<PatentAnnuityResponse[]> => {
+  getAnnuityHistory: async (patentId: number): Promise<PageResponse<PatentAnnuityResponse>> => {
     return apiClient.get(`/patents/${patentId}/annuities`)
   },
 
@@ -56,6 +55,6 @@ export const patentHistoryApi = {
     patentId: number,
     data: PayAnnuityRequest,
   ): Promise<PatentAnnuityResponse> => {
-    return apiClient.post(`/patents/${patentId}/annuities/pay`, data)
+    return apiClient.post(`/patents/${patentId}/annuities`, data)
   },
 }
