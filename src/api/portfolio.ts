@@ -38,9 +38,9 @@ export interface PortfolioDistributionResponse {
 
 export interface YearlyTrendItem {
   year: string
-  filed: number
-  registered: number
-  expired: number
+  applications: number
+  registrations: number
+  expiries: number
 }
 
 export interface AnnuityTrendItem {
