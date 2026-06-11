@@ -378,17 +378,17 @@ async function fetchAll() {
       portfolioApi.getPortfolioDecisions(),
       portfolioApi.getPortfolioInsights(),
     ])
-    totalPatents.value = dist.totalPatents
-    treemapItems.value = dist.techFields
-    countryItems.value = dist.countries
-    deptItems.value    = dist.departments
-    allFieldDist.value = dist.gradeDistribution
-    trendData.value    = trends.yearlyTrends
-    annuityData.value  = trends.annuityTrends
-    decisionData.value = decisions.quarters
-    deptDecision.value = decisions.byDepartment
-    techDecision.value = decisions.byTechField
-    insights.value     = ins
+    totalPatents.value = dist.totalPatents       ?? 0
+    treemapItems.value = dist.techFields         ?? []
+    countryItems.value = dist.countries          ?? []
+    deptItems.value    = dist.departments        ?? []
+    allFieldDist.value = dist.gradeDistribution  ?? []
+    trendData.value    = trends.yearlyTrends     ?? []
+    annuityData.value  = trends.annuityTrends    ?? []
+    decisionData.value = decisions.quarters      ?? []
+    deptDecision.value = decisions.byDepartment  ?? []
+    techDecision.value = decisions.byTechField   ?? []
+    insights.value     = ins                     ?? []
   } catch (err) {
     console.error('포트폴리오 데이터 조회 실패:', err)
   }
@@ -441,7 +441,7 @@ const plotH = svgH - pad.t - pad.b
 
 const maxTrend = computed(() =>
   trendData.value.length
-    ? Math.max(...trendData.value.flatMap(d => [d.filed, d.registered, d.expired]))
+    ? Math.max(...trendData.value.flatMap(d => [d.applications, d.registrations, d.expiries]))
     : 1
 )
 
@@ -453,11 +453,11 @@ function trendY(v: number, max: number) {
   return pad.t + (1 - v / max) * plotH
 }
 
-type TrendKey = 'filed' | 'registered' | 'expired'
+type TrendKey = 'applications' | 'registrations' | 'expiries'
 const trendSeries: { key: TrendKey; label: string }[] = [
-  { key: 'filed',      label: '출원' },
-  { key: 'registered', label: '등록' },
-  { key: 'expired',    label: '소멸' },
+  { key: 'applications',  label: '출원' },
+  { key: 'registrations', label: '등록' },
+  { key: 'expiries',      label: '소멸' },
 ]
 
 const trendLines = computed(() =>
@@ -540,7 +540,7 @@ const gradeLabel: Record<string, string> = {
 }
 
 const selectedField = ref('전체')
-const selectedFieldData = computed(() => allFieldDist.value.find(f => f.name === selectedField.value))
+const selectedFieldData = computed(() => allFieldDist.value?.find(f => f.name === selectedField.value) ?? null)
 
 // ── 연차료 추이 ──────────────────────────────────────
 const annW = 260, annH = 150
