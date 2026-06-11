@@ -31,12 +31,14 @@ export interface ReportHistoryItem {
 export interface ReportStatusResponse {
   id: number
   status: string
-  progress?: number
-  message?: string
+  patentId: number
+  totalScore?: number
+  valueGrade?: string
+  evaluatedAt?: string
+  updatedAt: string
 }
 
 export interface ReportListParams {
-  patentId?: number
   status?: string
   sort?: string
   page?: number
@@ -46,27 +48,27 @@ export interface ReportListParams {
 // ── API ──────────────────────────────────────────────────────
 
 export const reportsApi = {
-  getReports: async (params?: ReportListParams): Promise<PageResponse<ReportDetailResponse>> => {
+  getReports: async (patentId: number, params?: ReportListParams): Promise<PageResponse<ReportDetailResponse>> => {
     const p = params
       ? { ...params, page: params.page != null ? params.page - 1 : undefined }
       : {}
-    return apiClient.get('/reports', { params: p })
+    return apiClient.get(`/patents/${patentId}/reports`, { params: p })
   },
 
   getLatestReport: async (patentId: number): Promise<ReportDetailResponse> => {
     return apiClient.get(`/patents/${patentId}/reports/latest`)
   },
 
-  getReportHistory: async (patentId: number): Promise<ReportHistoryItem[]> => {
+  getReportHistory: async (patentId: number): Promise<{ items: ReportHistoryItem[] }> => {
     return apiClient.get(`/patents/${patentId}/reports/history`)
   },
 
-  getReport: async (reportId: number): Promise<ReportDetailResponse> => {
-    return apiClient.get(`/reports/${reportId}`)
+  getReport: async (patentId: number, reportId: number): Promise<ReportDetailResponse> => {
+    return apiClient.get(`/patents/${patentId}/reports/${reportId}`)
   },
 
-  getReportStatus: async (reportId: number): Promise<ReportStatusResponse> => {
-    return apiClient.get(`/reports/${reportId}/status`)
+  getReportStatus: async (patentId: number, reportId: number): Promise<ReportStatusResponse> => {
+    return apiClient.get(`/patents/${patentId}/reports/${reportId}/status`)
   },
 
   createReport: async (patentId: number): Promise<ReportDetailResponse> => {

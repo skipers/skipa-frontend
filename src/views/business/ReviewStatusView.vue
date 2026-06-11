@@ -417,7 +417,7 @@ async function fetchList(_p = 1) {
   loading.value = true
   setPage(1)
   try {
-    const res = await businessReviewsApi.getBusinessReviews({ size: 200 })
+    const res = await businessReviewsApi.getBusinessReviews({ size: 50 })
     allItems.value = res.items.map(r => ({
       decisionId:        r.id,
       patentId:          r.patentId,
