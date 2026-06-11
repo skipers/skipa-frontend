@@ -58,9 +58,9 @@
                   <span class="meta-chip meta-chip--dept">{{ patent.dept }}</span>
                 </div>
               </div>
-              <div v-if="patent.grade" class="grade-badge" :class="`grade-badge--${patent.grade.toLowerCase()}`">
+              <div v-if="reportGrade" class="grade-badge" :class="`grade-badge--${reportGrade.toLowerCase()}`">
                 <span class="grade-badge__label">AI 종합 등급</span>
-                <span class="grade-badge__value">{{ patent.grade }}</span>
+                <span class="grade-badge__value">{{ reportGrade }}</span>
               </div>
               <div v-else class="grade-badge grade-badge--none">
                 <span class="grade-badge__label">AI 종합 등급</span>
@@ -159,11 +159,11 @@
             <h2 class="section-heading">AI 평가 보고서</h2>
           </div>
 
-          <template v-if="reportJson || patent.grade">
-            <div class="grade-card" :class="`grade-card--${patent.grade.toLowerCase()}`">
+          <template v-if="reportJson">
+            <div class="grade-card" :class="reportGrade ? `grade-card--${reportGrade.toLowerCase()}` : ''">
               <div class="grade-card__left">
                 <p class="grade-card__label">AI 종합 평가 등급</p>
-                <div class="grade-card__grade">{{ patent.grade }}</div>
+                <div class="grade-card__grade">{{ reportGrade ?? '—' }}</div>
                 <p class="grade-card__opinion">{{ patent.aiOpinion ?? '—' }}</p>
               </div>
               <div class="grade-card__scores">
@@ -348,7 +348,6 @@ import { reportsApi } from '@/api/reports'
 import { patentHistoryApi, type PatentAnnuityResponse } from '@/api/patentHistory'
 import {
   COUNTRY_LABEL,
-  AI_REPORT_COMMENTS, AI_GRADE_SCORES,
   MOCK_OPINION_HISTORIES,
 } from '@/mocks/data'
 
@@ -358,6 +357,7 @@ const isLoading = ref(false)
 const loadError = ref<string | null>(null)
 const patentData = ref<PatentDetail | null>(null)
 const reportJson = ref<any>(null)
+const reportGrade = computed<string | null>(() => reportJson.value?.valuation?.grade ?? null)
 const annuityData = ref<PatentAnnuityResponse[]>([])
 
 function scoreToGrade(score?: number): string | null {
@@ -429,48 +429,34 @@ const statusSub = computed(() => {
 
 const aiScores = computed(() => {
   const scores = reportJson.value?.valuation?.scores
-  if (scores) {
-    const avgScore = (dims: string[]) => {
-      const filtered = scores.filter((s: any) => dims.includes(s.dim))
-      if (!filtered.length) return 0
-      return Math.round(filtered.reduce((acc: number, s: any) => acc + s.score, 0) / filtered.length / 5 * 100)
-    }
-    return {
-      tech:   avgScore(['기술성']),
-      rights: avgScore(['권리성']),
-      biz:    avgScore(['시장성', '사업성']),
-    }
+  if (!scores) return { tech: 0, rights: 0, biz: 0 }
+  const avgScore = (dims: string[]) => {
+    const filtered = scores.filter((s: any) => dims.includes(s.dim))
+    if (!filtered.length) return 0
+    return Math.round(filtered.reduce((acc: number, s: any) => acc + s.score, 0) / filtered.length / 5 * 100)
   }
-  const g = patent.value?.grade
-  if (!g) return { tech: 0, rights: 0, biz: 0 }
-  const base = AI_GRADE_SCORES[g] ?? { tech: 50, rights: 50, biz: 50 }
-  const v = (props.patentId % 7) - 3
   return {
-    tech:   Math.min(99, Math.max(1, base.tech + v)),
-    rights: Math.min(99, Math.max(1, base.rights + Math.round(v * 0.7))),
-    biz:    Math.min(99, Math.max(1, base.biz + Math.round(v * 0.5))),
+    tech:   avgScore(['기술성']),
+    rights: avgScore(['권리성']),
+    biz:    avgScore(['시장성', '사업성']),
   }
 })
 
 const aiComments = computed(() => {
   const scores = reportJson.value?.valuation?.scores
-  if (scores) {
-    const joinReasons = (dims: string[]) =>
-      scores
-        .filter((s: any) => dims.includes(s.dim))
-        .map((s: any) => s.reason || s.basis || '')
-        .filter(Boolean)
-        .join(' ')
-    return {
-      tech:      joinReasons(['기술성']),
-      rights:    joinReasons(['권리성']),
-      biz:       joinReasons(['시장성', '사업성']),
-      bizSubmit: joinReasons(['시장성', '사업성']),
-    }
+  if (!scores) return { tech: '', rights: '', biz: '', bizSubmit: '' }
+  const joinReasons = (dims: string[]) =>
+    scores
+      .filter((s: any) => dims.includes(s.dim))
+      .map((s: any) => s.reason || s.basis || '')
+      .filter(Boolean)
+      .join(' ')
+  return {
+    tech:      joinReasons(['기술성']),
+    rights:    joinReasons(['권리성']),
+    biz:       joinReasons(['시장성', '사업성']),
+    bizSubmit: joinReasons(['시장성', '사업성']),
   }
-  const g = patent.value?.grade
-  if (!g) return { tech: '', rights: '', biz: '', bizSubmit: '' }
-  return AI_REPORT_COMMENTS[g] ?? AI_REPORT_COMMENTS['B']
 })
 
 const miniScores = computed(() => [

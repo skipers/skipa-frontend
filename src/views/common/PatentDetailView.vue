@@ -169,7 +169,7 @@
             <h2 class="section-heading">AI 평가 보고서</h2>
           </div>
 
-          <template v-if="reportJson || patent.grade">
+          <template v-if="reportJson">
 
             <!-- 1. 평가 요약 -->
             <div class="rpt-part">
@@ -561,11 +561,11 @@
           <div class="side-card side-card--grade">
             <p class="side-card__label">AI 종합 등급</p>
             <div class="side-grade-row">
-              <div v-if="patent.grade" class="side-grade" :class="`side-grade--${patent.grade.toLowerCase()}`">
-                {{ patent.grade }}
+              <div v-if="reportGrade" class="side-grade" :class="`side-grade--${reportGrade.toLowerCase()}`">
+                {{ reportGrade }}
               </div>
               <div v-else class="side-grade side-grade--none">—</div>
-              <div v-if="patent.grade" class="side-grade__total">
+              <div v-if="reportGrade" class="side-grade__total">
                 <p class="side-grade__total-label">종합 점수</p>
                 <p class="side-grade__total-value">{{ totalScore }}<span> / 100</span></p>
               </div>
@@ -1028,7 +1028,7 @@ interface ChatMessage {
 }
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
 import {
-  COUNTRY_LABEL, TECH_FIELD_CLAIMS, AI_REPORT_COMMENTS, AI_GRADE_SCORES, DEPT_MAP,
+  COUNTRY_LABEL, TECH_FIELD_CLAIMS, DEPT_MAP,
   type MockSimilarPatent,
 } from '@/mocks/data'
 import { reviewsApi } from '@/api/reviews'
@@ -1295,48 +1295,34 @@ function addMonths(dateStr: string, months: number) {
 // ── AI 점수 / 코멘트 ─────────────────────────────────
 const aiScores = computed(() => {
   const scores = reportJson.value?.valuation?.scores
-  if (scores) {
-    const avgScore = (dims: string[]) => {
-      const filtered = scores.filter((s: any) => dims.includes(s.dim))
-      if (!filtered.length) return 0
-      return Math.round(filtered.reduce((acc: number, s: any) => acc + s.score, 0) / filtered.length / 5 * 100)
-    }
-    return {
-      tech: avgScore(['기술성']),
-      rights: avgScore(['권리성']),
-      biz: avgScore(['시장성', '사업성']),
-    }
+  if (!scores) return { tech: 0, rights: 0, biz: 0 }
+  const avgScore = (dims: string[]) => {
+    const filtered = scores.filter((s: any) => dims.includes(s.dim))
+    if (!filtered.length) return 0
+    return Math.round(filtered.reduce((acc: number, s: any) => acc + s.score, 0) / filtered.length / 5 * 100)
   }
-  const g = patent.value?.grade
-  if (!g) return { tech: 0, rights: 0, biz: 0 }
-  const base = AI_GRADE_SCORES[g] ?? { tech: 50, rights: 50, biz: 50 }
-  const v = (props.patentId % 7) - 3
   return {
-    tech: Math.min(99, Math.max(1, base.tech + v)),
-    rights: Math.min(99, Math.max(1, base.rights + Math.round(v * 0.7))),
-    biz: Math.min(99, Math.max(1, base.biz + Math.round(v * 0.5))),
+    tech: avgScore(['기술성']),
+    rights: avgScore(['권리성']),
+    biz: avgScore(['시장성', '사업성']),
   }
 })
 
 const aiComments = computed(() => {
   const scores = reportJson.value?.valuation?.scores
-  if (scores) {
-    const joinReasons = (dims: string[]) =>
-      scores
-        .filter((s: any) => dims.includes(s.dim))
-        .map((s: any) => s.reason || s.basis || '')
-        .filter(Boolean)
-        .join(' ')
-    return {
-      tech: joinReasons(['기술성']),
-      rights: joinReasons(['권리성']),
-      biz: joinReasons(['시장성', '사업성']),
-      bizSubmit: joinReasons(['시장성', '사업성']),
-    }
+  if (!scores) return { tech: '', rights: '', biz: '', bizSubmit: '' }
+  const joinReasons = (dims: string[]) =>
+    scores
+      .filter((s: any) => dims.includes(s.dim))
+      .map((s: any) => s.reason || s.basis || '')
+      .filter(Boolean)
+      .join(' ')
+  return {
+    tech:      joinReasons(['기술성']),
+    rights:    joinReasons(['권리성']),
+    biz:       joinReasons(['시장성', '사업성']),
+    bizSubmit: joinReasons(['시장성', '사업성']),
   }
-  const g = patent.value?.grade
-  if (!g) return { tech: '', rights: '', biz: '', bizSubmit: '' }
-  return AI_REPORT_COMMENTS[g] ?? AI_REPORT_COMMENTS['B']
 })
 
 const miniScores = computed(() => [
@@ -1345,13 +1331,9 @@ const miniScores = computed(() => [
   { label: '사업성', value: aiScores.value.biz },
 ])
 
-const totalScore = computed(() => {
-  if (reportJson.value?.valuation?.total_score != null) {
-    return reportJson.value.valuation.total_score
-  }
-  const { tech, rights, biz } = aiScores.value
-  return Math.round((tech + rights + biz) / 3)
-})
+const reportGrade = computed<string | null>(() => reportJson.value?.valuation?.grade ?? null)
+
+const totalScore = computed(() => reportJson.value?.valuation?.total_score ?? 0)
 
 // ── 재평가 레코드 ────────────────────────────────────
 const REVIEW_STATUS_MAP: Record<string, 'unassigned' | 'requested' | 'overdue' | 'done'> = {
