@@ -16,7 +16,7 @@
 
         <div class="sidebar__role-badge">
           <span class="sidebar__role-dot sidebar__role-dot--biz" />
-          {{ auth.user?.name ?? '사업부' }}
+          {{ auth.user?.departmentName ?? '사업부' }}
         </div>
 
         <nav class="sidebar__nav">
