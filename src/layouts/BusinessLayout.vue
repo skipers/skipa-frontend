@@ -98,7 +98,7 @@ const navItems = [
   {
     name: 'ReviewStatus',
     to: '/biz/review',
-    label: '검토 현황',
+    label: '제출 현황',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
   },
   {
@@ -135,7 +135,7 @@ const navItems = [
 
 const pageTitleMap: Record<string, string> = {
   '/biz/home': '홈',
-  '/biz/review': '검토 현황',
+  '/biz/review': '제출 현황',
   '/biz/patents': '담당 특허 관리',
   '/biz/pre-eval-lab': '사전 평가 Lab',
   '/biz/expiring': '소멸 예정 관리',

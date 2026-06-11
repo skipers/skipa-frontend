@@ -5,7 +5,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-header__title">
-          검토 현황
+          제출 현황
           <button class="btn-guide-icon" type="button" aria-label="재평가 안내" @click="showGuide = true">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" overflow="visible">
               <circle cx="12" cy="12" r="10"/>
@@ -383,7 +383,7 @@ const flowSteps = [
   { label: '데이터 추출',      sub: '특허 메타데이터 및 원문 수집' },
   { label: 'AI 가치 평가',     sub: '기술성·권리성·시장성 자동 분석' },
   { label: '보고서 자동 생성', sub: '점수·근거·출처 포함 보고서 생성' },
-  { label: '사업부 검토',      sub: '담당자가 AI 보고서 기반 의견 제출' },
+  { label: '사업부 제출',      sub: '담당자가 AI 보고서 기반 의견 제출' },
   { label: '최종 결정',        sub: 'Legal팀 최종 포트폴리오 조정' },
 ]
 
