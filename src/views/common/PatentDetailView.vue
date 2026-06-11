@@ -1034,6 +1034,7 @@ import {
 import { reviewsApi } from '@/api/reviews'
 import type { ReviewResponse } from '@/api/reviews'
 import { reportsApi } from '@/api/reports'
+import { patentHistoryApi, type PatentAnnuityResponse } from '@/api/patentHistory'
 import { businessReviewsApi } from '@/api/businessReviews'
 import type { BusinessReviewDetailResponse } from '@/api/businessReviews'
 
@@ -1117,20 +1118,6 @@ const patentCountry = computed(() => {
 })
 
 
-const FEE_SCHEDULES: Record<string, { quarter: string; amount: number; paid: string }[]> = {
-  REGISTERED: [
-    { quarter: '제  1 -  3 년분', amount:  630000, paid: '2012-09-20' },
-    { quarter: '제  4 -  6 년분', amount: 1110000, paid: '2015-08-24' },
-    { quarter: '제  7 -  9 년분', amount: 2010000, paid: '2018-08-22' },
-    { quarter: '제 10 - 12 년분', amount: 3195000, paid: '2021-08-25' },
-    { quarter: '제 13 - 15 년분', amount: 3177000, paid: '2024-06-04' },
-  ],
-  EXPIRED: [
-    { quarter: '제  1 -  3 년분', amount:  630000, paid: '2012-09-20' },
-    { quarter: '제  4 -  6 년분', amount: 1110000, paid: '2015-08-24' },
-  ],
-}
-
 type FeeRecord     = { quarter: string; amount: number; paid: string }
 type FeeEditRow    = { yearStart: number; yearEnd: number; amount: number; paid: string }
 
@@ -1144,12 +1131,17 @@ function parseQuarter(q: string): { yearStart: number; yearEnd: number } {
   return m ? { yearStart: Number(m[1]), yearEnd: Number(m[2]) } : { yearStart: 0, yearEnd: 0 }
 }
 
-const feeRecords = computed(() => {
-  const status = patent.value?.status ?? ''
-  return customFeeRecords.value ?? FEE_SCHEDULES[status] ?? FEE_SCHEDULES['REGISTERED']
-})
-
+const annuityData = ref<PatentAnnuityResponse[]>([])
 const customFeeRecords = ref<FeeRecord[] | null>(null)
+
+const feeRecords = computed(() => {
+  if (customFeeRecords.value) return customFeeRecords.value
+  return annuityData.value.map(a => ({
+    quarter: `제 ${a.startYear} - ${a.endYear} 년분`,
+    amount: a.amount,
+    paid: a.paidDate ?? a.dueDate,
+  }))
+})
 const feeEditMode      = ref(false)
 const feeEditDraft     = ref<FeeEditRow[]>([])
 
@@ -1548,8 +1540,17 @@ async function fetchLatestReport() {
   }
 }
 
+async function fetchAnnuityHistory() {
+  try {
+    const res = await patentHistoryApi.getAnnuityHistory(props.patentId)
+    annuityData.value = res.items
+  } catch (e) {
+    console.error('연차료 이력 조회 실패:', e)
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([fetchPatent(), fetchReviewData(), fetchEvalHistory(), fetchLatestReport()])
+  await Promise.all([fetchPatent(), fetchReviewData(), fetchEvalHistory(), fetchLatestReport(), fetchAnnuityHistory()])
   await nextTick()
 
   if (patent.value && isBusiness.value && businessReviewData.value?.opinion) {
