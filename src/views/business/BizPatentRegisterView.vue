@@ -157,12 +157,8 @@
           <div class="form-section__title">내용 요약</div>
           <div class="form-grid">
             <label class="form-field full">
-              <span class="form-label">특허 개요</span>
+              <span class="form-label">발명의 요약</span>
               <textarea class="form-textarea" v-model="form.summary" placeholder="특허의 핵심 기술 내용을 요약해 주세요." />
-            </label>
-            <label class="form-field full">
-              <span class="form-label">핵심 내용</span>
-              <textarea class="form-textarea" v-model="form.coreContent" />
             </label>
           </div>
         </div>
@@ -344,7 +340,7 @@ const form = reactive({
   bizField: '', techField: '', relatedProducts: '', country: 'KR',
   patentStatus: '출원', coApplicant: '아니오', coApplicantName: '',
   applicationDate: '', registrationDate: '', applicationNumber: '',
-  registrationNumber: '', ipc: '', expiryDate: '', summary: '', coreContent: '',
+  registrationNumber: '', ipc: '', expiryDate: '', summary: '',
 })
 
 function handleFileSelect(e: Event) {
@@ -358,7 +354,7 @@ function resetForm() {
     bizField: '', techField: '', relatedProducts: '', country: 'KR',
     patentStatus: '출원', coApplicant: '아니오', coApplicantName: '',
     applicationDate: '', registrationDate: '', applicationNumber: '',
-    registrationNumber: '', ipc: '', expiryDate: '', summary: '', coreContent: '',
+    registrationNumber: '', ipc: '', expiryDate: '', summary: '',
   })
   uploadedFile.value = null
   adminHistory.value = []
@@ -388,7 +384,6 @@ function startResubmit(app: PatentApplication) {
     ipc: app.ipc,
     expiryDate: app.expiryDate,
     summary: app.summary,
-    coreContent: app.coreContent,
   })
   submitted.value = false
   activeTab.value = 'write'
