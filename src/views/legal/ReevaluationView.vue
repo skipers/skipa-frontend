@@ -418,6 +418,7 @@ const { readIds, markRead } = useReadReplies()
 const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination()
 
 // ── 상태 ────────────────────────────────────────────
+const mockPatents: any[] = [] // TODO: 백엔드 미확정, API 연동 후 교체
 const loading  = ref(false)
 const sending     = ref(false)
 const sendSuccess = ref(false)
@@ -660,16 +661,7 @@ async function handleAssign() {
       await patentsApi.assignDepartment(assignTarget.value.id, assignDeptId.value)
     }
   } catch {
-    // API 미구현: mock 데이터 직접 업데이트
-    if (bulkAssignMode.value) {
-      ;[...selectedIds].forEach(id => {
-        const p = mockPatents.find(p => p.id === id)
-        if (p) p.departmentId = assignDeptId.value!
-      })
-    } else if (assignTarget.value) {
-      const p = mockPatents.find(p => p.id === assignTarget.value!.id)
-      if (p) p.departmentId = assignDeptId.value!
-    }
+    console.error('부서 배정 실패')
   } finally {
     assignLoading.value = false
     showAssignModal.value = false
