@@ -193,7 +193,7 @@
           <div class="item-dept" @click.stop>
             <div v-if="item.departmentId" class="dept-chip">
               <span class="dept-chip__dot" />
-              {{ deptName(item.departmentId) }}
+              {{ item.departmentName ?? deptName(item.departmentId) }}
               <button class="dept-chip__change" @click="openAssign(item)" title="변경">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -214,6 +214,7 @@
             <span v-if="item.decision" class="decision-badge" :class="`decision-badge--${item.decision.toLowerCase()}`">
               {{ decisionLabel(item.decision) }}
             </span>
+            <span v-else-if="item.reviewStatus === 'unassigned'" class="text-muted">—</span>
             <span v-else class="decision-pending">미회신</span>
           </div>
 
@@ -479,6 +480,7 @@ interface ReevalItem {
   techField?: string
   summary?: string
   departmentId?: number
+  departmentName?: string
   decision?: string | null
   reviewStatus: 'unassigned' | 'requested' | 'overdue' | 'done'
   isOverdue?: boolean
@@ -590,13 +592,37 @@ const reviewToStatus: Record<string, ReevalItem['reviewStatus']> = {
   SUBMITTED: 'done',
 }
 
+async function fetchStatusCounts(deptId?: number | null) {
+  const base: ReviewTargetParams = { page: 1, size: 1 }
+  if (deptId != null && deptId !== -1) base.departmentId = deptId
+  const [all, scheduled, pending, overdue, submitted, unread] = await Promise.all([
+    reviewsApi.getReviewTargets({ ...base }),
+    reviewsApi.getReviewTargets({ ...base, status: 'SCHEDULED' }),
+    reviewsApi.getReviewTargets({ ...base, status: 'PENDING' }),
+    reviewsApi.getReviewTargets({ ...base, status: 'OVERDUE' }),
+    reviewsApi.getReviewTargets({ ...base, status: 'SUBMITTED' }),
+    reviewsApi.getReviewTargets({ ...base, status: 'SUBMITTED', checked: false }),
+  ])
+  statusCounts.value = {
+    all:        all.totalItems,
+    unassigned: scheduled.totalItems,
+    requested:  pending.totalItems,
+    overdue:    overdue.totalItems,
+    done:       submitted.totalItems,
+    unread:     unread.totalItems,
+  }
+}
+
 async function fetchList(p = 1) {
   loading.value = true
   setPage(p)
   selectedIds.clear()
   try {
     const params: ReviewTargetParams = { page: p, size: pageQuery.value.size }
-    if (activeStatus.value !== 'all' && activeStatus.value !== 'unread' && statusToReview[activeStatus.value]) {
+    if (activeStatus.value === 'unread') {
+      params.status = 'SUBMITTED'
+      params.checked = false
+    } else if (activeStatus.value !== 'all' && statusToReview[activeStatus.value]) {
       params.status = statusToReview[activeStatus.value]
     }
     if (activeDept.value !== null && activeDept.value !== -1) {
@@ -604,29 +630,22 @@ async function fetchList(p = 1) {
     }
     // TODO: 확인 필요 - activeDecision(opinion) 필터 API 지원 여부
 
-    const res = await reviewsApi.getReviewTargets(params)
+    const [res] = await Promise.all([
+      reviewsApi.getReviewTargets(params),
+      fetchStatusCounts(activeDept.value),
+    ])
     items.value = res.items.map(r => ({
       id: r.patentId,
       title: r.title,
       applicationNumber: r.applicationNumber,
       departmentId: r.departmentId,
+      departmentName: r.departmentName,
       decision: r.opinion ?? null,
       reviewStatus: reviewToStatus[r.status] ?? 'unassigned',
       isOverdue: r.status === 'OVERDUE',
       // techField, summary: ReviewResponse에 없음
     }))
     setTotal(res.totalItems, res.totalPages)
-
-    // TODO: 확인 필요 - 각 상태별 정확한 count는 별도 API 호출 필요
-    const cur = activeStatus.value
-    statusCounts.value = {
-      all:        cur === 'all'        ? res.totalItems : statusCounts.value.all,
-      unassigned: cur === 'unassigned' ? res.totalItems : statusCounts.value.unassigned,
-      requested:  cur === 'requested'  ? res.totalItems : statusCounts.value.requested,
-      overdue:    cur === 'overdue'    ? res.totalItems : statusCounts.value.overdue,
-      done:       cur === 'done'       ? res.totalItems : statusCounts.value.done,
-      unread:     0,
-    }
   } catch (err) {
     console.error('목록 조회 오류:', err)
   } finally {
