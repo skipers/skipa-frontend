@@ -61,14 +61,19 @@
                 <span class="meta-chip meta-chip--dept">{{ patent.dept }}</span>
               </div>
             </div>
-            <button class="btn-pdf-download">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              원문 PDF
-            </button>
+            <div class="detail-header__right">
+              <button class="btn-pdf-download">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                원문 PDF
+              </button>
+              <span v-if="latestReport?.evaluatedAt" class="evaluated-label">
+                AI 보고서 생성일 · {{ formatDate(latestReport.evaluatedAt) }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -1332,9 +1337,13 @@ const miniScores = computed(() => [
   { label: '사업성', value: aiScores.value.biz },
 ])
 
-const reportGrade = computed<string | null>(() => reportJson.value?.report?.summary?.overall_grade ?? null)
+const reportGrade = computed<string | null>(
+  () => latestReport.value?.valueGrade ?? reportJson.value?.report?.summary?.overall_grade ?? null
+)
 
-const totalScore = computed(() => reportJson.value?.report?.summary?.overall_score_out_of_100 ?? 0)
+const totalScore = computed(
+  () => latestReport.value?.totalScore ?? reportJson.value?.report?.summary?.overall_score_out_of_100 ?? 0
+)
 
 const overallOpinion = computed<string>(() => reportJson.value?.report?.summary?.overall_opinion ?? '')
 
@@ -1540,10 +1549,12 @@ const opinionOptions = [
 ]
 
 const latestReportId = ref<number | null>(null)
+const latestReport = ref<import('@/api/reports').ReportDetailResponse | null>(null)
 
 async function fetchLatestReport() {
   try {
     const report = await reportsApi.getLatestReport(props.patentId)
+    latestReport.value = report
     latestReportId.value = report.id
     if (report.url) {
       const res = await fetch(report.url)
@@ -1929,6 +1940,14 @@ function closeEvalReport() {
   font-size: 12px; font-weight: 500; color: #475569;
 }
 .meta-chip--dept { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+
+.detail-header__right {
+  display: flex; flex-direction: column; align-items: flex-end;
+  justify-content: space-between; gap: 6px; flex-shrink: 0;
+}
+.evaluated-label {
+  font-size: 11.5px; color: #94a3b8; white-space: nowrap;
+}
 
 /* ── 등급 배지 ───────────────────────────────────── */
 .grade-badge {
