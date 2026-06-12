@@ -165,7 +165,7 @@
             :page="activePage"
             :total-pages="activeTotalPages"
             :total-items="activeTotalItems"
-            @update:page="fetchActivePatents"
+            @update:page="fetchAllAssignedPatents"
           />
         </div>
       </div>
@@ -430,17 +430,16 @@ function expiryClass(d?: string) {
 
 
 // ── 데이터 로드 ──────────────────────────────────────
-async function fetchActivePatents(p = 1) {
+const ACTIVE_STATUSES = new Set(['REGISTERED', 'APPLIED', 'PUBLISHED'])
+
+async function fetchAllAssignedPatents() {
   loading.value = true
   error.value = null
   try {
-    const res = await patentsApi.getPatents({
-      departmentId: auth.user?.departmentId,
-      status: 'REGISTERED',
-      page: p,
-      size: 50,
-    })
-    activePatents.value = res.items.map(i => ({
+    const res = await patentsApi.getAssignedPatents({ size: 500 })
+    const all = res.items
+
+    const mapped = all.map(i => ({
       id: i.id,
       title: i.title,
       applicationNumber: i.applicationNumber,
@@ -448,41 +447,23 @@ async function fetchActivePatents(p = 1) {
       expiryDate: i.expiryDate,
       techField: i.techField,
       tags: i.keywords,
+      status: i.latestLegalStatus ?? '',
     }))
-    activeTotalItems.value = res.totalItems
-    activeTotalPages.value = res.totalPages
+
+    activePatents.value  = mapped.filter(i => ACTIVE_STATUSES.has(i.status))
+    expiredPatents.value = mapped.filter(i => !ACTIVE_STATUSES.has(i.status))
+    activeTotalItems.value = activePatents.value.length
+    activeTotalPages.value = 1
   } catch (e) {
-    console.error('MyPatentsView/fetchActivePatents:', e)
+    console.error('MyPatentsView/fetchAllAssignedPatents:', e)
     error.value = '특허 목록을 불러오는 데 실패했습니다.'
   } finally {
     loading.value = false
   }
 }
 
-async function fetchExpiredPatents() {
-  try {
-    const res = await patentsApi.getPatents({
-      departmentId: auth.user?.departmentId,
-      status: ['EXPIRED', 'ABANDONED'] as any,
-      size: 200,
-    })
-    expiredPatents.value = res.items.map(i => ({
-      id: i.id,
-      title: i.title,
-      applicationNumber: i.applicationNumber,
-      expiryDate: i.expiryDate,
-      techField: i.techField,
-      tags: i.keywords,
-      status: i.latestLegalStatus ?? 'EXPIRED',
-    }))
-  } catch (e) {
-    console.error('MyPatentsView/fetchExpiredPatents:', e)
-  }
-}
-
 onMounted(() => {
-  fetchActivePatents(1)
-  fetchExpiredPatents()
+  fetchAllAssignedPatents()
 })
 </script>
 

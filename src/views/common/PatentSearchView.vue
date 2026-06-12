@@ -222,16 +222,15 @@ async function fetchPatents(p = page.value) {
   error.value   = null
   setPage(p)
   try {
-    const statusParam: string | string[] | undefined =
+    const statusParam: string[] | undefined =
       filters.status === 'EXPIRED'
-        ? ['EXPIRED', 'ABANDONED']
-        : filters.status || undefined
+        ? ['EXPIRED', 'ABANDONED', 'WITHDRAWN', 'INVALIDATED', 'REJECTED']
+        : filters.status ? [filters.status] : undefined
 
     const res = await patentsApi.getPatents({
       keyword:      filters.q || undefined,
       status:       statusParam,
       filingCountry: filters.country || undefined,
-      techField:    filters.techField || undefined,
       sort:         filters.sort || undefined,
       departmentId: filters.departmentId,
       page:         page.value,
