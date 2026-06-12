@@ -251,10 +251,10 @@ const activeTab  = ref<'info' | 'pdf'>('info')
 const isEditing  = ref(false)
 const editForm   = reactive({
   title: '', finalTitle: '', inventors: '', managementNumber: '',
-  bizField: '', techField: '', relatedProducts: '',
+  bizField: '', techField: '', relatedProducts: [] as string[],
   country: '', patentStatus: '', coApplicant: '', coApplicantName: '',
   applicationNumber: '', registrationNumber: '',
-  applicationDate: '', registrationDate: '', ipc: '', expiryDate: '',
+  applicationDate: '', registrationDate: '', ipc: [] as string[], expiryDate: '',
   summary: '',
 })
 
