@@ -248,7 +248,9 @@
                             <tr class="rpt-data-row" @click="reportOpenRows[item.id] = !reportOpenRows[item.id]">
                               <td class="rpt-item-name">{{ item.name }}</td>
                               <td><span :class="['rpt-score-pill', 'rpt-score-' + item.score]">{{ item.score }}/5</span></td>
-                              <td class="rpt-method">{{ item.method }}</td>
+                              <td class="rpt-method">
+                                <span :class="['rpt-method-badge', item.method === 'llm' ? 'rpt-method-badge--ai' : 'rpt-method-badge--rule']">{{ formatMethod(item.method) }}</span>
+                              </td>
                               <td class="rpt-summary">{{ item.summary }}</td>
                               <td>
                                 <button class="rpt-toggle-btn" :class="{ open: reportOpenRows[item.id] }" type="button">▶</button>
@@ -282,14 +284,13 @@
               </details>
             </div>
 
-            <!-- 3. 사내 프로젝트 활용 현황 -->
+            <!-- 3. 사내 활용도 추정 -->
             <div class="rpt-part">
-              <h3 class="rpt-part-title"><span class="rpt-part-num">03</span>사내 프로젝트 활용 현황</h3>
+              <h3 class="rpt-part-title"><span class="rpt-part-num">03</span>사내 활용도 추정</h3>
 
               <table class="rpt-info-table">
                 <tbody>
                   <!-- TODO: 확인 필요 — section_3_project_utilization 필드명 서버 응답과 대조 필요 -->
-                  <tr><th>사업화 여부</th><td>{{ computedProjectInfo?.commercialized ?? '—' }}</td></tr>
                   <tr><th>적용 사업·서비스</th><td>{{ computedProjectInfo?.service ?? '—' }}</td></tr>
                   <tr><th>사업 적용 이력</th><td>{{ computedProjectInfo?.history ?? '—' }}</td></tr>
                   <tr><th>고객·파트너</th><td>{{ computedProjectInfo?.customer ?? '—' }}</td></tr>
@@ -391,17 +392,6 @@
               </div>
             </div>
 
-            <!-- 6. 참고문헌 -->
-            <div class="rpt-part rpt-part--last">
-              <h3 class="rpt-part-title"><span class="rpt-part-num">06</span>참고문헌</h3>
-              <ol class="rpt-ref-list">
-                <li v-for="(ref, i) in REPORT_REFS" :key="i">
-                  <span class="rpt-ref-num">[{{ i + 1 }}]</span>
-                  <a v-if="ref.url" :href="ref.url" target="_blank" rel="noopener noreferrer" class="rpt-source-link">{{ ref.title }}</a>
-                  <span v-else>{{ ref.title }}</span>
-                </li>
-              </ol>
-            </div>
 
           </template>
 
@@ -791,7 +781,9 @@
                             <tr class="rpt-data-row" @click="reportOpenRows[item.id] = !reportOpenRows[item.id]">
                               <td class="rpt-item-name">{{ item.name }}</td>
                               <td><span :class="['rpt-score-pill', 'rpt-score-' + item.score]">{{ item.score }}/5</span></td>
-                              <td class="rpt-method">{{ item.method }}</td>
+                              <td class="rpt-method">
+                                <span :class="['rpt-method-badge', item.method === 'llm' ? 'rpt-method-badge--ai' : 'rpt-method-badge--rule']">{{ formatMethod(item.method) }}</span>
+                              </td>
                               <td class="rpt-summary">{{ item.summary }}</td>
                               <td>
                                 <button class="rpt-toggle-btn" :class="{ open: reportOpenRows[item.id] }" type="button">▶</button>
@@ -825,12 +817,11 @@
               </details>
             </div>
 
-            <!-- 03 사내 프로젝트 활용 현황 -->
+            <!-- 03 사내 활용도 추정 -->
             <div class="erp-section">
-              <h3 class="rpt-part-title"><span class="rpt-part-num">03</span>사내 프로젝트 활용 현황</h3>
+              <h3 class="rpt-part-title"><span class="rpt-part-num">03</span>사내 활용도 추정</h3>
               <table class="rpt-info-table">
                 <tbody>
-                  <tr><th>사업화 여부</th><td>{{ selectedEvalReport.project.commercialized }}</td></tr>
                   <tr><th>적용 사업·서비스</th><td>{{ selectedEvalReport.project.service }}</td></tr>
                   <tr><th>사업 적용 이력</th><td>{{ selectedEvalReport.project.history }}</td></tr>
                   <tr><th>고객·파트너</th><td>{{ selectedEvalReport.project.customer }}</td></tr>
@@ -922,17 +913,6 @@
               </div>
             </div>
 
-            <!-- 06 참고문헌 -->
-            <div class="erp-section">
-              <h3 class="rpt-part-title"><span class="rpt-part-num">06</span>참고문헌</h3>
-              <ol class="rpt-ref-list">
-                <li v-for="(ref, i) in selectedEvalReport.refs" :key="i">
-                  <span class="rpt-ref-num">[{{ i + 1 }}]</span>
-                  <a v-if="ref.url" :href="ref.url" target="_blank" rel="noopener noreferrer" class="rpt-source-link">{{ ref.title }}</a>
-                  <span v-else>{{ ref.title }}</span>
-                </li>
-              </ol>
-            </div>
 
             <!-- 07 등록료 납부 내역 -->
             <div class="erp-section">
@@ -1619,6 +1599,12 @@ const reportOpenRows = reactive<Record<string, boolean>>({})
 
 interface RptItem { id: string; name: string; score: number; method: string; summary: string; grounds: string; sources: { title: string; url: string }[] }
 interface RptBlock { key: string; title: string; score: number; summary: string; items: RptItem[] }
+
+function formatMethod(method: string): string {
+  if (method === 'llm') return 'AI 평가'
+  if (method === 'auto' || method === 'auto_kosis') return '규칙 기반'
+  return method
+}
 
 const DIM_KEY_MAP: Record<string, string> = { '기술성': 'tech', '권리성': 'rights', '시장성': 'market', '사업성': 'market' }
 const DIM_TITLE_MAP: Record<string, string> = { '기술성': '기술성', '권리성': '권리성', '시장성': '시장성 및 사업성', '사업성': '시장성 및 사업성' }
@@ -2756,7 +2742,13 @@ function closeEvalReport() {
 .rpt-data-row { cursor: pointer; transition: background 0.1s; }
 .rpt-data-row:hover { background: #f8fafc; }
 .rpt-item-name { font-weight: 600; color: #0f172a; }
-.rpt-method { color: #64748b; white-space: nowrap; }
+.rpt-method { white-space: nowrap; }
+.rpt-method-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.rpt-method-badge--ai   { background: #ede9fe; color: #6d28d9; }
+.rpt-method-badge--rule { background: #ffedd5; color: #c2410c; }
 .rpt-summary { color: #475569; line-height: 1.55; }
 
 .rpt-score-pill {
@@ -2928,7 +2920,7 @@ details[open] .rpt-appendix__chevron { transform: rotate(180deg); }
 }
 
 
-/* ── 03 사내 프로젝트 ── */
+/* ── 03 사내 활용도 추정 ── */
 .rpt-info-table {
   width: 100%; border-collapse: collapse; margin-bottom: 20px;
   font-size: 13px;
