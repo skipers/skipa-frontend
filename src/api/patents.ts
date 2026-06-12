@@ -22,13 +22,9 @@ export interface PatentListItem {
   citationCount?: number
   examinationClaimCount?: number
   filingCountry?: string
+  approvalStatus?: string
   currentDepartmentId?: number
   currentDepartmentName?: string
-  reviewStatus?: string
-  opinion?: string
-  checked?: boolean
-  latestReportScore?: number
-  isOverdue?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -83,12 +79,8 @@ export interface PageResponse<T> {
 export interface PatentListParams {
   keyword?: string
   departmentId?: number
-  reviewStatus?: string
-  opinion?: string
-  checked?: boolean
-  status?: string | string[]
+  status?: string[]
   filingCountry?: string
-  techField?: string
   sort?: string
   page?: number
   size?: number
@@ -131,6 +123,11 @@ export const patentsApi = {
   getPatents: async (params?: PatentListParams): Promise<PageResponse<PatentListItem>> => {
     const p = params ? { ...params, page: params.page != null ? params.page - 1 : 0 } : {}
     return apiClient.get('/patents', { params: p })
+  },
+
+  getAssignedPatents: async (params?: { keyword?: string; sort?: string; page?: number; size?: number }): Promise<PageResponse<PatentListItem>> => {
+    const p = params ? { ...params, page: params.page != null ? params.page - 1 : 0 } : { page: 0 }
+    return apiClient.get('/patents/assigned', { params: p })
   },
 
   getPatent: async (patentId: number): Promise<PatentDetail> => {

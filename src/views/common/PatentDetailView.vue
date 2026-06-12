@@ -1,8 +1,11 @@
 <template>
   <div class="detail-page" :style="{ '--chat-width': chatPanelWidth }">
 
+    <!-- 로딩 중 -->
+    <div v-if="isLoading" />
+
     <!-- 접근 권한 없음 -->
-    <div v-if="accessDenied" class="access-denied">
+    <div v-else-if="accessDenied" class="access-denied">
       <div class="access-denied__icon">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
@@ -1031,7 +1034,9 @@ const route = useRoute()
 
 const isLegal    = computed(() => auth.isLegal || auth.isAdmin)
 const isBusiness = computed(() => auth.isBusiness)
-const showChatbot = computed(() => route.name === 'ReviewPatentDetail')
+const showChatbot = computed(() =>
+  route.name === 'ReviewPatentDetail' || route.name === 'BizPatentDetailDirect'
+)
 const myDept     = computed(() => DEPT_MAP[auth.user?.departmentId ?? 0] ?? null)
 
 // ── 특허 데이터 (API) ─────────────────────────────────
@@ -1092,9 +1097,9 @@ async function fetchPatent() {
   error.value = null
   try {
     patentData.value = await patentsApi.getPatent(props.patentId)
-  } catch (e) {
+  } catch (e: any) {
     console.error('특허 상세 조회 실패:', e)
-    error.value = '특허 정보를 불러오지 못했습니다.'
+    error.value = e?.code === 'FORBIDDEN' ? 'FORBIDDEN' : '특허 정보를 불러오지 못했습니다.'
   } finally {
     isLoading.value = false
   }
@@ -1130,15 +1135,18 @@ async function fetchEvalHistory() {
   }
 }
 
-const accessDenied = computed(() => {
-  if (!patent.value) return false
-  return false
-})
+const accessDenied = computed(() => error.value === 'FORBIDDEN')
 
 const isOwnDept = computed(() => {
   if (!patent.value) return false
   if (isLegal.value) return true
-  if (isBusiness.value) return patent.value.dept === myDept.value
+  if (isBusiness.value) {
+    const deptId = patentData.value?.currentDepartmentId
+    if (deptId != null && auth.user?.departmentId != null) {
+      return deptId === auth.user.departmentId
+    }
+    return patent.value.dept === myDept.value
+  }
   return true
 })
 
