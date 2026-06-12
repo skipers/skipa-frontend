@@ -7,20 +7,29 @@ export interface PatentApplication {
   title: string
   managementNumber: string
   inventors: string
+  applicant?: string
   finalTitle: string
   bizField: string
   techField: string
-  relatedProducts: string
+  relatedProducts: string[]
   country: string
   patentStatus: string
   coApplicant: string
   coApplicantName: string
   applicationDate: string
   registrationDate: string
+  publicationDate?: string
+  announcementDate?: string
   applicationNumber: string
   registrationNumber: string
-  ipc: string
+  publicationNumber?: string
+  announcementNumber?: string
+  ipc: string[]
+  cpc?: string[]
+  examinationClaimCount?: string
+  citationCount?: string
   expiryDate: string
+  keywords?: string[]
   summary: string
   coreContent: string
   appStatus: AppStatus
@@ -40,7 +49,7 @@ const applications = ref<PatentApplication[]>([
     finalTitle: '머신러닝 기반 반도체 공정 이상 감지 및 알림 시스템',
     bizField: '반도체',
     techField: 'AI/ML',
-    relatedProducts: '공정 모니터링 장비',
+    relatedProducts: ['공정 모니터링 장비'],
     country: 'KR',
     patentStatus: '출원',
     coApplicant: '아니오',
@@ -49,7 +58,7 @@ const applications = ref<PatentApplication[]>([
     registrationDate: '',
     applicationNumber: '10-2026-0051234',
     registrationNumber: '',
-    ipc: 'G06N 3/08',
+    ipc: ['G06N 3/08'],
     expiryDate: '2046-05-20',
     summary: '반도체 제조 공정에서 발생하는 이상 패턴을 머신러닝 모델로 실시간 감지하고 담당자에게 즉시 알림을 전송하는 시스템입니다.',
     coreContent: 'LSTM 기반 시계열 이상 감지 모델, 엣지 디바이스 경량화 추론 엔진 포함',
@@ -65,7 +74,7 @@ const applications = ref<PatentApplication[]>([
     finalTitle: '배터리 셀 열 폭주 조기 예측 및 차단 알고리즘',
     bizField: '에너지',
     techField: '배터리/AI',
-    relatedProducts: 'EV 배터리 모듈',
+    relatedProducts: ['EV 배터리 모듈'],
     country: 'KR',
     patentStatus: '등록',
     coApplicant: '아니오',
@@ -74,7 +83,7 @@ const applications = ref<PatentApplication[]>([
     registrationDate: '2026-06-01',
     applicationNumber: '10-2026-0041100',
     registrationNumber: '10-2893110',
-    ipc: 'H01M 10/48',
+    ipc: ['H01M 10/48'],
     expiryDate: '2046-04-10',
     summary: '배터리 셀의 온도·전압·전류 데이터를 실시간 분석하여 열 폭주 발생 10분 전에 예측하고 자동 차단하는 알고리즘입니다.',
     coreContent: '다변량 시계열 예측 모델, CAN 버스 인터페이스 통합',
@@ -91,7 +100,7 @@ const applications = ref<PatentApplication[]>([
     finalTitle: '스마트팩토리 환경에서 복수 로봇의 충돌 회피 협업 제어 방법',
     bizField: '제조',
     techField: '로보틱스',
-    relatedProducts: '산업용 협동로봇',
+    relatedProducts: ['산업용 협동로봇'],
     country: 'KR',
     patentStatus: '출원',
     coApplicant: '아니오',
@@ -100,7 +109,7 @@ const applications = ref<PatentApplication[]>([
     registrationDate: '',
     applicationNumber: '10-2026-0031800',
     registrationNumber: '',
-    ipc: 'B25J 9/16',
+    ipc: ['B25J 9/16'],
     expiryDate: '2046-03-28',
     summary: '복수의 산업용 협동로봇이 동일 작업 공간에서 충돌 없이 협업하는 분산 제어 알고리즘입니다.',
     coreContent: 'RRT* 경로 계획 + 실시간 SLAM 기반 충돌 회피',

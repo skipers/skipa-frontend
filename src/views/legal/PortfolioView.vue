@@ -502,12 +502,12 @@ const selectedQuarter = ref('')
 const breakdownTab = ref<'dept' | 'tech'>('dept')
 
 const activeBreakdown = computed(() => ({
-  dept: decisions.value?.byDepartment ?? [],
-  tech: decisions.value?.byTechField  ?? [],
+  dept: deptDecision.value,
+  tech: techDecision.value,
 }))
 
 const sortedBreakdown = computed(() => {
-  const list: BreakdownItem[] = breakdownTab.value === 'dept'
+  const list: BreakdownDecisionItem[] = breakdownTab.value === 'dept'
     ? activeBreakdown.value.dept
     : activeBreakdown.value.tech
   return [...list].sort((a, b) => a.name.localeCompare(b.name, 'ko'))

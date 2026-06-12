@@ -478,13 +478,13 @@ const AH_LABELS: Record<string, string> = {
 const adminHistory = ref<{ type: string; date: string }[]>([])
 
 const form = reactive({
-  title: '', managementNumber: '', inventors: '', applicant: '',
+  title: '', finalTitle: '', managementNumber: '', inventors: '', applicant: '',
   bizField: '', techField: '', relatedProducts: [] as string[], country: 'KR',
   patentStatus: '출원', coApplicant: '아니오', coApplicantName: '',
   applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
   applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
   ipc: [] as string[], cpc: [] as string[], examinationClaimCount: '', citationCount: '',
-  expiryDate: '', keywords: [] as string[], summary: '',
+  expiryDate: '', keywords: [] as string[], summary: '', coreContent: '',
 })
 
 function handleFileSelect(e: Event) {
@@ -494,13 +494,13 @@ function handleFileSelect(e: Event) {
 
 function resetForm() {
   Object.assign(form, {
-    title: '', managementNumber: '', inventors: '', applicant: '',
+    title: '', finalTitle: '', managementNumber: '', inventors: '', applicant: '',
     bizField: '', techField: '', relatedProducts: [], country: 'KR',
     patentStatus: '출원', coApplicant: '아니오', coApplicantName: '',
     applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
     applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
     ipc: [], cpc: [], examinationClaimCount: '', citationCount: '',
-    expiryDate: '', keywords: [] as string[], summary: '',
+    expiryDate: '', keywords: [] as string[], summary: '', coreContent: '',
   })
   uploadedFile.value = null
   adminHistory.value = []
