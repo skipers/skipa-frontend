@@ -1705,6 +1705,7 @@ const computedSimilarPatents = computed<any[]>(() => {
     citations: p.citation_count ?? 0,
     status: mapSimilarLegalStatus(p.legal_status ?? ''),
     applicationDate: p.application_year ? `${p.application_year}-01-01` : '',
+    desc: p.summary ?? '',
   }))
 })
 
