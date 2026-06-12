@@ -993,6 +993,7 @@
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
               </template>
+              <div v-else-if="message.role === 'assistant'" class="md-content" v-html="renderMarkdown(message.text)"/>
               <template v-else>{{ message.text }}</template>
             </div>
           </div>
@@ -1010,6 +1011,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, reactive } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { patentChatHistories, nextChatId, type ChatMessage } from '@/composables/usePatentChat'
@@ -1449,6 +1452,11 @@ if (!patentChatHistories[props.patentId]) {
 }
 const chatMessages = computed(() => patentChatHistories[props.patentId])
 
+function renderMarkdown(text: string): string {
+  const html = marked.parse(text, { breaks: true }) as string
+  return DOMPurify.sanitize(html)
+}
+
 const chatPanelWidth = computed(() =>
   chatbotOpen.value ? (chatbotExpanded.value ? '100vw' : '480px') : '0px'
 )
@@ -1553,7 +1561,7 @@ async function fetchChatHistory() {
     } else {
       patentChatHistories[props.patentId] = messages.map(m => ({
         id: nextChatId(),
-        role: m.role as 'user' | 'assistant',
+        role: m.role.toLowerCase() as 'user' | 'assistant',
         text: m.content,
         sourceCards: m.sourceCards,
       }))
@@ -2675,9 +2683,41 @@ function closeEvalReport() {
 .chat-row.assistant { justify-content: flex-start; }
 .chat-row.user      { justify-content: flex-end; }
 .chat-bubble {
-  max-width: min(80%, 300px); padding: 12px 15px;
+  max-width: min(92%, 560px); padding: 12px 15px;
   border-radius: 16px; font-size: 13.5px; line-height: 1.7; white-space: pre-line;
 }
+.chat-bubble.user { max-width: min(75%, 320px); }
+
+/* 마크다운 렌더링 — v-html이라 :deep() 필수 */
+.md-content { white-space: normal; }
+.md-content :deep(p)  { margin: 0 0 8px; }
+.md-content :deep(p:last-child) { margin-bottom: 0; }
+.md-content :deep(h1),
+.md-content :deep(h2),
+.md-content :deep(h3) { font-weight: 700; margin: 14px 0 6px; line-height: 1.4; }
+.md-content :deep(h2) { font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+.md-content :deep(h3) { font-size: 13.5px; }
+.md-content :deep(ul),
+.md-content :deep(ol) { margin: 4px 0 8px; padding-left: 20px; }
+.md-content :deep(li) { margin-bottom: 3px; }
+.md-content :deep(hr) { border: none; border-top: 1px solid #e2e8f0; margin: 12px 0; }
+.md-content :deep(strong) { font-weight: 700; }
+.md-content :deep(code) {
+  background: rgba(0,0,0,0.07); border-radius: 4px;
+  padding: 1px 5px; font-size: 12px; font-family: monospace;
+}
+/* 테이블 */
+.md-content :deep(table) {
+  border-collapse: collapse; font-size: 12.5px; line-height: 1.5;
+  margin: 8px 0 12px; display: block; overflow-x: auto; max-width: 100%;
+}
+.md-content :deep(th),
+.md-content :deep(td) {
+  padding: 7px 12px; border: 1px solid #d1d5db;
+  text-align: left; vertical-align: top; white-space: normal; min-width: 80px;
+}
+.md-content :deep(th) { background: #f1f5f9; font-weight: 600; white-space: nowrap; }
+.md-content :deep(tr:nth-child(even) td) { background: #f8fafc; }
 .chat-bubble.assistant { background: #fff; color: #102033; border-top-left-radius: 4px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
 .chat-bubble.user      { background: #0f172a; color: #fff; border-top-right-radius: 4px; }
 
