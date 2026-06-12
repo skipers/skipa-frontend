@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { tokenStorage } from '@/http/client'
+import { tokenStorage } from '@/api/axios'
 import { useAuthStore } from '@/stores/auth'
 import type { UserRole } from '@/types'
 

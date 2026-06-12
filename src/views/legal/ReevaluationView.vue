@@ -423,6 +423,7 @@ const { readIds, markRead } = useReadReplies()
 const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination()
 
 // ── 상태 ────────────────────────────────────────────
+const mockPatents: any[] = [] // TODO: 백엔드 미확정, API 연동 후 교체
 const loading  = ref(false)
 const sending     = ref(false)
 const sendSuccess = ref(false)
@@ -455,7 +456,7 @@ const filteredDepartments = computed(() => {
   return q ? sortedDepartments.value.filter(d => d.name.toLowerCase().includes(q)) : sortedDepartments.value
 })
 
-// mock 부서 목록 (실제: GET /departments)
+// TODO: AI 서버 연동 후 교체 필요 — GET /departments API 구현 시 아래 하드코딩 제거
 const departments = ref<Department[]>([
   { id: 2,  name: '반도체 사업부' },
   { id: 3,  name: '배터리 사업부' },
@@ -577,7 +578,7 @@ function reviewStatusLabel(s: string) {
 }
 
 function decisionLabel(d: string) {
-  return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
+  return { KEEP: '유지', MAINTAIN: '유지', DISPOSE: '포기', ABANDON: '포기' }[d] ?? d
 }
 
 // ── 데이터 로드 ──────────────────────────────────────
@@ -656,13 +657,14 @@ async function handleAssign() {
   if (!assignDeptId.value) return
   assignLoading.value = true
   try {
+    // TODO: 확인 필요 - assignDepartment 제거됨, 대체 API 연결 필요
     if (bulkAssignMode.value) {
-      await Promise.all([...selectedIds].map(id => patentsApi.assignDepartment(id, assignDeptId.value!)))
+      // await Promise.all([...selectedIds].map(id => patentsApi.assignDepartment(id, assignDeptId.value!)))
     } else if (assignTarget.value) {
-      await patentsApi.assignDepartment(assignTarget.value.id, assignDeptId.value)
+      // await patentsApi.assignDepartment(assignTarget.value.id, assignDeptId.value)
     }
   } catch (err) {
-    console.error('사업부 배정 실패:', err)
+    console.error('ReevaluationView/handleAssign:', err)
   } finally {
     assignLoading.value = false
     showAssignModal.value = false
@@ -682,8 +684,9 @@ async function handleSend() {
       .map(i => i!.id)
 
     await reviewsApi.requestBulkReview(sendablePatentIds)
-  } catch (e) { console.error(e) }
-  finally {
+  } catch (e) {
+    console.error('ReevaluationView/handleSend:', e)
+  } finally {
     sending.value = false
     sentCount.value = sendableCount.value
     sendSuccess.value = true
@@ -1317,14 +1320,16 @@ onMounted(async () => {
 .item-decision { display: flex; align-items: center; justify-content: center; }
 
 .decision-badge {
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-size: 12.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 700;
 }
-.decision-badge--keep    { background: var(--color-success-bg); color: var(--color-success-dark); }
-.decision-badge--sell    { background: var(--color-primary-bg); color: var(--color-primary-darker); }
-.decision-badge--dispose { background: var(--color-danger-bg); color: var(--color-danger); }
+.decision-badge--keep     { background: var(--color-success-bg); color: var(--color-success-dark); }
+.decision-badge--maintain { background: var(--color-success-bg); color: var(--color-success-dark); }
+.decision-badge--sell     { background: var(--color-primary-bg); color: var(--color-primary-darker); }
+.decision-badge--dispose  { background: var(--color-danger-bg); color: var(--color-danger); }
+.decision-badge--abandon  { background: var(--color-danger-bg); color: var(--color-danger); }
 
 .decision-pending { font-size: 12.5px; color: var(--c-slate-300); }
 

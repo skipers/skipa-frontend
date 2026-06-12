@@ -275,11 +275,12 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
-import { MOCK_PATENTS, MOCK_REEVAL } from '@/mocks/data'
+import { patentsApi } from '@/api/patents'
 
 const router = useRouter()
 const auth   = useAuthStore()
 const loading = ref(false)
+const error   = ref<string | null>(null)
 
 // ── 탭 ──────────────────────────────────────────────
 const activeTab = ref<'active' | 'expired'>('active')
@@ -397,21 +398,12 @@ const activePct = computed(() => {
   return Math.round(activeTotalItems.value / total * 100)
 })
 
-// ── AI 등급 / 결정 ──────────────────────────────────
+// ── AI 등급 ──────────────────────────────────────────
 function aiScore(p: { id: number; grade: string | null }): number | null {
   if (!p.grade) return null
   const ranges: Record<string, [number, number]> = { S: [88, 97], A: [75, 87], B: [58, 74], C: [42, 57] }
   const [min, max] = ranges[p.grade] ?? [50, 60]
   return min + (p.id % (max - min + 1))
-}
-
-function patentDecision(patentId: number): string {
-  const r = MOCK_REEVAL.find(r => r.patentId === patentId && r.decision !== null)
-  return r?.decision ?? 'NONE'
-}
-
-function decisionLabel(d: string): string {
-  return { KEEP: '유지', DISPOSE: '포기', NONE: '미제출' }[d] ?? d
 }
 
 // ── 유틸 ────────────────────────────────────────────
@@ -437,34 +429,55 @@ function expiryClass(d?: string) {
 
 
 
-// ── 데이터 로드 (반도체사업부 기준) ─────────────────
-function fetchActivePatents(_p = 1) {
-  const mine = MOCK_PATENTS.filter(p => p.dept === '반도체사업부' && p.status !== 'EXPIRED')
-  activePatents.value = mine.map(p => ({
-    id: p.id,
-    title: p.title,
-    applicationNumber: p.applicationNumber,
-    applicationDate: p.applicationDate,
-    expiryDate: p.expiryDate,
-    techField: p.techField,
-    tags: p.tags,
-  }))
-  activeTotalItems.value = mine.length
-  activeTotalPages.value = 1
+// ── 데이터 로드 ──────────────────────────────────────
+async function fetchActivePatents(p = 1) {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await patentsApi.getPatents({
+      departmentId: auth.user?.departmentId,
+      status: 'REGISTERED',
+      page: p,
+      size: 50,
+    })
+    activePatents.value = res.items.map(i => ({
+      id: i.id,
+      title: i.title,
+      applicationNumber: i.applicationNumber,
+      applicationDate: i.applicationDate,
+      expiryDate: i.expiryDate,
+      techField: i.techField,
+      tags: i.keywords,
+    }))
+    activeTotalItems.value = res.totalItems
+    activeTotalPages.value = res.totalPages
+  } catch (e) {
+    console.error('MyPatentsView/fetchActivePatents:', e)
+    error.value = '특허 목록을 불러오는 데 실패했습니다.'
+  } finally {
+    loading.value = false
+  }
 }
 
-function fetchExpiredPatents() {
-  expiredPatents.value = MOCK_PATENTS
-    .filter(p => p.dept === '반도체사업부' && (p.status === 'EXPIRED' || p.status === 'ABANDONED'))
-    .map(p => ({
-      id: p.id,
-      title: p.title,
-      applicationNumber: p.applicationNumber,
-      expiryDate: p.expiryDate,
-      techField: p.techField,
-      tags: p.tags,
-      status: p.status,
+async function fetchExpiredPatents() {
+  try {
+    const res = await patentsApi.getPatents({
+      departmentId: auth.user?.departmentId,
+      status: ['EXPIRED', 'ABANDONED'] as any,
+      size: 200,
+    })
+    expiredPatents.value = res.items.map(i => ({
+      id: i.id,
+      title: i.title,
+      applicationNumber: i.applicationNumber,
+      expiryDate: i.expiryDate,
+      techField: i.techField,
+      tags: i.keywords,
+      status: i.latestLegalStatus ?? 'EXPIRED',
     }))
+  } catch (e) {
+    console.error('MyPatentsView/fetchExpiredPatents:', e)
+  }
 }
 
 onMounted(() => {

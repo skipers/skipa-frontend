@@ -34,11 +34,9 @@
           </h3>
         </div>
         <div class="insight-list">
-          <div v-for="ins in insights" :key="ins.text" class="insight-item" :class="`insight-item--${ins.type}`">
-            <div class="insight-item__icon">
-              <span v-html="ins.icon" />
-            </div>
-            <p class="insight-item__text">{{ ins.text }}</p>
+          <!-- TODO: 확인 필요 - API가 string[] 반환으로 변경됨 (기존 type/icon/text 구조 제거) -->
+          <div v-for="(ins, i) in insights" :key="i" class="insight-item">
+            <p class="insight-item__text">{{ ins }}</p>
           </div>
         </div>
       </div>
@@ -293,23 +291,23 @@
           <div class="decision-chart" style="position: relative">
             <div
               v-for="d in decisionData"
-              :key="d.year"
+              :key="d.quarter"
               class="decision-bar-group"
-              :class="{ 'decision-bar-group--selected': selectedQuarter === d.year }"
-              @click="selectedQuarter = d.year"
+              :class="{ 'decision-bar-group--selected': selectedQuarter === d.quarter }"
+              @click="selectedQuarter = d.quarter"
               @mouseenter="showTooltip($event, d)"
               @mouseleave="hideTooltip"
             >
-              <div class="decision-bar-stack" :class="{ 'decision-bar-stack--inprogress': d.inProgress }">
+              <div class="decision-bar-stack">
                 <div class="decision-bar-seg decision-bar-seg--keep"    :style="{ height: keepPct(d) + '%' }" />
                 <div class="decision-bar-seg decision-bar-seg--dispose" :style="{ height: disposePct(d) + '%' }" />
               </div>
-              <p class="decision-bar-label">{{ d.year }}</p>
+              <p class="decision-bar-label">{{ d.quarter }}</p>
             </div>
             <div v-if="tooltip.visible" class="decision-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
-              <p class="decision-tooltip__year">{{ tooltip.year }}</p>
-              <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-keep)" />유지 {{ tooltip.keep }}건 ({{ tooltip.keepPct }}%)</div>
-              <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-dispose)" />포기 {{ tooltip.dispose }}건 ({{ tooltip.disposePct }}%)</div>
+              <p class="decision-tooltip__year">{{ tooltip.quarter }}</p>
+              <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-keep)" />유지 {{ tooltip.maintain }}건 ({{ tooltip.keepPct }}%)</div>
+              <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-dispose)" />포기 {{ tooltip.abandon }}건 ({{ tooltip.disposePct }}%)</div>
             </div>
           </div>
         </div>
@@ -326,15 +324,15 @@
               <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'tech' }" @click="breakdownTab = 'tech'">기술분야별</button>
             </div>
           </div>
-          <div class="hbar-list">
-            <div v-for="d in sortedBreakdown" :key="d.name" class="hbar-item">
-              <span class="hbar-item__label">{{ d.name }}</span>
-              <div class="hbar-track">
-                <div class="hbar-seg hbar-seg--keep"    :style="{ width: Math.round(d.keep/(d.keep+d.dispose)*100) + '%' }" />
-                <div class="hbar-seg hbar-seg--dispose" :style="{ width: Math.round(d.dispose/(d.keep+d.dispose)*100) + '%' }" />
-              </div>
-              <span class="hbar-item__pct">{{ Math.round(d.keep/(d.keep+d.dispose)*100) }}%</span>
+        </div>
+        <div class="hbar-list">
+          <div v-for="d in breakdownTab === 'dept' ? deptDecision : techDecision" :key="d.name" class="hbar-item">
+            <span class="hbar-item__label">{{ d.name }}</span>
+            <div class="hbar-track">
+              <div class="hbar-seg hbar-seg--keep"    :style="{ width: Math.round(d.maintain/(d.maintain+d.abandon)*100) + '%' }" :title="`유지 ${d.maintain}건`" />
+              <div class="hbar-seg hbar-seg--dispose" :style="{ width: Math.round(d.abandon/(d.maintain+d.abandon)*100) + '%' }" :title="`포기 ${d.abandon}건`" />
             </div>
+            <span class="hbar-item__pct">{{ Math.round(d.maintain/(d.maintain+d.abandon)*100) }}%</span>
           </div>
         </div>
       </div>
@@ -346,32 +344,68 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
-import {
-  portfolioApi,
-  type PortfolioDistributionResponse,
-  type PortfolioTrendsResponse,
-  type PortfolioDecisionResponse,
-  type PortfolioInsightItem,
+import { portfolioApi } from '@/api/portfolio'
+import type {
+  TechFieldItem, CountryItem, DepartmentItem, GradeDistributionItem,
+  YearlyTrendItem, AnnuityTrendItem, QuarterDecisionItem, BreakdownDecisionItem,
 } from '@/api/portfolio'
 
 // ── 색상 팔레트 ──────────────────────────────────────
 const techColors  = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#6366f1', '#ABACED', '#67E2AB']
-const trendColors = ['#67E2AB', '#FFBC5E']
+const trendColors = ['#ABACED', '#67E2AB', '#FFBC5E']
 
-// ── API 데이터 ───────────────────────────────────────
-const distribution = ref<PortfolioDistributionResponse | null>(null)
-const trends       = ref<PortfolioTrendsResponse | null>(null)
-const decisions    = ref<PortfolioDecisionResponse | null>(null)
-const insights     = ref<PortfolioInsightItem[]>([])
+const isLoading = ref(false)
 
-// ── 분포 ─────────────────────────────────────────────
-const totalPatents  = computed(() => distribution.value?.totalPatents ?? 0)
-const treemapItems  = computed(() => distribution.value?.techFields ?? [])
-const countryItems  = computed(() => distribution.value?.countries ?? [])
-const totalCountry  = computed(() => countryItems.value.reduce((s, i) => s + i.count, 0))
-const deptItems     = computed(() => distribution.value?.departments ?? [])
+// ── 분포 데이터 ──────────────────────────────────────
+const treemapItems = ref<TechFieldItem[]>([])
+const totalPatents = computed(() => treemapItems.value.reduce((s, i) => s + i.count, 0))
+const countryItems = ref<CountryItem[]>([])
+const deptItems    = ref<DepartmentItem[]>([])
+const allFieldDist = ref<GradeDistributionItem[]>([])
 
-// ── 기술 분야 도넛 세그먼트 ──────────────────────────
+// ── 추이 데이터 ──────────────────────────────────────
+const trendData    = ref<YearlyTrendItem[]>([])
+const annuityData  = ref<AnnuityTrendItem[]>([])
+
+// ── 결정 데이터 ──────────────────────────────────────
+const decisionData = ref<QuarterDecisionItem[]>([])
+const deptDecision = ref<BreakdownDecisionItem[]>([])
+const techDecision = ref<BreakdownDecisionItem[]>([])
+
+// ── 인사이트 ─────────────────────────────────────────
+const insights = ref<string[]>([])
+
+async function fetchAll() {
+  isLoading.value = true
+  try {
+    const [dist, trends, decisions, ins] = await Promise.all([
+      portfolioApi.getPortfolioDistribution(),
+      portfolioApi.getPortfolioTrends(),
+      portfolioApi.getPortfolioDecisions(),
+      portfolioApi.getPortfolioInsights(),
+    ])
+    treemapItems.value = dist.byTechField        ?? []
+    countryItems.value = dist.byFilingCountry    ?? []
+    deptItems.value    = dist.byDepartment       ?? []
+    allFieldDist.value = dist.byGrade            ?? []
+    trendData.value    = trends.yearlyPatentTrends ?? []
+    annuityData.value  = trends.yearlyAnnuityCosts ?? []
+    decisionData.value = decisions.byQuarter     ?? []
+    deptDecision.value = decisions.byDepartment  ?? []
+    techDecision.value = decisions.byTechField   ?? []
+    insights.value     = ins.insights            ?? []
+  } catch (err) {
+    console.error('PortfolioView/fetchAll:', err)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => fetchAll())
+
+// ── 도넛 세그먼트 ────────────────────────────────────
+const totalCountry = computed(() => countryItems.value.reduce((s, i) => s + i.count, 0))
+
 const techDonutSegments = computed(() => {
   const circ = 314
   const total = totalPatents.value
@@ -422,6 +456,12 @@ const pad = { t: 14, b: 26, l: 8, r: 8 }
 const plotW = svgW - pad.l - pad.r
 const plotH = svgH - pad.t - pad.b
 
+const maxTrend = computed(() =>
+  trendData.value.length
+    ? Math.max(...trendData.value.flatMap(d => [d.applications, d.registrations, d.expiries]))
+    : 1
+)
+
 function trendX(i: number) {
   const len = trendData.value.length
   return len > 1 ? pad.l + (i / (len - 1)) * plotW : pad.l + plotW / 2
@@ -430,10 +470,11 @@ function trendY(v: number, max: number) {
   return pad.t + (1 - v / max) * plotH
 }
 
-type TrendKey = 'registered' | 'expired'
+type TrendKey = 'applications' | 'registrations' | 'expiries'
 const trendSeries: { key: TrendKey; label: string }[] = [
-  { key: 'registered', label: '등록' },
-  { key: 'expired',    label: '소멸' },
+  { key: 'applications',  label: '출원' },
+  { key: 'registrations', label: '등록' },
+  { key: 'expiries',      label: '소멸' },
 ]
 
 const trendLines = computed(() =>
@@ -454,16 +495,9 @@ const trendDots = computed(() =>
   )
 )
 
-// ── 분기별 재평가 결정 데이터 ─────────────────────────
-const decisionData = computed(() => decisions.value?.quarters ?? [])
-
-type DecisionItem = { year: string; keep: number; dispose: number; inProgress: boolean }
-function keepPct(d: DecisionItem)    { return d.keep + d.dispose ? Math.round(d.keep    / (d.keep + d.dispose) * 100) : 0 }
-function disposePct(d: DecisionItem) { return d.keep + d.dispose ? Math.round(d.dispose / (d.keep + d.dispose) * 100) : 0 }
-
-// ── 분기별 사업부/기술분야 결정 데이터 ───────────────────
-// API returns a single set of byDepartment/byTechField (not per quarter)
-type BreakdownItem = { name: string; keep: number; dispose: number }
+// ── 분기별 재평가 결정 ────────────────────────────────
+function keepPct(d: { maintain: number; abandon: number })    { return Math.round(d.maintain / (d.maintain + d.abandon) * 100) }
+function disposePct(d: { maintain: number; abandon: number }) { return Math.round(d.abandon  / (d.maintain + d.abandon) * 100) }
 
 const selectedQuarter = ref('')
 const breakdownTab = ref<'dept' | 'tech'>('dept')
@@ -504,19 +538,19 @@ function hideDonutTooltip() { donutTooltip.value.visible = false }
 
 const tooltip = ref<{
   visible: boolean; x: number; y: number;
-  year: string; keep: number; dispose: number; keepPct: number; disposePct: number
-}>({ visible: false, x: 0, y: 0, year: '', keep: 0, dispose: 0, keepPct: 0, disposePct: 0 })
+  quarter: string; maintain: number; abandon: number; keepPct: number; disposePct: number
+}>({ visible: false, x: 0, y: 0, quarter: '', maintain: 0, abandon: 0, keepPct: 0, disposePct: 0 })
 
-function showTooltip(e: MouseEvent, d: DecisionItem) {
+function showTooltip(e: MouseEvent, d: { quarter: string; maintain: number; abandon: number }) {
   const rect = (e.currentTarget as HTMLElement).closest('.decision-chart')!.getBoundingClientRect()
   const el = (e.currentTarget as HTMLElement).getBoundingClientRect()
   tooltip.value = {
     visible: true,
     x: el.left - rect.left + el.width / 2,
     y: el.top - rect.top - 8,
-    year: d.year,
-    keep: d.keep,
-    dispose: d.dispose,
+    quarter: d.quarter,
+    maintain: d.maintain,
+    abandon: d.abandon,
     keepPct: keepPct(d),
     disposePct: disposePct(d),
   }
@@ -545,7 +579,7 @@ const allFieldDist = computed(() => {
 })
 
 const selectedField = ref('전체')
-const selectedFieldData = computed(() => allFieldDist.value.find(f => f.name === selectedField.value))
+const selectedFieldData = computed(() => allFieldDist.value?.find(f => f.name === selectedField.value) ?? null)
 
 // ── 연차료 추이 ──────────────────────────────────────
 const ANNUITY_DATA = computed(() => trends.value?.annuityTrends ?? [])

@@ -14,22 +14,26 @@ export interface ExpiringPatentItem {
 }
 
 export interface ExpiringPeriodSummary {
-  period: string       // '3m' | '6m' | '1y' | '3y' | '5y'
-  count: number
-  byTechField: Record<string, number>
+  months: number
+  byTechField: { name: string; count: number }[]
 }
 
 export interface ExpiringPatentSummaryResponse {
-  totalCount: number
   periods: ExpiringPeriodSummary[]
 }
 
-export type ExpiringPatentCalendarResponse = ExpiringPatentItem[]
+export interface MonthBucket {
+  month: number
+  count: number
+  patents: { id: number; title: string; applicationNumber: string; expiryDate: string; techField: string }[]
+}
+
+export interface ExpiringPatentCalendarResponse {
+  months: MonthBucket[]
+}
 
 export interface ExpiringPatentParams {
-  departmentId?: number
-  period?: string
-  sort?: string
+  months?: number
   page?: number
   size?: number
 }
@@ -44,14 +48,13 @@ export const expiringApi = {
     return apiClient.get('/patents/expiring', { params: p })
   },
 
-  getExpiringPatentsSummary: async (params?: { departmentId?: number }): Promise<ExpiringPatentSummaryResponse> => {
-    return apiClient.get('/patents/expiring/summary', { params })
+  getExpiringPatentsSummary: async (): Promise<ExpiringPatentSummaryResponse> => {
+    return apiClient.get('/patents/expiring/summary')
   },
 
   getExpiringPatentsCalendar: async (
     year: number,
-    params?: { departmentId?: number },
   ): Promise<ExpiringPatentCalendarResponse> => {
-    return apiClient.get('/patents/expiring/calendar', { params: { year, ...params } })
+    return apiClient.get('/patents/expiring/calendar', { params: { year } })
   },
 }

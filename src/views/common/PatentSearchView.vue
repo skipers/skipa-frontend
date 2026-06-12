@@ -150,6 +150,9 @@ import { usePagination } from '@/composables/usePagination'
 import PatentTable, { type PatentRow } from '@/components/patent/PatentTable.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
 import type { Department } from '@/types'
+import { usePatentDatabase } from '@/composables/usePatentDatabase'
+
+const { approvedPatents } = usePatentDatabase()
 
 const router  = useRouter()
 const auth    = useAuthStore()

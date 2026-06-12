@@ -29,18 +29,17 @@ export interface GradeDistributionItem {
 }
 
 export interface PortfolioDistributionResponse {
-  totalPatents: number
-  techFields: TechFieldItem[]
-  countries: CountryItem[]
-  departments: DepartmentItem[]
-  gradeDistribution: GradeDistributionItem[]
+  byTechField: TechFieldItem[]
+  byFilingCountry: CountryItem[]
+  byDepartment: DepartmentItem[]
+  byGrade: GradeDistributionItem[]
 }
 
 export interface YearlyTrendItem {
   year: string
-  filed: number
-  registered: number
-  expired: number
+  applications: number
+  registrations: number
+  expiries: number
 }
 
 export interface AnnuityTrendItem {
@@ -49,33 +48,30 @@ export interface AnnuityTrendItem {
 }
 
 export interface PortfolioTrendsResponse {
-  yearlyTrends: YearlyTrendItem[]
-  annuityTrends: AnnuityTrendItem[]
+  yearlyPatentTrends: YearlyTrendItem[]
+  yearlyAnnuityCosts: AnnuityTrendItem[]
 }
 
 export interface QuarterDecisionItem {
-  year: string
-  keep: number
-  dispose: number
-  inProgress: boolean
+  quarter: string
+  maintain: number
+  abandon: number
 }
 
 export interface BreakdownDecisionItem {
   name: string
-  keep: number
-  dispose: number
+  maintain: number
+  abandon: number
 }
 
 export interface PortfolioDecisionResponse {
-  quarters: QuarterDecisionItem[]
+  byQuarter: QuarterDecisionItem[]
   byDepartment: BreakdownDecisionItem[]
   byTechField: BreakdownDecisionItem[]
 }
 
-export interface PortfolioInsightItem {
-  type: string
-  icon: string
-  text: string
+export interface PortfolioInsightsResponse {
+  insights: string[]
 }
 
 // ── API ──────────────────────────────────────────────
@@ -93,7 +89,7 @@ export const portfolioApi = {
     return apiClient.get('/portfolio/decisions')
   },
 
-  getPortfolioInsights: async (): Promise<PortfolioInsightItem[]> => {
+  getPortfolioInsights: async (): Promise<PortfolioInsightsResponse> => {
     return apiClient.get('/portfolio/insights')
   },
 }

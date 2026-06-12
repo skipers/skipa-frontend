@@ -236,6 +236,126 @@
             {{ resubmitTargetId ? '재신청' : '등록 신청' }}
           </button>
         </div>
+
+        <!-- 출원 및 등록 -->
+        <div class="form-section">
+          <div class="form-section__title">출원 및 등록</div>
+          <div class="form-grid">
+            <label class="form-field">
+              <span class="form-label">출원국</span>
+              <input class="form-input" type="text" v-model="form.country" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">상태</span>
+              <select class="form-select" v-model="form.patentStatus">
+                <option>등록</option><option>출원</option><option>검토 중</option><option>포기</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="form-label">공동출원여부</span>
+              <select class="form-select" v-model="form.coApplicant">
+                <option>아니오</option><option>예</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="form-label">공동출원인명</span>
+              <input class="form-input" type="text" v-model="form.coApplicantName" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">출원일</span>
+              <input class="form-input" type="date" v-model="form.applicationDate" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">등록일</span>
+              <input class="form-input" type="date" v-model="form.registrationDate" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">출원번호</span>
+              <input class="form-input" type="text" v-model="form.applicationNumber" placeholder="10-2026-0000000" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">등록번호</span>
+              <input class="form-input" type="text" v-model="form.registrationNumber" placeholder="10-0000000" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">IPC</span>
+              <input class="form-input" type="text" v-model="form.ipc" />
+            </label>
+            <label class="form-field">
+              <span class="form-label">예상 소멸일</span>
+              <input class="form-input" type="date" v-model="form.expiryDate" />
+            </label>
+          </div>
+        </div>
+
+        <!-- 내용 요약 -->
+        <div class="form-section">
+          <div class="form-section__title">내용 요약</div>
+          <div class="form-grid">
+            <label class="form-field full">
+              <span class="form-label">특허 개요</span>
+              <textarea class="form-textarea" v-model="form.summary" placeholder="특허의 핵심 기술 내용을 요약해 주세요." />
+            </label>
+            <label class="form-field full">
+              <span class="form-label">핵심 내용</span>
+              <textarea class="form-textarea" v-model="form.coreContent" />
+            </label>
+          </div>
+        </div>
+
+        <!-- 행정 상태 -->
+        <div class="form-section">
+          <div class="form-section__title">행정 상태</div>
+          <div class="ah-stack">
+            <div v-for="(entry, idx) in adminHistory" :key="idx" class="ah-row">
+              <select :class="['ah-type-select', `ah-type-select--${entry.type}`]" v-model="entry.type">
+                <option value="file">출원</option>
+                <option value="pub">공개</option>
+                <option value="reg">등록</option>
+                <option value="rejected">거절</option>
+                <option value="invalid">무효</option>
+                <option value="expired">소멸</option>
+                <option value="withdraw">취하</option>
+                <option value="abandon">포기</option>
+              </select>
+              <input class="form-input ah-date" type="date" v-model="entry.date" />
+              <button class="btn-ah-del" type="button" @click="adminHistory.splice(idx, 1)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button class="btn-ah-add" type="button" @click="adminHistory.push({ type: 'file', date: '' })">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            상태 추가
+          </button>
+        </div>
+
+        <!-- 하단 버튼 -->
+        <div class="form-footer">
+          <button class="btn-reset" type="button" @click="resetForm">초기화</button>
+          <button class="btn-submit" type="button" :disabled="!form.title.trim()" @click="handleSubmit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/>
+            </svg>
+            {{ resubmitTargetId ? '재신청' : '등록 신청' }}
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <!-- ── 탭 2: 신청 현황 ── -->
+    <template v-else>
+      <div v-if="!myApplications.length" class="list-empty-card">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <p>아직 신청한 특허가 없습니다.</p>
+        <button class="btn-outline" @click="activeTab = 'write'">신규 신청하기</button>
       </div>
     </template>
 
@@ -322,7 +442,7 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePatentApplications, type PatentApplication } from '@/composables/usePatentApplications'
 import { useAuthStore } from '@/stores/auth'
-import TagInput from '@/components/ui/TagInput.vue'
+import { patentsApi, type PatentCreateRequest } from '@/api/patents'
 
 const router = useRouter()
 const route  = useRoute()
@@ -330,6 +450,7 @@ const auth = useAuthStore()
 const { applications, submit, resubmit, withdraw, remove } = usePatentApplications()
 
 const confirmDeleteId = ref<number | null>(null)
+const submitted = ref(false)
 
 // ── 탭 ──────────────────────────────────────────────
 type TabKey = 'write' | 'history'
@@ -370,7 +491,7 @@ const adminHistory = ref<{ type: string; date: string }[]>([])
 
 const form = reactive({
   title: '', managementNumber: '', inventors: '', applicant: '',
-  bizField: '', techField: '', relatedProducts: '', country: 'KR',
+  bizField: '', techField: '', relatedProducts: [] as string[], country: 'KR',
   patentStatus: '출원', coApplicant: '아니오', coApplicantName: '',
   applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
   applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
@@ -386,7 +507,7 @@ function handleFileSelect(e: Event) {
 function resetForm() {
   Object.assign(form, {
     title: '', managementNumber: '', inventors: '', applicant: '',
-    bizField: '', techField: '', relatedProducts: '', country: 'KR',
+    bizField: '', techField: '', relatedProducts: [], country: 'KR',
     patentStatus: '출원', coApplicant: '아니오', coApplicantName: '',
     applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
     applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
@@ -406,10 +527,10 @@ function startResubmit(app: PatentApplication) {
     title: app.title,
     managementNumber: app.managementNumber,
     inventors: app.inventors,
-    applicant: app.applicant ?? '',
+    finalTitle: app.finalTitle,
     bizField: app.bizField,
     techField: app.techField,
-    relatedProducts: app.relatedProducts,
+    relatedProducts: Array.isArray(app.relatedProducts) ? app.relatedProducts : (app.relatedProducts ? [app.relatedProducts] : []),
     country: app.country,
     patentStatus: app.patentStatus,
     coApplicant: app.coApplicant,

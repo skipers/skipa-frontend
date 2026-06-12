@@ -41,6 +41,28 @@
           <p>검토할 신청이 없습니다.</p>
         </div>
       </div>
+      <button class="btn-new-register" @click="openRegisterModal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        신규 등록
+      </button>
+    </div>
+
+    <!-- 탭 -->
+    <div class="tab-bar">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="tab-btn"
+        :class="{ 'tab-btn--active': activeTab === tab.key }"
+        @click="activeTab = tab.key"
+      >
+        <span v-html="tab.icon" class="tab-btn__icon" />
+        {{ tab.label }}
+        <span v-if="tab.key === 'review' && pendingCount > 0" class="tab-badge tab-badge--alert">{{ pendingCount }}</span>
+      </button>
+    </div>
 
       <div v-else class="review-list">
         <div
@@ -407,15 +429,14 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { MOCK_PATENTS } from '@/mocks/data'
+import { patentsApi, type PatentCreateRequest } from '@/api/patents'
 import TagInput from '@/components/ui/TagInput.vue'
 import { usePatentApplications } from '@/composables/usePatentApplications'
-import { usePatentDatabase } from '@/composables/usePatentDatabase'
+import { usePatentDatabase, type DBPatentEntry } from '@/composables/usePatentDatabase'
 
 const router = useRouter()
 const { applications } = usePatentApplications()
-const { addApprovedPatent } = usePatentDatabase()
-
+const { approvedPatents: patentList, addApprovedPatent } = usePatentDatabase()
 // ── 탭 ──────────────────────────────────────────────
 type TabKey = 'review' | 'list'
 const activeTab = ref<TabKey>('review')
@@ -432,6 +453,7 @@ const tabs: { key: TabKey; label: string; icon: string }[] = [
     icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
   },
 ]
+  
 
 // ── 신청 검토 ────────────────────────────────────────
 const reviewApplications = computed(() =>
@@ -487,6 +509,16 @@ function clearForm() {
   editTargetTitle.value = ''
 }
 
+    // 5. 결과 조회 후 폼 자동 입력
+    const result = await patentsApi.getExtractJobResult(jobId)
+    if (result.result) fillFormFromResult(result.result)
+  } catch (err) {
+    console.error('PDF 추출 오류:', err)
+  } finally {
+    isExtracting.value = false
+  }
+}
+
 function openRegisterModal() {
   clearForm()
   showRegisterModal.value = true
@@ -496,49 +528,68 @@ function closeRegisterModal() {
   showRegisterModal.value = false
   clearForm()
 }
+}
 
 function handleFileSelect(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (file) uploadedFile.value = file
 }
 
-function handleSave() {
-  const mappedStatus = form.status === '등록' ? 'REGISTERED' : form.status === '포기' ? 'ABANDONED' : 'EXPIRED'
-
-  if (editMode.value && editTargetId.value !== null) {
-    const idx = patentList.value.findIndex(p => p.id === editTargetId.value)
-    if (idx !== -1) {
-      patentList.value[idx] = {
-        ...patentList.value[idx],
+async function handleSave() {
+  if (isSubmitting.value) return
+  isSubmitting.value = true
+  try {
+    if (editMode.value && editTargetId.value !== null) {
+      const mappedStatus = form.status === '등록' ? 'REGISTERED' : form.status === '포기' ? 'ABANDONED' : 'EXPIRED'
+      const idx = patentList.value.findIndex(p => p.id === editTargetId.value)
+      if (idx !== -1) {
+        patentList.value[idx] = {
+          ...patentList.value[idx],
+          title: form.title,
+          applicationNumber: form.applicationNumber,
+          applicationDate: form.applicationDate,
+          techField: form.techField,
+          status: mappedStatus,
+        }
+      }
+      closeRegisterModal()
+    } else {
+      await patentsApi.createPatent({
+        title: form.finalTitle || form.title,
+        applicationNumber: form.applicationNumber,
+        registrationNumber: form.registrationNumber || undefined,
+        managementNumber: form.managementNumber || undefined,
+        inventor: form.inventors || undefined,
+        applicationDate: form.applicationDate || undefined,
+        registrationDate: form.registrationDate || undefined,
+        ipcCodes: form.ipc ? form.ipc.map(s => s.trim()).filter(Boolean) : undefined,
+        expiryDate: form.expiryDate || undefined,
+        businessField: form.bizField || undefined,
+        techField: form.techField || undefined,
+        relatedProducts: form.relatedProducts
+          ? form.relatedProducts.split(',').map(s => s.trim()).filter(Boolean)
+          : undefined,
+        summary: form.summary || undefined,
+        filingCountry: form.country || undefined,
+        // TODO: 확인 필요 - isJointApplication / jointApplicant 필드 API 지원 여부
+      })
+      addApprovedPatent({
         title: form.title,
         applicationNumber: form.applicationNumber,
+        registrationNumber: form.registrationNumber,
         applicationDate: form.applicationDate,
+        expiryDate: form.expiryDate,
         techField: form.techField,
-        status: mappedStatus,
-      }
+        status: 'REGISTERED',
+        summary: form.summary,
+        citationCount: 0,
+      })
+      router.push('/legal/patent-search')
     }
-  } else {
-    const newId = Date.now()
-    patentList.value.unshift({
-      id: newId,
-      title: form.title,
-      applicationNumber: form.applicationNumber,
-      applicationDate: form.applicationDate,
-      techField: form.techField,
-      status: mappedStatus,
-      dept: 'Legal',
-    })
-    addApprovedPatent({
-      title: form.title,
-      applicationNumber: form.applicationNumber,
-      registrationNumber: form.registrationNumber,
-      applicationDate: form.applicationDate,
-      expiryDate: form.expiryDate,
-      techField: form.techField,
-      status: mappedStatus,
-      summary: form.summary,
-      citationCount: 0,
-    })
+  } catch (err) {
+    console.error('특허 저장 오류:', err)
+  } finally {
+    isSubmitting.value = false
   }
   closeRegisterModal()
 }
@@ -594,6 +645,7 @@ function startEdit(p: typeof patentList.value[0]) {
   })
   showRegisterModal.value = true
 }
+.list-header__cell--action { text-align: right; }
 
 // ── 삭제 ────────────────────────────────────────────
 const deleteTarget = ref<typeof patentList.value[0] | null>(null)
@@ -615,6 +667,10 @@ function handleDelete() {
   gap: 20px;
   font-family: 'Pretendard', sans-serif;
 }
+.btn-action--edit { background: var(--color-primary-bg); border: 1px solid var(--color-primary-border); color: var(--color-primary-dark); }
+.btn-action--edit:hover { background: var(--color-primary-border); }
+.btn-action--delete { background: var(--color-danger-bg); border: 1px solid #fecaca; color: var(--color-danger); }
+.btn-action--delete:hover { background: #fecaca; }
 
 .page-header {
   display: flex;
@@ -703,6 +759,11 @@ function handleDelete() {
   padding: 14px 20px;
   border-bottom: 1px solid var(--color-surface-muted);
 }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+.form-field { display: flex; flex-direction: column; gap: 5px; }
+.form-field.full { grid-column: 1 / -1; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+.required { color: var(--color-danger); }
 
 .list-search-wrap { position: relative; flex: 1; max-width: 320px; }
 .list-search-icon {
@@ -836,6 +897,15 @@ function handleDelete() {
   box-shadow: 0 32px 80px rgba(15, 23, 42, 0.22);
   overflow: hidden;
 }
+.btn-submit {
+  display: flex; align-items: center; gap: 8px; padding: 9px 24px;
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: #fff; border: none; border-radius: 9px;
+  font-size: 13.5px; font-weight: 600; font-family: inherit;
+  cursor: pointer; box-shadow: 0 4px 12px rgba(79,70,229,.25); transition: opacity .15s;
+}
+.btn-submit:disabled { opacity: .45; cursor: not-allowed; }
+.btn-submit:not(:disabled):hover { opacity: .9; }
 
 .reg-panel__head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
@@ -865,6 +935,7 @@ function handleDelete() {
   border-top: 1px solid var(--color-border);
   flex-shrink: 0;
 }
+.btn-delete-confirm:hover { opacity: .85; }
 
 /* ── 폼 공통 ── */
 .upload-panel {

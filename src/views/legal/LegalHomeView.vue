@@ -458,7 +458,7 @@ const recentReplies = computed(() =>
 )
 
 function decisionLabel(d: string) {
-  return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
+  return { KEEP: '유지', MAINTAIN: '유지', DISPOSE: '포기', ABANDON: '포기' }[d] ?? d
 }
 function openReply(id: number) {
   router.push(`/legal/reevaluation?tab=unread&open=${id}`)
@@ -1103,13 +1103,15 @@ onMounted(loadAll)
 }
 
 .reply-item__badge {
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 700;
   flex-shrink: 0;
 }
-.reply-badge--keep    { background: var(--color-success-bg); color: var(--color-success-dark); }
-.reply-badge--sell    { background: var(--color-primary-bg); color: var(--color-primary-darker); }
-.reply-badge--dispose { background: var(--color-danger-bg); color: var(--color-danger); }
+.reply-badge--keep     { background: var(--color-success-bg); color: var(--color-success-dark); }
+.reply-badge--maintain { background: var(--color-success-bg); color: var(--color-success-dark); }
+.reply-badge--sell     { background: var(--color-primary-bg); color: var(--color-primary-darker); }
+.reply-badge--dispose  { background: var(--color-danger-bg); color: var(--color-danger); }
+.reply-badge--abandon  { background: var(--color-danger-bg); color: var(--color-danger); }
 </style>

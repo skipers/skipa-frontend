@@ -163,10 +163,14 @@
             <h2 class="section-heading">내용 요약</h2>
           </div>
           <div v-if="app.summary" class="info-section">
-            <h3 class="info-section__title">발명의 요약</h3>
+            <h3 class="info-section__title">특허 개요</h3>
             <p class="info-text">{{ app.summary }}</p>
           </div>
-          <p v-if="!app.summary" class="info-empty">내용 없음</p>
+          <div v-if="app.coreContent" class="info-section">
+            <h3 class="info-section__title">핵심 내용</h3>
+            <p class="info-text">{{ app.coreContent }}</p>
+          </div>
+          <p v-if="!app.summary && !app.coreContent" class="info-empty">내용 없음</p>
         </section>
 
       </div>
