@@ -210,14 +210,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { MOCK_PATENTS, MOCK_REEVAL, RECENT_SUBMISSIONS } from '@/mocks/data'
+import { dashboardApi, type BusinessDashboardResponse } from '@/api/dashboard'
 import { usePatentApplications } from '@/composables/usePatentApplications'
 
 const auth   = useAuthStore()
 const router = useRouter()
 const loading = ref(false)
+const error = ref<string | null>(null)
+const dashboardData = ref<BusinessDashboardResponse | null>(null)
 
+// ── 마감일 (reviewCycle.endDate 우선, 없으면 현재 분기 말일) ──
 const deadline = computed(() => {
+  const endDate = dashboardData.value?.reviewCycle?.endDate
+  if (endDate) return new Date(endDate)
   const d = new Date()
   const q = Math.ceil((d.getMonth() + 1) / 3)
   return new Date(d.getFullYear(), q * 3, 0)
@@ -232,28 +237,36 @@ const deadlineStr = computed(() =>
 )
 
 const quarterLabel = computed(() => {
+  const rc = dashboardData.value?.reviewCycle
+  if (rc) return `${rc.year}년 ${rc.quarter}분기`
   const d = new Date()
   return `${d.getFullYear()}년 ${Math.ceil((d.getMonth() + 1) / 3)}분기`
 })
 
-const totalCount     = ref(6)
-const submittedCount = ref(3)
+// ── KPI ──────────────────────────────────────────────
+const totalCount     = computed(() => dashboardData.value?.kpi.total     ?? 0)
+const submittedCount = computed(() => dashboardData.value?.kpi.submitted ?? 0)
 const pendingCount   = computed(() => totalCount.value - submittedCount.value)
 const submitPct      = computed(() =>
   totalCount.value ? Math.round((submittedCount.value / totalCount.value) * 100) : 0
 )
 
-const pendingItems = ref(
-  MOCK_REEVAL
-    .filter(r => r.deptId === 2 && r.decision === null)
-    .map(r => {
-      const p = MOCK_PATENTS.find(p => p.id === r.patentId)!
-      return { id: p.id, title: p.title }
-    })
+// ── 미제출 특허 ──────────────────────────────────────
+const pendingItems = computed(() =>
+  (dashboardData.value?.pendingPatents ?? []).map(p => ({ id: p.patentId, title: p.title }))
 )
 
-const recentSubmissions = ref(RECENT_SUBMISSIONS)
+// ── 최근 제출 이력 ────────────────────────────────────
+const recentSubmissions = computed(() =>
+  (dashboardData.value?.recentSubmissions ?? []).map(s => ({
+    id: s.reviewId,
+    decision: s.opinion,
+    patentTitle: s.title,
+    decidedAt: s.submittedAt,
+  }))
+)
 
+// ── 신규 특허 신청 (usePatentApplications composable) ─
 const { applications } = usePatentApplications()
 const recentApplications = computed(() =>
   [...applications.value]
@@ -265,44 +278,57 @@ function appStatusLabel(s: string) {
   return { pending: '검토중', approved: '승인', rejected: '거절', withdrawn: '철회' }[s] ?? s
 }
 
-const patentStatItems = [
-  { label: '유지',   count: 6, color: '#67E2AB', pct: 75 },
-  { label: '소멸/포기', count: 1, color: '#E88989', pct: 13 },
-]
+// ── 담당 특허 현황 도넛 ──────────────────────────────
+const patentStatItems = computed(() => {
+  const active   = dashboardData.value?.patentStatus.active   ?? 0
+  const inactive = dashboardData.value?.patentStatus.inactive ?? 0
+  const total    = active + inactive
+  return [
+    { label: '유지',      count: active,   color: '#67E2AB', pct: total ? Math.round((active   / total) * 100) : 0 },
+    { label: '소멸/포기', count: inactive, color: '#E88989', pct: total ? Math.round((inactive / total) * 100) : 0 },
+  ]
+})
 
-const patentTotal = patentStatItems.reduce((s, i) => s + i.count, 0)
-const patentDonutSegs = (() => {
-  const circ = 314
-  let offset = -circ / 4
-  return patentStatItems.map(item => {
-    const dash = Math.round((item.count / patentTotal) * circ)
-    const seg = { dash, offset }
+const patentTotal = computed(() => patentStatItems.value.reduce((s, i) => s + i.count, 0))
+
+const patentDonutSegs = computed(() => {
+  const circ  = 314
+  const total = patentTotal.value || 1
+  let offset  = -circ / 4
+  return patentStatItems.value.map(item => {
+    const dash = Math.round((item.count / total) * circ)
+    const seg  = { dash, offset }
     offset -= dash
     return seg
   })
-})()
+})
 
 // ── 연도별 추이 ──────────────────────────────────────
-const bizTrendData = [
-  { year: '2020', filed: 2, expired: 0 },
-  { year: '2021', filed: 3, expired: 1 },
-  { year: '2022', filed: 2, expired: 0 },
-  { year: '2023', filed: 4, expired: 1 },
-  { year: '2024', filed: 3, expired: 2 },
-  { year: '2025', filed: 2, expired: 1 },
-  { year: '2026', filed: 1, expired: 0 },
-]
-const tW = 620, tH = 118
-const tPad = { t: 24, b: 28, l: 18, r: 12 }
+const bizTrendData = computed(() =>
+  (dashboardData.value?.yearlyTrends ?? []).map(t => ({
+    year:    String(t.year),
+    filed:   t.applications,
+    expired: t.expiredOrAbandoned,
+  }))
+)
+
+const tW = 540, tH = 130
+const tPad   = { t: 28, b: 22, l: 18, r: 12 }
 const tPlotH = tH - tPad.t - tPad.b
 const tPlotW = tW - tPad.l - tPad.r
-const tMaxVal = Math.max(...bizTrendData.flatMap(d => [d.filed, d.expired]))
 
-function tX(i: number) { return tPad.l + (i / (bizTrendData.length - 1)) * tPlotW }
-function tY(v: number) { return tPad.t + (1 - v / tMaxVal) * tPlotH }
+const tMaxVal = computed(() =>
+  Math.max(...bizTrendData.value.flatMap(d => [d.filed, d.expired]), 1)
+)
 
-const filedPoints  = bizTrendData.map((d, i) => `${tX(i)},${tY(d.filed)}`).join(' ')
-const expiredPoints = bizTrendData.map((d, i) => `${tX(i)},${tY(d.expired)}`).join(' ')
+function tX(i: number) {
+  const len = bizTrendData.value.length
+  return tPad.l + (len > 1 ? i / (len - 1) : 0) * tPlotW
+}
+function tY(v: number) { return tPad.t + (1 - v / tMaxVal.value) * tPlotH }
+
+const filedPoints   = computed(() => bizTrendData.value.map((d, i) => `${tX(i)},${tY(d.filed)}`).join(' '))
+const expiredPoints = computed(() => bizTrendData.value.map((d, i) => `${tX(i)},${tY(d.expired)}`).join(' '))
 
 function decisionLabel(d: string) {
   return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
@@ -312,10 +338,23 @@ function decisionIcon(d: string) {
 }
 function formatDate(d?: string) {
   if (!d) return '—'
-  return d.replace(/-/g, '.')
+  return d.replace(/-/g, '.').slice(0, 10)
 }
 
-onMounted(() => { loading.value = false })
+async function fetchDashboard() {
+  loading.value = true
+  error.value = null
+  try {
+    dashboardData.value = await dashboardApi.getBusinessDashboard()
+  } catch (e) {
+    console.error('비즈니스 대시보드 조회 실패:', e)
+    error.value = '데이터를 불러오지 못했습니다.'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchDashboard)
 </script>
 
 <style scoped>

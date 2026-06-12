@@ -186,8 +186,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { expiringApi } from '@/api/expiring'
 
 const props = defineProps<{ deptId?: number }>()
 const { deptId } = props
@@ -202,8 +203,6 @@ const view         = ref<'timeline' | 'calendar'>('timeline')
 const activeFilter = ref<'all' | '3m' | '6m' | '1y' | '3y' | '5y'>('5y')
 
 // ── 색상 ────────────────────────────────────────────
-const techColors = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#ABACED']
-
 const periodColors = [
   { label: '3개월 이내', color: '#E88989' },
   { label: '6개월 이내', color: '#FFBC5E' },
@@ -214,42 +213,74 @@ const periodColors = [
 
 const periodDays: Record<string, number> = { '3m': 90, '6m': 180, '1y': 365, '3y': 1095, '5y': 1825 }
 
-const selectedBarLabel = computed(() => {
-  if (activeFilter.value === 'all') return '전체'
-  return (periodBarData.find(p => p.value === activeFilter.value)?.label ?? '') + ' 이내'
-})
-
-// ── 기간별 막대 차트 ─────────────────────────────────
-const periodBarData = [
-  { value: '3m',  label: '3개월', count: 8,   color: '#E88989' },
-  { value: '6m',  label: '6개월', count: 15,  color: '#FFBC5E' },
-  { value: '1y',  label: '1년',   count: 38,  color: '#ABACED' },
-  { value: '3y',  label: '3년',   count: 92,  color: '#84DBED' },
-  { value: '5y',  label: '5년',   count: 147, color: '#67E2AB' },
-]
-const maxPeriod = Math.max(...periodBarData.map(p => p.count))
-function periodBarH(count: number) {
-  return Math.round((count / maxPeriod) * 120) + 16
-}
-
-// ── 소멸 목록 (mock) ─────────────────────────────────
+// ── 소멸 목록 ─────────────────────────────────────────
 interface ExpiryItem {
   id: number; title: string; applicationNumber: string
   techField: string; dept: string; deptId?: number; expiryDate: string
   dday: number; urgency: 'critical' | 'warn' | 'normal'
 }
 
-const allItems: ExpiryItem[] = [
-  { id: 1, title: 'NF3 가스 이물질 제거 시스템',     applicationNumber: '10-2026-0012345', techField: '반도체', dept: '반도체 사업부', deptId: 2, expiryDate: '2026-08-15', dday: 75,  urgency: 'critical' },
-  { id: 2, title: '플라즈마 식각 장치 제어 방법',      applicationNumber: '10-2025-0098732', techField: '반도체', dept: '반도체 사업부', deptId: 2, expiryDate: '2026-09-22', dday: 113, urgency: 'warn' },
-  { id: 3, title: '배터리 전극 코팅 균일도 향상',      applicationNumber: '10-2025-0041200', techField: '배터리', dept: '배터리 사업부', deptId: 3, expiryDate: '2026-10-05', dday: 126, urgency: 'warn' },
-  { id: 4, title: '신소재 열 전도성 향상 방법',         applicationNumber: '10-2024-0081900', techField: '소재',   dept: '소재 사업부',  deptId: 5, expiryDate: '2027-01-20', dday: 233, urgency: 'normal' },
-  { id: 5, title: 'AI 기반 품질 검사 자동화 시스템',   applicationNumber: '10-2026-0031891', techField: 'AI/SW',  dept: 'AI 사업부',    deptId: 4, expiryDate: '2027-03-01', dday: 273, urgency: 'normal' },
-  { id: 6, title: '반도체 세정 공정 최적화 방법',      applicationNumber: '10-2023-0055100', techField: '반도체', dept: '반도체 사업부', deptId: 2, expiryDate: '2026-07-10', dday: 39,  urgency: 'critical' },
-]
+function computeDday(expiryDate: string): number {
+  return Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000)
+}
+function computeUrgency(dday: number): 'critical' | 'warn' | 'normal' {
+  if (dday <= 90) return 'critical'
+  if (dday <= 180) return 'warn'
+  return 'normal'
+}
+
+const allItems = ref<ExpiryItem[]>([])
+const loading  = ref(false)
+
+async function fetchItems() {
+  loading.value = true
+  try {
+    const res = await expiringApi.getExpiringPatents({ size: 500, departmentId: props.deptId })
+    allItems.value = res.items.map(item => {
+      const dday = computeDday(item.expiryDate)
+      return {
+        id: item.id,
+        title: item.title,
+        applicationNumber: item.applicationNumber,
+        techField: item.techField,
+        dept: item.departmentName,
+        deptId: item.departmentId,
+        expiryDate: item.expiryDate,
+        dday,
+        urgency: computeUrgency(dday),
+      }
+    })
+  } catch (err) {
+    console.error('소멸 예정 특허 조회 실패:', err)
+    allItems.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => fetchItems())
+
+// ── 기간별 막대 차트 (allItems로부터 계산) ─────────────
+const periodBarData = computed(() => [
+  { value: '3m', label: '3개월', count: allItems.value.filter(i => i.dday <= 90).length,   color: '#E88989' },
+  { value: '6m', label: '6개월', count: allItems.value.filter(i => i.dday <= 180).length,  color: '#FFBC5E' },
+  { value: '1y', label: '1년',   count: allItems.value.filter(i => i.dday <= 365).length,  color: '#ABACED' },
+  { value: '3y', label: '3년',   count: allItems.value.filter(i => i.dday <= 1095).length, color: '#84DBED' },
+  { value: '5y', label: '5년',   count: allItems.value.filter(i => i.dday <= 1825).length, color: '#67E2AB' },
+])
+const maxPeriod = computed(() => Math.max(...periodBarData.value.map(p => p.count), 1))
+
+function periodBarH(count: number) {
+  return Math.round((count / maxPeriod.value) * 120) + 16
+}
+
+const selectedBarLabel = computed(() => {
+  if (activeFilter.value === 'all') return '전체'
+  return (periodBarData.value.find(p => p.value === activeFilter.value)?.label ?? '') + ' 이내'
+})
 
 const scopedItems = computed(() =>
-  props.deptId ? allItems.filter(i => i.deptId === props.deptId) : allItems
+  props.deptId ? allItems.value.filter(i => i.deptId === props.deptId) : allItems.value
 )
 
 const filteredItems = computed(() => {
@@ -259,25 +290,32 @@ const filteredItems = computed(() => {
     .sort((a, b) => a.dday - b.dday)
 })
 
-// ── 기술분야별 스택 바 ───────────────────────────────
+// ── 기술분야별 스택 바 (allItems로부터 계산) ─────────────
 const heatmapFields = ['반도체', '배터리', 'AI/SW', '소재']
 const fieldColors   = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED']
 
-const heatmapData: Record<string, Record<string, number>> = {
-  '반도체': { '3m': 5,  '6m': 9,  '1y': 18, '3y': 38, '5y': 58 },
-  '배터리': { '3m': 2,  '6m': 4,  '1y': 10, '3y': 26, '5y': 42 },
-  'AI/SW':  { '3m': 0,  '6m': 2,  '1y': 4,  '3y': 10, '5y': 19 },
-  '소재':   { '3m': 1,  '6m': 0,  '1y': 6,  '3y': 18, '5y': 28 },
-}
+const heatmapData = computed(() => {
+  const result: Record<string, Record<string, number>> = {}
+  for (const field of heatmapFields) {
+    result[field] = {
+      '3m': allItems.value.filter(i => i.techField === field && i.dday <= 90).length,
+      '6m': allItems.value.filter(i => i.techField === field && i.dday <= 180).length,
+      '1y': allItems.value.filter(i => i.techField === field && i.dday <= 365).length,
+      '3y': allItems.value.filter(i => i.techField === field && i.dday <= 1095).length,
+      '5y': allItems.value.filter(i => i.techField === field && i.dday <= 1825).length,
+    }
+  }
+  return result
+})
 
 const heatmapKey = computed(() => activeFilter.value === 'all' ? '5y' : activeFilter.value)
 const fieldStackTotal = computed(() =>
-  heatmapFields.reduce((sum, f) => sum + (heatmapData[f]?.[heatmapKey.value] ?? 0), 0)
+  heatmapFields.reduce((sum, f) => sum + (heatmapData.value[f]?.[heatmapKey.value] ?? 0), 0)
 )
 function fieldStackPct(field: string) {
   const total = fieldStackTotal.value
   if (!total) return 0
-  return Math.round((heatmapData[field]?.[heatmapKey.value] ?? 0) / total * 100)
+  return Math.round((heatmapData.value[field]?.[heatmapKey.value] ?? 0) / total * 100)
 }
 
 function formatDate(d: string) { return d.replace(/-/g, '.') }

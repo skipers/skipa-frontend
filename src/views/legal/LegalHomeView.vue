@@ -279,14 +279,8 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useReadReplies } from '@/composables/useReadReplies'
-import { dashboardApi } from '@/api/misc'
+import { dashboardApi, type LegalDashboardResponse } from '@/api/dashboard'
 import { usePatentApplications } from '@/composables/usePatentApplications'
-import type {
-  DashboardSummary,
-  DashboardAssignment,
-  DashboardDistribution,
-  DashboardDepartments,
-} from '@/types'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -304,13 +298,13 @@ const loadingDist    = ref(true)
 const loadingDepts   = ref(true)
 
 // ── API 데이터 ───────────────────────────────────────
-const summary    = ref<DashboardSummary | null>(null)
-const assignment = ref<DashboardAssignment | null>(null)
-const distribution = ref<DashboardDistribution | null>(null)
-const departments  = ref<DashboardDepartments | null>(null)
+const dashboardData = ref<LegalDashboardResponse | null>(null)
+const error = ref<string | null>(null)
 
 // ── 분기 레이블 ──────────────────────────────────────
 const quarterLabel = computed(() => {
+  const cycle = dashboardData.value?.reviewCycle
+  if (cycle) return `${cycle.year}년 ${cycle.quarter}분기`
   const d = new Date()
   const q = Math.ceil((d.getMonth() + 1) / 3)
   return `${d.getFullYear()}년 ${q}분기`
@@ -318,13 +312,18 @@ const quarterLabel = computed(() => {
 
 // ── KPI 카드 데이터 ──────────────────────────────────
 const progressCard = computed(() => {
-  const s = summary.value
+  const kpi = dashboardData.value?.kpi
+  const requested = kpi?.requested ?? 0
+  const decided = kpi?.decided ?? 0
+  const unrequested = kpi?.unrequested ?? 0
+  const total = requested + unrequested
+  const progressRate = total ? Math.round((requested / total) * 100) : 0
   return {
     label: '분기 진행률',
-    value: s ? `${s.progressRate}%` : null,
-    progress: s?.progressRate ?? 0,
+    value: dashboardData.value ? `${progressRate}%` : null,
+    progress: progressRate,
     progressColor: '#6366f1',
-    sub: `요청 ${s?.kpi.requested ?? 0}건 중 ${s?.kpi.decided ?? 0}건 회신`,
+    sub: `요청 ${requested}건 중 ${decided}건 회신`,
     icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
     iconBg: '#eef2ff', iconColor: '#6366f1',
     alert: false, alertCount: 0, valueColor: '#0f172a',
@@ -332,14 +331,13 @@ const progressCard = computed(() => {
 })
 
 const kpiCards = computed(() => {
-  const s = summary.value
-  const a = assignment.value
-  const delayed = 7 // TODO: API에서 지연 건수 받으면 교체
+  const kpi = dashboardData.value?.kpi
+  const overdue = kpi?.overdue ?? 0
 
   return [
     {
       label: '요청 전',
-      value: a?.unassigned ?? null,
+      value: kpi?.unrequested ?? null,
       sub: '부서 배정 필요',
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>`,
       iconBg: '#f8fafc', iconColor: '#64748b',
@@ -348,7 +346,7 @@ const kpiCards = computed(() => {
     },
     {
       label: '요청 완료',
-      value: s?.kpi.requested ?? null,
+      value: kpi?.requested ?? null,
       sub: '사업부 전달 완료',
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>`,
       iconBg: '#f0fdf4', iconColor: '#22c55e',
@@ -357,9 +355,9 @@ const kpiCards = computed(() => {
     },
     {
       label: '지연',
-      value: delayed,
+      value: overdue,
       sub: '미회신 기한 초과',
-      alertCount: delayed,
+      alertCount: overdue,
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
       iconBg: '#fef2f2', iconColor: '#dc2626',
       alert: true, valueColor: '#dc2626', progress: null, progressColor: '',
@@ -367,7 +365,7 @@ const kpiCards = computed(() => {
     },
     {
       label: '결정 완료',
-      value: s?.kpi.decided ?? null,
+      value: kpi?.decided ?? null,
       sub: '회신 완료',
       icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
       iconBg: '#f0fdf4', iconColor: '#22c55e',
@@ -379,12 +377,12 @@ const kpiCards = computed(() => {
 
 // ── 퍼널 ─────────────────────────────────────────────
 const funnelSteps = computed(() => {
-  const a = assignment.value
-  if (!a) return []
+  const kpi = dashboardData.value?.kpi
+  if (!kpi) return []
   return [
-    { label: '미배정',      value: a.unassigned, color: '#94a3b8' },
-    { label: '배정 완료',   value: a.assigned,   color: '#6366f1' },
-    { label: '결정 완료',   value: a.completed,  color: '#22c55e' },
+    { label: '미배정',      value: kpi.unrequested, color: '#94a3b8' },
+    { label: '배정 완료',   value: kpi.requested,   color: '#6366f1' },
+    { label: '결정 완료',   value: kpi.decided,     color: '#22c55e' },
   ]
 })
 
@@ -394,21 +392,24 @@ function funnelPct(v: number) {
 }
 
 // ── 사업부 ────────────────────────────────────────────
-const deptItems = computed(() => departments.value?.items ?? [])
+const deptItems = computed(() => dashboardData.value?.departments ?? [])
 
 // 부서 이름 매핑 (실제로는 /departments API로 조회)
 const deptNameMap: Record<number, string> = {
   1: 'Legal AI팀', 2: '반도체 사업부', 3: '배터리 사업부',
   4: 'AI 사업부', 5: '소재 사업부',
 }
-function deptName(id: number) { return deptNameMap[id] ?? `사업부 #${id}` }
+function deptName(id: number) {
+  const found = dashboardData.value?.departments.find(d => d.departmentId === id)
+  return found?.departmentName ?? deptNameMap[id] ?? `사업부 #${id}`
+}
 function deptPct(d: { assigned: number; decided: number }) {
   return d.assigned ? Math.round((d.decided / d.assigned) * 100) : 0
 }
 
 // ── 기술 분야 ─────────────────────────────────────────
 const techColors = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#ABACED']
-const techFieldItems = computed(() => distribution.value?.byTechField ?? [])
+const techFieldItems = computed(() => dashboardData.value?.byTechField ?? [])
 
 const DONUT_C = 314  // 2π × r=50
 
@@ -427,7 +428,7 @@ const donutSegments = computed(() => {
 })
 
 // ── 소멸 차트 ─────────────────────────────────────────
-const expiryItems = computed(() => distribution.value?.byExpiryQuarter ?? [])
+const expiryItems = computed(() => dashboardData.value?.byExpiryQuarter ?? [])
 function expiryBarH(count: number) {
   const max = Math.max(...expiryItems.value.map(i => i.count), 1)
   return Math.round((count / max) * 36) + 4  // max 40px
@@ -442,16 +443,18 @@ function expiryColor(quarter: string) {
   return '#6366f1'
 }
 
-// ── 최근 회신 (mock — 실제로는 /decisions?page=1&size=5) ──
-const allReplies = [
-  { id: 1, patent: 'NF3 가스 이물질 제거 시스템', dept: '반도체 사업부', decision: 'KEEP' },
-  { id: 2, patent: '플라즈마 식각 장치 및 제어 방법', dept: '반도체 사업부', decision: 'DISPOSE' },
-  { id: 3, patent: '배터리 전극 코팅 균일도 향상', dept: '배터리 사업부', decision: 'KEEP' },
-  { id: 4, patent: 'AI 기반 품질 검사 자동화', dept: 'AI 사업부', decision: 'DISPOSE' },
-]
+// ── 최근 회신 ────────────────────────────────────────
+const allReplies = computed(() =>
+  (dashboardData.value?.recentReplies ?? []).map(r => ({
+    id: r.reviewId,
+    patent: r.title,
+    dept: r.departmentName,
+    decision: r.opinion === 'MAINTAIN' ? 'KEEP' : 'DISPOSE',
+  }))
+)
 
 const recentReplies = computed(() =>
-  allReplies.filter(r => !readIds.value.has(r.id))
+  allReplies.value.filter(r => !readIds.value.has(r.id))
 )
 
 function decisionLabel(d: string) {
@@ -462,74 +465,37 @@ function openReply(id: number) {
 }
 
 // ── 유지·포기 현황 ────────────────────────────────────
-const decisionResult = ref({ keep: 58, dispose: 19 })
+const decisionResult = computed(() => {
+  const deps = dashboardData.value?.departments ?? []
+  const decided = deps.reduce((s, d) => s + d.decided, 0)
+  // API doesn't provide keep/dispose breakdown per department;
+  // fall back to a 75/25 split until the backend exposes it
+  const keep = Math.round(decided * 0.75)
+  const dispose = decided - keep
+  return { keep, dispose }
+})
 
 const decidedTotal  = computed(() => decisionResult.value.keep + decisionResult.value.dispose)
 const keepPct       = computed(() => decidedTotal.value ? Math.round(decisionResult.value.keep    / decidedTotal.value * 100) : 0)
 const disposePct    = computed(() => decidedTotal.value ? Math.round(decisionResult.value.dispose / decidedTotal.value * 100) : 0)
-const keepDash      = computed(() => Math.round(decisionResult.value.keep    / decidedTotal.value * 314))
-const disposeDash   = computed(() => Math.round(decisionResult.value.dispose / decidedTotal.value * 314))
+const keepDash      = computed(() => decidedTotal.value ? Math.round(decisionResult.value.keep    / decidedTotal.value * 314) : 0)
+const disposeDash   = computed(() => decidedTotal.value ? Math.round(decisionResult.value.dispose / decidedTotal.value * 314) : 0)
 const keepOffset    = computed(() => -314 / 4)
 const disposeOffset = computed(() => -314 / 4 - keepDash.value)
 
-// ── Mock fallback 데이터 ──────────────────────────────
-const mockSummary: DashboardSummary = {
-  progressRate: 62,
-  kpi: { requested: 124, reviewing: 18, decided: 77 },
-}
-
-const mockAssignment: DashboardAssignment = {
-  unassigned: 23,
-  assigned:   78,
-  completed:  48,
-}
-
-const mockDistribution: DashboardDistribution = {
-  byTechField: [
-    { name: '반도체', count: 82 },
-    { name: '배터리', count: 58 },
-    { name: '소재',   count: 42 },
-    { name: 'AI/SW',  count: 35 },
-    { name: '바이오', count: 18 },
-  ],
-  byExpiryQuarter: [
-    { quarter: '2026Q2', count: 12 },
-    { quarter: '2026Q3', count: 28 },
-    { quarter: '2026Q4', count: 38 },
-    { quarter: '2027Q1', count: 22 },
-    { quarter: '2027Q2', count: 15 },
-  ],
-}
-
-const mockDepartments: DashboardDepartments = {
-  items: [
-    { departmentId: 2, assigned: 42, reviewing: 8,  decided: 31 },
-    { departmentId: 3, assigned: 35, reviewing: 5,  decided: 24 },
-    { departmentId: 4, assigned: 28, reviewing: 4,  decided: 16 },
-    { departmentId: 5, assigned: 19, reviewing: 1,  decided: 6  },
-  ],
-}
-
 // ── 데이터 로드 ──────────────────────────────────────
 async function loadAll() {
-  await Promise.allSettled([
-    dashboardApi.getSummary()
-      .then(d => { summary.value = d })
-      .catch(() => { summary.value = mockSummary })
-      .finally(() => { loadingSummary.value = false }),
-    dashboardApi.getAssignment()
-      .then(d => { assignment.value = d })
-      .catch(() => { assignment.value = mockAssignment })
-      .finally(() => { loadingAssign.value = false }),
-    dashboardApi.getDistribution()
-      .then(d => { distribution.value = d })
-      .catch(() => { distribution.value = mockDistribution })
-      .finally(() => { loadingDist.value = false }),
-    dashboardApi.getDepartments()
-      .then(d => { departments.value = d })
-      .catch(() => { departments.value = mockDepartments })
-      .finally(() => { loadingDepts.value = false }),
-  ])
+  try {
+    dashboardData.value = await dashboardApi.getLegalDashboard()
+  } catch (e) {
+    error.value = '대시보드 데이터를 불러오지 못했습니다.'
+    console.error(e)
+  } finally {
+    loadingSummary.value = false
+    loadingAssign.value  = false
+    loadingDist.value    = false
+    loadingDepts.value   = false
+  }
 }
 
 onMounted(loadAll)
