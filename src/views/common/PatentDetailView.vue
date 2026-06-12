@@ -1505,13 +1505,16 @@ async function sendChatMessage() {
       })
     }
   } catch (e) {
-    console.error('채팅 메시지 전송 실패:', e)
+    const err = e as Record<string, unknown>
+    const code = String(err?.code ?? '')
+    const msg  = String(err?.message ?? '')
+    console.error('채팅 메시지 전송 실패:', { code, msg, raw: e })
     const idx = history.findIndex(m => m.id === typingId)
     if (idx !== -1) {
       history.splice(idx, 1, {
         id: nextMessageId(),
         role: 'assistant',
-        text: '메시지 전송에 실패했습니다. 다시 시도해주세요.',
+        text: `메시지 전송에 실패했습니다.${msg ? `\n사유: ${msg}` : ''}${code ? ` (${code})` : ''}`,
         error: true,
       })
     }
