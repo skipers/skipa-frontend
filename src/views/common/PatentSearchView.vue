@@ -93,7 +93,7 @@
               :key="opt.value"
               class="chip"
               :class="{ 'chip--active': filters.sort === opt.value }"
-              @click="toggleFilter('sort', opt.value)"
+              @click="handleSort(opt.value)"
             >{{ opt.label }}</button>
           </div>
         </div>
