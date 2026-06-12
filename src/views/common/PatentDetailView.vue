@@ -197,9 +197,7 @@
                 </div>
               </div>
               <div class="rpt-opinion-box">
-                <p>{{ aiComments.tech }}</p>
-                <p>{{ aiComments.rights }}</p>
-                <p>{{ aiComments.biz }}</p>
+                <p>{{ overallOpinion }}</p>
               </div>
             </div>
 
@@ -218,9 +216,7 @@
                       <div class="rpt-criteria-score__bar-fill" :style="{ width: block.score + '%' }"></div>
                     </div>
                   </div>
-                  <p class="rpt-criteria-text">{{
-                    bi === 0 ? aiComments.tech : bi === 1 ? aiComments.rights : aiComments.biz
-                  }}</p>
+                  <p class="rpt-criteria-text">{{ block.summary }}</p>
                 </div>
               </div>
 
@@ -755,11 +751,7 @@
                       <div class="rpt-criteria-score__bar-fill" :style="{ width: block.score + '%' }"></div>
                     </div>
                   </div>
-                  <p class="rpt-criteria-text">{{
-                    bi === 0 ? selectedEvalReport.comments.tech
-                    : bi === 1 ? selectedEvalReport.comments.rights
-                    : selectedEvalReport.comments.biz
-                  }}</p>
+                  <p class="rpt-criteria-text">{{ block.summary }}</p>
                 </div>
               </div>
               <details class="rpt-appendix">
@@ -1334,6 +1326,8 @@ const reportGrade = computed<string | null>(() => reportJson.value?.report?.summ
 
 const totalScore = computed(() => reportJson.value?.report?.summary?.overall_score_out_of_100 ?? 0)
 
+const overallOpinion = computed<string>(() => reportJson.value?.report?.summary?.overall_opinion ?? '')
+
 // ── 재평가 레코드 ────────────────────────────────────
 const REVIEW_STATUS_MAP: Record<string, 'unassigned' | 'requested' | 'overdue' | 'done'> = {
   SCHEDULED: 'unassigned',
@@ -1602,7 +1596,7 @@ function relevanceClass(r: '상' | '중' | '하') {
 const reportOpenRows = reactive<Record<string, boolean>>({})
 
 interface RptItem { id: string; name: string; score: number; method: string; summary: string; grounds: string; sources: string }
-interface RptBlock { key: string; title: string; score: number; items: RptItem[] }
+interface RptBlock { key: string; title: string; score: number; summary: string; items: RptItem[] }
 
 const DIM_KEY_MAP: Record<string, string> = { '기술성': 'tech', '권리성': 'rights', '시장성': 'market', '사업성': 'market' }
 const DIM_TITLE_MAP: Record<string, string> = { '기술성': '기술성', '권리성': '권리성', '시장성': '시장성 및 사업성', '사업성': '시장성 및 사업성' }
@@ -1639,13 +1633,14 @@ const REPORT_EVAL_BLOCKS = computed<RptBlock[]>(() => {
       const allItems = [...(dim.items ?? []), ...(sibling?.items ?? [])]
       seen.add('시장성')
       seen.add('사업성')
-      blocks.push({ key: 'market', title: '시장성 및 사업성', score: avgScore, items: mapItems(allItems, 'market') })
+      blocks.push({ key: 'market', title: '시장성 및 사업성', score: avgScore, summary: dim.summary ?? sibling?.summary ?? '', items: mapItems(allItems, 'market') })
     } else {
       seen.add(key)
       blocks.push({
         key: DIM_KEY_MAP[key] ?? key,
         title: DIM_TITLE_MAP[key] ?? key,
         score: dim.score_out_of_100,
+        summary: dim.summary ?? '',
         items: mapItems(dim.items ?? [], DIM_KEY_MAP[key] ?? key),
       })
     }
