@@ -197,9 +197,7 @@
                 </div>
               </div>
               <div class="rpt-opinion-box">
-                <p>{{ aiComments.tech }}</p>
-                <p>{{ aiComments.rights }}</p>
-                <p>{{ aiComments.biz }}</p>
+                <p>{{ overallOpinion }}</p>
               </div>
             </div>
 
@@ -218,9 +216,7 @@
                       <div class="rpt-criteria-score__bar-fill" :style="{ width: block.score + '%' }"></div>
                     </div>
                   </div>
-                  <p class="rpt-criteria-text">{{
-                    bi === 0 ? aiComments.tech : bi === 1 ? aiComments.rights : aiComments.biz
-                  }}</p>
+                  <p class="rpt-criteria-text">{{ block.summary }}</p>
                 </div>
               </div>
 
@@ -264,7 +260,16 @@
                                   <div class="rpt-detail-label">판단 근거</div>
                                   <div class="rpt-detail-text">{{ item.grounds }}</div>
                                   <div class="rpt-detail-label">출처</div>
-                                  <div class="rpt-detail-text">{{ item.sources }}</div>
+                                  <div class="rpt-detail-text">
+                                    <template v-if="item.sources.length">
+                                      <div v-for="(src, si) in item.sources" :key="si" class="rpt-source-row">
+                                        <span class="rpt-source-num">{{ si + 1 }}.</span>
+                                        <a v-if="src.url" :href="src.url" target="_blank" rel="noopener noreferrer" class="rpt-source-link">{{ src.title }}</a>
+                                        <span v-else>{{ src.title }}</span>
+                                      </div>
+                                    </template>
+                                    <span v-else>—</span>
+                                  </div>
                                 </div>
                               </td>
                             </tr>
@@ -392,7 +397,8 @@
               <ol class="rpt-ref-list">
                 <li v-for="(ref, i) in REPORT_REFS" :key="i">
                   <span class="rpt-ref-num">[{{ i + 1 }}]</span>
-                  <span>{{ ref }}</span>
+                  <a v-if="ref.url" :href="ref.url" target="_blank" rel="noopener noreferrer" class="rpt-source-link">{{ ref.title }}</a>
+                  <span v-else>{{ ref.title }}</span>
                 </li>
               </ol>
             </div>
@@ -755,11 +761,7 @@
                       <div class="rpt-criteria-score__bar-fill" :style="{ width: block.score + '%' }"></div>
                     </div>
                   </div>
-                  <p class="rpt-criteria-text">{{
-                    bi === 0 ? selectedEvalReport.comments.tech
-                    : bi === 1 ? selectedEvalReport.comments.rights
-                    : selectedEvalReport.comments.biz
-                  }}</p>
+                  <p class="rpt-criteria-text">{{ block.summary }}</p>
                 </div>
               </div>
               <details class="rpt-appendix">
@@ -801,7 +803,16 @@
                                   <div class="rpt-detail-label">판단 근거</div>
                                   <div class="rpt-detail-text">{{ item.grounds }}</div>
                                   <div class="rpt-detail-label">출처</div>
-                                  <div class="rpt-detail-text">{{ item.sources }}</div>
+                                  <div class="rpt-detail-text">
+                                    <template v-if="item.sources.length">
+                                      <div v-for="(src, si) in item.sources" :key="si" class="rpt-source-row">
+                                        <span class="rpt-source-num">{{ si + 1 }}.</span>
+                                        <a v-if="src.url" :href="src.url" target="_blank" rel="noopener noreferrer" class="rpt-source-link">{{ src.title }}</a>
+                                        <span v-else>{{ src.title }}</span>
+                                      </div>
+                                    </template>
+                                    <span v-else>—</span>
+                                  </div>
                                 </div>
                               </td>
                             </tr>
@@ -917,7 +928,8 @@
               <ol class="rpt-ref-list">
                 <li v-for="(ref, i) in selectedEvalReport.refs" :key="i">
                   <span class="rpt-ref-num">[{{ i + 1 }}]</span>
-                  <span>{{ ref }}</span>
+                  <a v-if="ref.url" :href="ref.url" target="_blank" rel="noopener noreferrer" class="rpt-source-link">{{ ref.title }}</a>
+                  <span v-else>{{ ref.title }}</span>
                 </li>
               </ol>
             </div>
@@ -1333,6 +1345,8 @@ const reportGrade = computed<string | null>(() => reportJson.value?.report?.summ
 
 const totalScore = computed(() => reportJson.value?.report?.summary?.overall_score_out_of_100 ?? 0)
 
+const overallOpinion = computed<string>(() => reportJson.value?.report?.summary?.overall_opinion ?? '')
+
 // ── 재평가 레코드 ────────────────────────────────────
 const REVIEW_STATUS_MAP: Record<string, 'unassigned' | 'requested' | 'overdue' | 'done'> = {
   SCHEDULED: 'unassigned',
@@ -1347,7 +1361,7 @@ const reevalRecord = computed(() => {
   return {
     patentId: r.patentId,
     reviewStatus: REVIEW_STATUS_MAP[r.status] ?? 'unassigned',
-    decision: r.opinion ?? null,
+    decision: r.opinion === 'MAINTAIN' ? 'KEEP' : r.opinion === 'ABANDON' ? 'DISPOSE' : null,
     decidedAt: r.submittedAt ?? null,
     dueDate: r.dueDate ?? null,
     isOverdue: r.status === 'OVERDUE',
@@ -1603,8 +1617,8 @@ function relevanceClass(r: '상' | '중' | '하') {
 // ── AI 보고서 accordion ──────────────────────────────────
 const reportOpenRows = reactive<Record<string, boolean>>({})
 
-interface RptItem { id: string; name: string; score: number; method: string; summary: string; grounds: string; sources: string }
-interface RptBlock { key: string; title: string; score: number; items: RptItem[] }
+interface RptItem { id: string; name: string; score: number; method: string; summary: string; grounds: string; sources: { title: string; url: string }[] }
+interface RptBlock { key: string; title: string; score: number; summary: string; items: RptItem[] }
 
 const DIM_KEY_MAP: Record<string, string> = { '기술성': 'tech', '권리성': 'rights', '시장성': 'market', '사업성': 'market' }
 const DIM_TITLE_MAP: Record<string, string> = { '기술성': '기술성', '권리성': '권리성', '시장성': '시장성 및 사업성', '사업성': '시장성 및 사업성' }
@@ -1625,9 +1639,8 @@ const REPORT_EVAL_BLOCKS = computed<RptBlock[]>(() => {
       summary: (item.judgment_summary ?? '').slice(0, 50),
       grounds: item.judgment_basis ?? '',
       sources: (item.sources ?? [])
-        .map((src: any) => `${src.title} (${src.url})`)
-        .filter((v: string) => v !== ' ()')
-        .join('; '),
+        .filter((src: any) => src.title || src.url)
+        .map((src: any) => ({ title: src.title ?? src.url, url: src.url ?? '' })),
     }))
 
   for (const dim of dims) {
@@ -1641,13 +1654,14 @@ const REPORT_EVAL_BLOCKS = computed<RptBlock[]>(() => {
       const allItems = [...(dim.items ?? []), ...(sibling?.items ?? [])]
       seen.add('시장성')
       seen.add('사업성')
-      blocks.push({ key: 'market', title: '시장성 및 사업성', score: avgScore, items: mapItems(allItems, 'market') })
+      blocks.push({ key: 'market', title: '시장성 및 사업성', score: avgScore, summary: dim.summary ?? sibling?.summary ?? '', items: mapItems(allItems, 'market') })
     } else {
       seen.add(key)
       blocks.push({
         key: DIM_KEY_MAP[key] ?? key,
         title: DIM_TITLE_MAP[key] ?? key,
         score: dim.score_out_of_100,
+        summary: dim.summary ?? '',
         items: mapItems(dim.items ?? [], DIM_KEY_MAP[key] ?? key),
       })
     }
@@ -1666,10 +1680,10 @@ const REPORT_CONFIRM_ITEMS = computed(() => {
   }))
 })
 
-const REPORT_REFS = computed<string[]>(() => {
+const REPORT_REFS = computed<{ title: string; url: string }[]>(() => {
   const refs: any[] = reportJson.value?.report?.references?.sources?.tech_market ?? []
   if (!refs.length) return []
-  return refs.map((r: any) => r.title ?? '')
+  return refs.map((r: any) => ({ title: r.title ?? r.url ?? '', url: r.url ?? '' }))
 })
 
 function mapSimilarLegalStatus(status: string): string {
@@ -1702,7 +1716,7 @@ const computedProjectInfo = computed(() => {
     service: proj.applied_services ?? '—',
     history: proj.application_history ?? '—',
     customer: proj.customers_partners ?? '—',
-    signal: null as string | null, // TODO: 확인 필요 — project_association에 사업화 신호 필드 없음
+    signal: proj.market_outlook ?? null,
     summary: proj.summary ?? '',
     evidence: (proj.sources ?? []).map((s: any) => ({ title: s.title ?? '', url: s.url ?? '#' })),
   }
@@ -1759,7 +1773,7 @@ interface EvalReport {
   similarStats: EvalSimilarStats
   similarSummary: string
   confirmItems: { title: string; meta: string; desc: string }[]
-  refs: string[]
+  refs: { title: string; url: string }[]
   feeRecords: EvalFeeRecord[]
   history: EvalHistoryEvent[]
 }
@@ -2773,6 +2787,10 @@ function closeEvalReport() {
 }
 .rpt-detail-label:first-child { margin-top: 0; }
 .rpt-detail-text { font-size: 12.5px; color: #374151; line-height: 1.8; white-space: pre-wrap; }
+.rpt-source-row { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; }
+.rpt-source-num { font-size: 11.5px; color: #94a3b8; flex-shrink: 0; }
+.rpt-source-link { color: #4f46e5; text-decoration: underline; text-underline-offset: 2px; }
+.rpt-source-link:hover { color: #3730a3; }
 
 .rpt-subsection { margin-top: 28px; }
 .rpt-subsection--last { margin-bottom: 0; }

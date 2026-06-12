@@ -77,7 +77,7 @@
             <label class="filter-label">사업부</label>
             <select class="filter-select" v-model="filters.departmentId" @change="fetchPatents(1)">
               <option :value="undefined">전체</option>
-              <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+              <option v-for="d in deptOptions" :key="d.id" :value="d.id">{{ d.name }}</option>
             </select>
           </div>
         </template>
@@ -149,46 +149,67 @@ import { patentsApi } from '@/api/patents'
 import { usePagination } from '@/composables/usePagination'
 import PatentTable, { type PatentRow } from '@/components/patent/PatentTable.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
-import type { Department } from '@/types'
-import { usePatentDatabase } from '@/composables/usePatentDatabase'
 
-const { approvedPatents } = usePatentDatabase()
-
-const router  = useRouter()
-const auth    = useAuthStore()
-const { page, size, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination()
+const router = useRouter()
+const auth   = useAuthStore()
+const { page, size, totalPages, totalItems, setPage, setTotal } = usePagination()
 
 // ── 상태 ────────────────────────────────────────────
 const loading = ref(false)
-const error = ref<string | null>(null)
+const error   = ref<string | null>(null)
 const tableItems = ref<PatentRow[]>([])
-const departments = ref<Department[]>([])
 
 const filters = reactive({
-  q: '',
-  status: '' as string,
-  country: '' as string,
-  techField: '' as string,
-  sort: 'expiryDate' as string,
+  q:            '' as string,
+  status:       '' as string,
+  country:      '' as string,
+  techField:    '' as string,
+  sort:         'expiryDate,asc' as string,
   departmentId: undefined as number | undefined,
 })
 
-// ── 옵션 ────────────────────────────────────────────
+// ── 정적 옵션 ────────────────────────────────────────
 const statusOptions = [
   { value: '',           label: '전체'      },
   { value: 'REGISTERED', label: '등록'      },
   { value: 'EXPIRED',    label: '소멸/포기' },
 ]
 
-const countryOptions = ['KR', 'US', 'EP', 'JP', 'CN']
-
-const techFieldOptions = ['AI/SW', '반도체', '배터리', '소재']
-
 const sortOptions = [
-  { value: 'expiryDate',       label: '소멸일순'  },
-  { value: 'applicationDate',  label: '출원일순'  },
-  { value: 'citationCount',    label: '피인용순'  },
+  { value: 'expiryDate,asc',       label: '소멸일순' },
+  { value: 'applicationDate,desc', label: '출원일순' },
+  { value: 'citationCount,desc',   label: '피인용순' },
 ]
+
+// ── 동적 필터 옵션 (데이터에서 추출) ─────────────────
+const countryOptions  = ref<string[]>([])
+const techFieldOptions = ref<string[]>([])
+const deptOptions     = ref<{ id: number; name: string }[]>([])
+
+async function fetchFilterOptions() {
+  try {
+    const res = await patentsApi.getPatents({ page: 1, size: 1000 })
+    const countries  = new Set<string>()
+    const techFields = new Set<string>()
+    const deptMap    = new Map<number, string>()
+
+    res.items.forEach(item => {
+      if (item.filingCountry)    countries.add(item.filingCountry)
+      if (item.techField)        techFields.add(item.techField)
+      if (item.currentDepartmentId && item.currentDepartmentName) {
+        deptMap.set(item.currentDepartmentId, item.currentDepartmentName)
+      }
+    })
+
+    countryOptions.value   = [...countries].sort()
+    techFieldOptions.value = [...techFields].sort((a, b) => a.localeCompare(b, 'ko'))
+    deptOptions.value      = [...deptMap.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+  } catch (e) {
+    console.error('필터 옵션 로드 실패:', e)
+  }
+}
 
 // ── 계산 ────────────────────────────────────────────
 const hasActiveFilters = computed(() =>
@@ -198,20 +219,28 @@ const hasActiveFilters = computed(() =>
 // ── 특허 목록 로드 ───────────────────────────────────
 async function fetchPatents(p = page.value) {
   loading.value = true
-  error.value = null
+  error.value   = null
   setPage(p)
   try {
+    const statusParam: string | string[] | undefined =
+      filters.status === 'EXPIRED'
+        ? ['EXPIRED', 'ABANDONED']
+        : filters.status || undefined
+
     const res = await patentsApi.getPatents({
-      keyword: filters.q || undefined,
-      status: filters.status || undefined,
+      keyword:      filters.q || undefined,
+      status:       statusParam,
       filingCountry: filters.country || undefined,
-      techField: filters.techField || undefined,
-      sort: filters.sort || undefined,
+      techField:    filters.techField || undefined,
+      sort:         filters.sort || undefined,
       departmentId: filters.departmentId,
-      page: page.value,
-      size: size.value,
+      page:         page.value,
+      size:         size.value,
     })
-    tableItems.value = res.items as PatentRow[]
+    tableItems.value = res.items.map(item => ({
+      ...item,
+      status: item.latestLegalStatus,
+    })) as PatentRow[]
     setTotal(res.totalItems, res.totalPages)
   } catch (e) {
     console.error('특허 목록 조회 실패:', e)
@@ -227,26 +256,16 @@ function toggleStatus(val: string) {
   fetchPatents(1)
 }
 
-function toggleFilter(key: 'country' | 'sort', val: string) {
-  if (key === 'country') {
-    filters.country = filters.country === val ? '' : val
-  } else {
-    filters.sort = val
-  }
-  fetchPatents(1)
-}
-
 function resetFilters() {
-  filters.q = ''
-  filters.status = ''
-  filters.country = ''
-  filters.techField = ''
-  filters.sort = 'expiryDate'
+  filters.q            = ''
+  filters.status       = ''
+  filters.country      = ''
+  filters.techField    = ''
+  filters.sort         = 'expiryDate,asc'
   filters.departmentId = undefined
   fetchPatents(1)
 }
 
-// ── 정렬 (테이블 헤더 클릭) ──────────────────────────
 function handleSort(key: string) {
   filters.sort = key
   fetchPatents(1)
@@ -259,7 +278,10 @@ function goToDetail(patent: PatentRow) {
 }
 
 // ── 초기 로드 ────────────────────────────────────────
-onMounted(() => fetchPatents(1))
+onMounted(() => {
+  fetchFilterOptions()
+  fetchPatents(1)
+})
 </script>
 
 <style scoped>
