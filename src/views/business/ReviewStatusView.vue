@@ -4,9 +4,8 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">{{ quarterLabel }}</p>
         <h2 class="page-header__title">
-          검토 현황
+          제출 현황
           <button class="btn-guide-icon" type="button" aria-label="재평가 안내" @click="showGuide = true">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" overflow="visible">
               <circle cx="12" cy="12" r="10"/>
@@ -27,6 +26,7 @@
 
     <!-- 프로그레스 바 -->
     <div class="progress-section">
+      <p class="progress-section__quarter">{{ quarterLabel }}</p>
       <div class="progress-section__top">
         <div class="dday-badge" :class="ddayValue <= 7 ? 'dday-badge--urgent' : ''">
           <p class="dday-badge__label">제출 마감</p>
@@ -35,7 +35,7 @@
         <div>
           <div class="progress-section__header">
             <span class="progress-section__text">
-              {{ quarterLabel }} 재평가 <strong>{{ totalCount }}건</strong> 중
+              재평가 <strong>{{ totalCount }}건</strong> 중
               <strong class="progress-section__done">{{ submittedCount }}건</strong> 제출 완료
             </span>
             <span class="progress-section__pct">{{ submitPct }}%</span>
@@ -352,7 +352,7 @@ const ddayValue = computed(() => {
   if (endDate) {
     return Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
   }
-  return 0 // TODO: 확인 필요 - summary 미로드 시 fallback
+  return 0
 })
 
 const quarterLabel = computed(() => {
@@ -396,7 +396,6 @@ const flowSteps = [
 ]
 
 // ── 유틸 ────────────────────────────────────────────
-
 function formatDate(d?: string | null) {
   if (!d) return '—'
   return d.slice(0, 10)
@@ -423,7 +422,7 @@ async function fetchList(_p = 1) {
       patentId:          r.patentId,
       title:             r.title,
       applicationNumber: r.applicationNumber,
-      expiryDate:        null, // TODO: 확인 필요 - BusinessReviewResponse에 expiryDate 없음
+      expiryDate:        null,
       decision:          r.opinion
         ? (r.opinion === 'MAINTAIN' ? 'KEEP' : 'DISPOSE')
         : null,
@@ -487,11 +486,6 @@ onMounted(async () => {
   background: #f5f3ff;
 }
 
-.page-header__eyebrow {
-  font-size: 12px; font-weight: 600;
-  letter-spacing: .06em; text-transform: uppercase;
-  color: #6366f1; margin: 0 0 5px;
-}
 
 .page-header__title {
   display: flex; align-items: center; gap: 8px;
@@ -522,6 +516,14 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.progress-section__quarter {
+  margin: 0 0 12px;
+  padding-bottom: 12px;
+  font-size: 18px; font-weight: 800;
+  color: #0f172a; letter-spacing: -0.02em;
+  border-bottom: 1.5px solid rgba(15, 23, 42, 0.08);
+  width: 100%;
 }
 
 .progress-section__header {

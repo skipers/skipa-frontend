@@ -207,15 +207,9 @@
         <section class="content-section">
           <h2 class="section-heading">내용 요약</h2>
           <div class="info-section">
-            <h3 class="info-section__title">특허 개요</h3>
+            <h3 class="info-section__title">발명의 요약</h3>
             <textarea v-if="isEditing" class="edit-textarea" v-model="editForm.summary" rows="4" />
             <p v-else-if="app.summary" class="info-text">{{ app.summary }}</p>
-            <p v-else class="info-empty">내용 없음</p>
-          </div>
-          <div class="info-section">
-            <h3 class="info-section__title">핵심 내용</h3>
-            <textarea v-if="isEditing" class="edit-textarea" v-model="editForm.coreContent" rows="3" />
-            <p v-else-if="app.coreContent" class="info-text">{{ app.coreContent }}</p>
             <p v-else class="info-empty">내용 없음</p>
           </div>
         </section>
@@ -257,11 +251,11 @@ const activeTab  = ref<'info' | 'pdf'>('info')
 const isEditing  = ref(false)
 const editForm   = reactive({
   title: '', finalTitle: '', inventors: '', managementNumber: '',
-  bizField: '', techField: '', relatedProducts: '',
+  bizField: '', techField: '', relatedProducts: [] as string[],
   country: '', patentStatus: '', coApplicant: '', coApplicantName: '',
   applicationNumber: '', registrationNumber: '',
-  applicationDate: '', registrationDate: '', ipc: '', expiryDate: '',
-  summary: '', coreContent: '',
+  applicationDate: '', registrationDate: '', ipc: [] as string[], expiryDate: '',
+  summary: '',
 })
 
 function appStatusLabel(s: string) {
@@ -293,7 +287,6 @@ function startEdit() {
     ipc: app.value.ipc,
     expiryDate: app.value.expiryDate,
     summary: app.value.summary,
-    coreContent: app.value.coreContent,
   })
   activeTab.value = 'info'
   isEditing.value = true

@@ -4,7 +4,6 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">{{ quarterLabel }}</p>
         <h2 class="page-header__title">재평가 관리</h2>
         <p class="page-header__desc">이번 분기 처리할 특허 목록을 관리하고 사업부에 검토를 요청합니다</p>
       </div>
@@ -22,12 +21,18 @@
 
     <!-- 진행 요약 바 -->
     <div class="progress-bar-card">
-      <div class="progress-bar-card__info">
-        <span class="progress-bar-card__label">처리 현황</span>
-        <span class="progress-bar-card__pct">{{ progressPct }}%</span>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" :style="{ width: progressPct + '%' }" />
+      <p class="progress-bar-card__quarter">{{ quarterLabel }}</p>
+      <div class="progress-bar-card__top">
+        <div class="progress-bar-card__info">
+          <span class="progress-bar-card__label">
+            전체 <strong>{{ statusCounts.all }}</strong>건 중
+            <strong class="progress-bar-card__done">{{ statusCounts.done }}</strong>건 완료
+          </span>
+          <span class="progress-bar-card__pct">{{ progressPct }}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" :style="{ width: progressPct + '%' }" />
+        </div>
       </div>
       <div class="progress-bar-card__legend">
         <span v-for="seg in progressSegments" :key="seg.label" class="legend-item">
@@ -631,7 +636,6 @@ async function fetchList(p = 1) {
     if (activeDept.value !== null && activeDept.value !== -1) {
       params.departmentId = activeDept.value
     }
-    // TODO: 확인 필요 - activeDecision(opinion) 필터 API 지원 여부
 
     const [res] = await Promise.all([
       reviewsApi.getReviewTargets(params),
@@ -646,9 +650,18 @@ async function fetchList(p = 1) {
       decision: r.opinion ?? null,
       reviewStatus: reviewToStatus[r.status] ?? 'unassigned',
       isOverdue: r.status === 'OVERDUE',
-      // techField, summary: ReviewResponse에 없음
     }))
     setTotal(res.totalItems, res.totalPages)
+
+    const cur = activeStatus.value
+    statusCounts.value = {
+      all:        cur === 'all'        ? res.totalItems : statusCounts.value.all,
+      unassigned: cur === 'unassigned' ? res.totalItems : statusCounts.value.unassigned,
+      requested:  cur === 'requested'  ? res.totalItems : statusCounts.value.requested,
+      overdue:    cur === 'overdue'    ? res.totalItems : statusCounts.value.overdue,
+      done:       cur === 'done'       ? res.totalItems : statusCounts.value.done,
+      unread:     0,
+    }
   } catch (err) {
     console.error('목록 조회 오류:', err)
   } finally {
@@ -723,7 +736,6 @@ function openDueDateModal() {
 function handleDueDateChange() {
   if (!newDueDate.value) return
   globalDueDate.value = newDueDate.value
-  mockPatents.forEach(p => { p.dueDate = newDueDate.value })
   showDueDateModal.value = false
 }
 
@@ -773,14 +785,6 @@ onMounted(async () => {
   gap: 12px;
 }
 
-.page-header__eyebrow {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-  margin: 0 0 5px;
-}
 
 .page-header__title {
   font-size: 22px;
@@ -885,13 +889,30 @@ onMounted(async () => {
   gap: 10px;
 }
 
+.progress-bar-card__quarter {
+  margin: 0 0 12px;
+  padding-bottom: 12px;
+  font-size: 18px; font-weight: 800;
+  color: var(--color-text); letter-spacing: -0.02em;
+  border-bottom: 1.5px solid var(--color-border);
+  width: 100%;
+}
+
+.progress-bar-card__top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .progress-bar-card__info {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.progress-bar-card__label { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); }
+.progress-bar-card__label { font-size: 13.5px; font-weight: 500; color: var(--color-text-secondary); }
+.progress-bar-card__label strong { color: var(--color-text); font-weight: 700; }
+.progress-bar-card__done  { color: var(--color-primary) !important; }
 .progress-bar-card__pct   { font-size: 15px; font-weight: 800; color: var(--color-primary); }
 
 .progress-track {
