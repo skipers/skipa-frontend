@@ -405,8 +405,8 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { patentsApi } from '@/api/patents'
 import { reviewsApi } from '@/api/reviews'
+import { reviewCyclesApi, type ReviewCycleResponse } from '@/api/reviewCycles'
 import type { ReviewTargetParams } from '@/api/reviews'
 import { usePagination } from '@/composables/usePagination'
 import { useReadReplies } from '@/composables/useReadReplies'
@@ -420,6 +420,7 @@ const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = us
 
 // ── 상태 ────────────────────────────────────────────
 const mockPatents: any[] = [] // TODO: 백엔드 미확정, API 연동 후 교체
+const currentCycle = ref<ReviewCycleResponse | null>(null)
 const loading  = ref(false)
 const sending     = ref(false)
 const sendSuccess = ref(false)
@@ -438,7 +439,7 @@ const decisionOpts = [
 const showAssignModal  = ref(false)
 const showSendModal    = ref(false)
 const showDueDateModal = ref(false)
-const globalDueDate    = ref('2026-06-15')
+const globalDueDate    = ref('')
 const newDueDate       = ref('')
 const today            = new Date().toISOString().slice(0, 10)
 const assignTarget    = ref<ReevalItem | null>(null)
@@ -489,6 +490,8 @@ interface ReevalItem {
 
 // ── 분기 레이블 ──────────────────────────────────────
 const quarterLabel = computed(() => {
+  const rc = currentCycle.value
+  if (rc) return `${rc.year}년 ${rc.quarter}분기`
   const d = new Date()
   return `${d.getFullYear()}년 ${Math.ceil((d.getMonth() + 1) / 3)}분기`
 })
@@ -737,6 +740,14 @@ onMounted(async () => {
   if (tab)      activeStatus.value   = tab
   if (dept)     activeDept.value     = Number(dept)
   if (decision) activeDecision.value = decision
+
+  try {
+    currentCycle.value = await reviewCyclesApi.getCurrent()
+    if (currentCycle.value.deadline) globalDueDate.value = currentCycle.value.deadline
+  } catch {
+    // 폴백: 하드코딩 없이 빈 값 유지
+  }
+
   await fetchList(1)
   if (open) {
     await router.replace({ path: '/legal/reevaluation', query: tab ? { tab } : {} })
