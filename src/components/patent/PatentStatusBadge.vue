@@ -11,10 +11,17 @@ import { computed } from 'vue'
 const props = defineProps<{ status: string }>()
 
 const MAP: Record<string, { label: string; variant: string }> = {
+  // 특허 법적 상태
+  APPLIED:         { label: '출원',      variant: 'blue'   },
+  PUBLISHED:       { label: '공개',      variant: 'amber'  },
   REGISTERED:      { label: '등록',      variant: 'green'  },
   ACTIVE:          { label: '등록',      variant: 'green'  },
-EXPIRED:         { label: '소멸',      variant: 'red'    },
+  REJECTED:        { label: '거절',      variant: 'red'    },
   ABANDONED:       { label: '포기',      variant: 'gray'   },
+  EXPIRED:         { label: '소멸',      variant: 'red'    },
+  INVALIDATED:     { label: '무효',      variant: 'red'    },
+  WITHDRAWN:       { label: '취하',      variant: 'gray'   },
+  // AI 분석 상태
   PENDING:         { label: '심사 중',   variant: 'blue'   },
   GENERATING:      { label: 'AI 분석 중', variant: 'indigo' },
   COMPLETED:       { label: '분석 완료', variant: 'green'  },
