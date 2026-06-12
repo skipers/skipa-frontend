@@ -989,7 +989,7 @@
 
         <div ref="chatViewport" class="chat-body">
           <div v-for="message in chatMessages" :key="message.id" class="chat-row" :class="message.role">
-            <div class="chat-bubble" :class="message.role">
+            <div class="chat-bubble" :class="[message.role, { 'chat-bubble--error': message.error }]">
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
               </template>
@@ -1512,6 +1512,7 @@ async function sendChatMessage() {
         id: nextMessageId(),
         role: 'assistant',
         text: '메시지 전송에 실패했습니다. 다시 시도해주세요.',
+        error: true,
       })
     }
   } finally {
@@ -2720,6 +2721,7 @@ function closeEvalReport() {
 .md-content :deep(tr:nth-child(even) td) { background: #f8fafc; }
 .chat-bubble.assistant { background: #fff; color: #102033; border-top-left-radius: 4px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
 .chat-bubble.user      { background: #0f172a; color: #fff; border-top-right-radius: 4px; }
+.chat-bubble--error    { background: #fef2f2; color: #991b1b; box-shadow: none; border: 1px solid #fecaca; }
 
 .typing-dots { display: inline-flex; align-items: center; gap: 4px; min-height: 18px; }
 .typing-dots span {
