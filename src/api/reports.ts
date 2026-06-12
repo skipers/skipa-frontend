@@ -45,6 +45,33 @@ export interface ReportListParams {
   size?: number
 }
 
+export interface ChatSourceCard {
+  label?: string
+  title?: string
+  display_title?: string
+  source_type?: string
+  page_no?: number
+  url?: string
+  location_label?: string
+  source_path?: string
+  match_terms?: string[]
+  snippet?: string
+}
+
+export interface ReportChatMessageResponse {
+  id: number
+  patentId: number
+  role: string
+  content: string
+  sourceCards?: ChatSourceCard[]
+  createdAt: string
+}
+
+export interface ReportChatSendResponse {
+  userMessage: ReportChatMessageResponse
+  assistantMessage: ReportChatMessageResponse
+}
+
 // ── API ──────────────────────────────────────────────────────
 
 export const reportsApi = {
@@ -73,5 +100,17 @@ export const reportsApi = {
 
   createReport: async (patentId: number): Promise<ReportDetailResponse> => {
     return apiClient.post(`/patents/${patentId}/reports`)
+  },
+
+  getChatHistory: async (patentId: number, reportId: number): Promise<ReportChatMessageResponse[]> => {
+    return apiClient.get(`/patents/${patentId}/reports/${reportId}/chat/messages`)
+  },
+
+  sendChatMessage: async (patentId: number, reportId: number, message: string): Promise<ReportChatSendResponse> => {
+    return apiClient.post(`/patents/${patentId}/reports/${reportId}/chat/messages`, { message })
+  },
+
+  clearChatHistory: async (patentId: number, reportId: number): Promise<void> => {
+    return apiClient.delete(`/patents/${patentId}/reports/${reportId}/chat/messages`)
   },
 }

@@ -999,8 +999,8 @@
         </div>
 
         <form class="chat-composer" @submit.prevent="sendChatMessage">
-          <input v-model="chatInput" type="text" placeholder="특허에 대해 질문해 보세요." @keydown="handleChatKeydown"/>
-          <button type="submit">전송</button>
+          <input v-model="chatInput" type="text" placeholder="특허에 대해 질문해 보세요." :disabled="chatSending" @keydown="handleChatKeydown"/>
+          <button type="submit" :disabled="chatSending || !latestReportId">{{ chatSending ? '...' : '전송' }}</button>
         </form>
       </div>
     </aside>
@@ -1441,7 +1441,6 @@ const chatbotOpen     = ref(false)
 const chatbotExpanded = ref(false)
 const chatInput       = ref('')
 const chatViewport    = ref<HTMLElement | null>(null)
-const pendingTimers   = new Set<number>()
 
 if (!patentChatHistories[props.patentId]) {
   patentChatHistories[props.patentId] = [
@@ -1469,9 +1468,11 @@ async function toggleChatbot() {
 
 function closeChatbot() { chatbotOpen.value = false; chatbotExpanded.value = false }
 
+const chatSending = ref(false)
+
 async function sendChatMessage() {
   const text = chatInput.value.trim()
-  if (!text) return
+  if (!text || chatSending.value || !latestReportId.value) return
   if (!chatbotOpen.value) { chatbotOpen.value = true; await nextTick() }
 
   const history = patentChatHistories[props.patentId]
@@ -1480,22 +1481,35 @@ async function sendChatMessage() {
 
   const typingId = nextMessageId()
   history.push({ id: typingId, role: 'assistant', text: '', typing: true })
+  chatSending.value = true
   await nextTick()
   scrollChatToBottom()
 
-  const timerId = window.setTimeout(() => {
-    const idx = history.findIndex((m) => m.id === typingId)
+  try {
+    const res = await reportsApi.sendChatMessage(props.patentId, latestReportId.value, text)
+    const idx = history.findIndex(m => m.id === typingId)
     if (idx !== -1) {
       history.splice(idx, 1, {
         id: nextMessageId(),
         role: 'assistant',
-        text: '해당 특허의 평가 결과를 분석한 결과, 기술적 독창성이 높게 평가되었습니다. 추가적으로 궁금한 점이 있으시면 질문해주세요.',
+        text: res.assistantMessage.content,
+        sourceCards: res.assistantMessage.sourceCards,
       })
     }
-    pendingTimers.delete(timerId)
+  } catch (e) {
+    console.error('채팅 메시지 전송 실패:', e)
+    const idx = history.findIndex(m => m.id === typingId)
+    if (idx !== -1) {
+      history.splice(idx, 1, {
+        id: nextMessageId(),
+        role: 'assistant',
+        text: '메시지 전송에 실패했습니다. 다시 시도해주세요.',
+      })
+    }
+  } finally {
+    chatSending.value = false
     void nextTick(() => { scrollChatToBottom() })
-  }, 1000)
-  pendingTimers.add(timerId)
+  }
 }
 
 function handleChatKeydown(e: KeyboardEvent) {
@@ -1513,15 +1527,39 @@ const opinionOptions = [
   { value: 'DISPOSE', label: '포기' },
 ]
 
+const latestReportId = ref<number | null>(null)
+
 async function fetchLatestReport() {
   try {
     const report = await reportsApi.getLatestReport(props.patentId)
+    latestReportId.value = report.id
     if (report.url) {
       const res = await fetch(report.url)
       reportJson.value = await res.json()
     }
   } catch (e) {
     console.error('AI 보고서 조회 실패:', e)
+  }
+}
+
+async function fetchChatHistory() {
+  if (!latestReportId.value) return
+  try {
+    const messages = await reportsApi.getChatHistory(props.patentId, latestReportId.value)
+    if (messages.length === 0) {
+      patentChatHistories[props.patentId] = [
+        { id: nextChatId(), role: 'assistant', text: `${patent.value?.title ?? '이 특허'}에 대해 궁금한 점을 질문해주세요.` },
+      ]
+    } else {
+      patentChatHistories[props.patentId] = messages.map(m => ({
+        id: nextChatId(),
+        role: m.role as 'user' | 'assistant',
+        text: m.content,
+        sourceCards: m.sourceCards,
+      }))
+    }
+  } catch (e) {
+    console.error('채팅 이력 조회 실패:', e)
   }
 }
 
@@ -1536,6 +1574,7 @@ async function fetchAnnuityHistory() {
 
 onMounted(async () => {
   await Promise.all([fetchPatent(), fetchReviewData(), fetchEvalHistory(), fetchLatestReport(), fetchAnnuityHistory()])
+  await fetchChatHistory()
   await nextTick()
 
   if (patent.value && isBusiness.value && businessReviewData.value?.opinion) {
@@ -1552,8 +1591,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   observer?.disconnect()
-  pendingTimers.forEach((t) => window.clearTimeout(t))
-  pendingTimers.clear()
 })
 
 async function submitOpinion() {
