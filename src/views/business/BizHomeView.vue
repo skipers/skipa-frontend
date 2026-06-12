@@ -3,7 +3,6 @@
 
     <!-- 인사 헤더 -->
     <div class="greeting">
-      <p class="greeting__eyebrow">{{ quarterLabel }} 검토 현황</p>
       <h2 class="greeting__title">안녕하세요, <span>{{ auth.user?.name ?? '사업부' }}</span> 👋</h2>
       <p class="greeting__desc">담당 특허의 유지/포기 의견을 제출해주세요</p>
     </div>
@@ -80,7 +79,7 @@
           <h3 class="card__title">최근 제출 이력</h3>
           <RouterLink to="/biz/history" class="card__link">전체 보기</RouterLink>
         </div>
-        <div v-if="isLoading" class="card__skel">
+        <div v-if="loading" class="card__skel">
           <div class="skel-row" v-for="n in 4" :key="n" />
         </div>
         <div v-else-if="recentSubmissions.length" class="submission-list">
@@ -106,8 +105,28 @@
 
     <hr class="section-divider"/>
 
-    <!-- 담당 특허 현황 + 연도별 추이 -->
+    <!-- 신규 신청 현황 + 담당 특허 현황 + 연도별 추이 -->
     <div class="charts-row">
+
+      <!-- 신규 특허 신청 현황 -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">신규 특허 신청 현황</h3>
+          <RouterLink to="/biz/register?tab=history" class="card__link">전체 보기</RouterLink>
+        </div>
+        <div v-if="recentApplications.length" class="app-list">
+          <div v-for="a in recentApplications" :key="a.id" class="app-item">
+            <div class="app-item__left">
+              <span class="app-status-badge" :class="`app-status--${a.appStatus}`">
+                {{ appStatusLabel(a.appStatus) }}
+              </span>
+              <p class="app-item__title">{{ a.title }}</p>
+            </div>
+            <p class="app-item__date">{{ formatDate(a.submittedAt) }}</p>
+          </div>
+        </div>
+        <div v-else class="card__empty">신청 이력이 없습니다.</div>
+      </div>
 
       <!-- 담당 특허 현황 (도넛) -->
       <div class="card">
@@ -163,21 +182,21 @@
               :x2="tW - tPad.r" :y2="tPad.t + ((n - 1) / 3) * tPlotH"
               stroke="#f1f5f9" stroke-width="1"/>
             <!-- 출원 선 -->
-            <polyline :points="filedPoints" fill="none" stroke="#ABACED" stroke-width="2"
+            <polyline :points="filedPoints" fill="none" stroke="#ABACED" stroke-width="1.5"
               stroke-linejoin="round" stroke-linecap="round"/>
             <!-- 소멸/포기 선 -->
-            <polyline :points="expiredPoints" fill="none" stroke="#E88989" stroke-width="2"
+            <polyline :points="expiredPoints" fill="none" stroke="#E88989" stroke-width="1.5"
               stroke-linejoin="round" stroke-linecap="round"/>
             <!-- 출원 점 -->
             <circle v-for="(d, i) in bizTrendData" :key="`f${i}`"
-              :cx="tX(i)" :cy="tY(d.filed)" r="3.5" fill="#fff" stroke="#ABACED" stroke-width="2"/>
+              :cx="tX(i)" :cy="tY(d.filed)" r="3" fill="#fff" stroke="#ABACED" stroke-width="1.5"/>
             <!-- 소멸/포기 점 -->
             <circle v-for="(d, i) in bizTrendData" :key="`e${i}`"
-              :cx="tX(i)" :cy="tY(d.expired)" r="3.5" fill="#fff" stroke="#E88989" stroke-width="2"/>
+              :cx="tX(i)" :cy="tY(d.expired)" r="3" fill="#fff" stroke="#E88989" stroke-width="1.5"/>
             <!-- X축 연도 라벨 -->
             <text v-for="(d, i) in bizTrendData" :key="`lbl${i}`"
               :x="tX(i)" :y="tH - 3"
-              text-anchor="middle" font-size="10" fill="#94a3b8" font-weight="500">{{ d.year }}</text>
+              text-anchor="middle" font-size="9" fill="#94a3b8" font-weight="500">{{ d.year }}</text>
           </svg>
         </div>
       </div>
@@ -192,11 +211,11 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { dashboardApi, type BusinessDashboardResponse } from '@/api/dashboard'
+import { usePatentApplications } from '@/composables/usePatentApplications'
 
 const auth   = useAuthStore()
 const router = useRouter()
-
-const isLoading = ref(false)
+const loading = ref(false)
 const error = ref<string | null>(null)
 const dashboardData = ref<BusinessDashboardResponse | null>(null)
 
@@ -241,11 +260,23 @@ const pendingItems = computed(() =>
 const recentSubmissions = computed(() =>
   (dashboardData.value?.recentSubmissions ?? []).map(s => ({
     id: s.reviewId,
-    decision: s.opinion, // TODO: 확인 필요 - opinion이 KEEP/DISPOSE 값인지 확인
+    decision: s.opinion,
     patentTitle: s.title,
     decidedAt: s.submittedAt,
   }))
 )
+
+// ── 신규 특허 신청 (usePatentApplications composable) ─
+const { applications } = usePatentApplications()
+const recentApplications = computed(() =>
+  [...applications.value]
+    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+    .slice(0, 4)
+)
+
+function appStatusLabel(s: string) {
+  return { pending: '검토중', approved: '승인', rejected: '거절', withdrawn: '철회' }[s] ?? s
+}
 
 // ── 담당 특허 현황 도넛 ──────────────────────────────
 const patentStatItems = computed(() => {
@@ -311,7 +342,7 @@ function formatDate(d?: string) {
 }
 
 async function fetchDashboard() {
-  isLoading.value = true
+  loading.value = true
   error.value = null
   try {
     dashboardData.value = await dashboardApi.getBusinessDashboard()
@@ -319,7 +350,7 @@ async function fetchDashboard() {
     console.error('비즈니스 대시보드 조회 실패:', e)
     error.value = '데이터를 불러오지 못했습니다.'
   } finally {
-    isLoading.value = false
+    loading.value = false
   }
 }
 
@@ -337,14 +368,6 @@ onMounted(fetchDashboard)
 /* ── 인사 헤더 ───────────────────────────────────────── */
 .greeting { margin-bottom: 4px; }
 
-.greeting__eyebrow {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: #6366f1;
-  margin: 0 0 5px;
-}
 
 .greeting__title {
   font-size: 24px;
@@ -485,7 +508,7 @@ onMounted(fetchDashboard)
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
-@media (max-width: 760px) { .main-row { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .main-row { grid-template-columns: 1fr; } }
 
 /* ── 공통 카드 ────────────────────────────────────────── */
 .card {
@@ -627,6 +650,53 @@ onMounted(fetchDashboard)
 .decision-badge--sell    { background: #eef2ff; color: #4338ca; }
 .decision-badge--dispose { background: #fef2f2; color: #dc2626; }
 
+/* ── 신규 특허 신청 현황 ──────────────────────────────── */
+.app-list { display: flex; flex-direction: column; gap: 0; }
+
+.app-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f8fafc;
+}
+.app-item:last-child { border-bottom: none; }
+
+.app-item__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-item__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.app-item__date { font-size: 11.5px; color: #94a3b8; margin: 0; white-space: nowrap; flex-shrink: 0; }
+
+.app-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.app-status--pending   { background: #fef9c3; color: #854d0e; }
+.app-status--approved  { background: #f0fdf4; color: #15803d; }
+.app-status--rejected  { background: #fef2f2; color: #dc2626; }
+.app-status--withdrawn { background: #f1f5f9; color: #64748b; }
+
 /* ── 구분선 ──────────────────────────────────────────── */
 .section-divider {
   border: none;
@@ -637,10 +707,11 @@ onMounted(fetchDashboard)
 /* ── 하단 차트 2열 ───────────────────────────────────── */
 .charts-row {
   display: grid;
-  grid-template-columns: 1fr 1.6fr;
+  grid-template-columns: 1fr 1fr 2fr;
   gap: 16px;
 }
-@media (max-width: 760px) { .charts-row { grid-template-columns: 1fr; } }
+@media (max-width: 960px) { .charts-row { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .charts-row { grid-template-columns: 1fr; } }
 
 /* ── 담당 특허 도넛 ──────────────────────────────────── */
 .donut-wrap {

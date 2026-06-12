@@ -539,7 +539,7 @@
                   <div :class="['eval-grade-badge', `eval-grade-badge--${item.grade.toLowerCase()}`]">{{ item.grade }}</div>
 <span :class="['eval-decision-badge', item.decision === '유지' ? 'eval-decision-badge--keep' : 'eval-decision-badge--dispose']">{{ item.decision }}</span>
                 </div>
-                <button class="eval-report-btn" @click="openEvalReport(item.report)" type="button">
+                <button v-if="item.report" class="eval-report-btn" @click="openEvalReport(item.report)" type="button">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                   보고서 보기
                 </button>
@@ -966,14 +966,14 @@
     </template>
 
     <!-- ── 챗봇 FAB ── -->
-    <button v-if="!chatbotOpen" class="chat-fab" type="button" aria-label="AI 챗봇에게 질문하기" @click="toggleChatbot">
+    <button v-if="showChatbot && !chatbotOpen" class="chat-fab" type="button" aria-label="AI 챗봇에게 질문하기" @click="toggleChatbot">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
     </button>
 
     <!-- ── 챗봇 패널 ── -->
-    <aside class="chat-panel" :class="{ open: chatbotOpen, expanded: chatbotExpanded }">
+    <aside v-if="showChatbot" class="chat-panel" :class="{ open: chatbotOpen, expanded: chatbotExpanded }">
       <div class="chat-shell">
         <header class="chat-header">
           <button class="icon-button" type="button" @click="chatbotExpanded = !chatbotExpanded">
@@ -1015,33 +1015,31 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, reactive } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { patentChatHistories, nextChatId, type ChatMessage } from '@/composables/usePatentChat'
 import { patentsApi, type PatentDetail } from '@/api/patents'
+import { reviewsApi } from '@/api/reviews'
+import type { ReviewResponse } from '@/api/reviews'
+import { reportsApi } from '@/api/reports'
+import { businessReviewsApi } from '@/api/businessReviews'
+import type { BusinessReviewDetailResponse } from '@/api/businessReviews'
+import { patentHistoryApi, type PatentAnnuityResponse } from '@/api/patentHistory'
 
 type ChatRole = 'assistant' | 'user'
-interface ChatMessage {
-  id: number
-  role: ChatRole
-  text: string
-  typing?: boolean
-}
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
 import {
   COUNTRY_LABEL, TECH_FIELD_CLAIMS, DEPT_MAP,
   type MockSimilarPatent,
 } from '@/mocks/data'
-import { reviewsApi } from '@/api/reviews'
-import type { ReviewResponse } from '@/api/reviews'
-import { reportsApi } from '@/api/reports'
-import { patentHistoryApi, type PatentAnnuityResponse } from '@/api/patentHistory'
-import { businessReviewsApi } from '@/api/businessReviews'
-import type { BusinessReviewDetailResponse } from '@/api/businessReviews'
 
 const props = defineProps<{ patentId: number }>()
 const auth  = useAuthStore()
+const route = useRoute()
 
 const isLegal    = computed(() => auth.isLegal || auth.isAdmin)
 const isBusiness = computed(() => auth.isBusiness)
+const showChatbot = computed(() => route.name === 'ReviewPatentDetail')
 const myDept     = computed(() => DEPT_MAP[auth.user?.departmentId ?? 0] ?? null)
 
 // ── 특허 데이터 (API) ─────────────────────────────────
@@ -1097,6 +1095,49 @@ const patent = computed(() => {
   }
 })
 
+async function fetchPatent() {
+  isLoading.value = true
+  error.value = null
+  try {
+    patentData.value = await patentsApi.getPatent(props.patentId)
+  } catch (e) {
+    console.error('특허 상세 조회 실패:', e)
+    error.value = '특허 정보를 불러오지 못했습니다.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function fetchReviewData() {
+  try {
+    if (isBusiness.value) {
+      businessReviewData.value = await businessReviewsApi.getBusinessReview(props.patentId)
+    } else {
+      const res = await reviewsApi.getReviewTargets({ patentId: props.patentId, size: 1 })
+      reviewData.value = res.items[0] ?? null
+    }
+  } catch (e) {
+    console.error('재평가 데이터 조회 실패:', e)
+  }
+}
+
+async function fetchEvalHistory() {
+  try {
+    const data = await reportsApi.getReportHistory(props.patentId)
+    evalHistory.value = data.map(r => ({
+      date: r.evaluatedAt ? formatDate(r.evaluatedAt) : '—',
+      grade: ((r.valueGrade ?? 'C') as EvalHistoryItem['grade']),
+      score: r.totalScore ?? 0,
+      decision: (r.opinion === 'KEEP' ? '유지' : r.opinion === 'DISPOSE' ? '포기' : '—') as '유지' | '포기',
+      opinion: r.comment ?? '',
+      report: null,
+    }))
+  } catch (e) {
+    console.error('평가이력 조회 실패:', e)
+    evalHistory.value = []
+  }
+}
+
 const accessDenied = computed(() => {
   if (!patent.value) return false
   return false
@@ -1109,6 +1150,7 @@ const isOwnDept = computed(() => {
   return true
 })
 
+
 // ── 국가 표시 ────────────────────────────────────────
 const patentCountry = computed(() => {
   if (!patent.value) return ''
@@ -1116,9 +1158,8 @@ const patentCountry = computed(() => {
   return COUNTRY_LABEL[code] ?? code
 })
 
-
-type FeeRecord     = { quarter: string; amount: number; paid: string }
-type FeeEditRow    = { yearStart: number; yearEnd: number; amount: number; paid: string }
+type FeeRecord  = { quarter: string; amount: number; paid: string }
+type FeeEditRow = { yearStart: number; yearEnd: number; amount: number; paid: string }
 
 function formatQuarter(start: number, end: number): string {
   const fmt = (n: number) => n < 10 ? ` ${n}` : `${n}`
@@ -1130,8 +1171,10 @@ function parseQuarter(q: string): { yearStart: number; yearEnd: number } {
   return m ? { yearStart: Number(m[1]), yearEnd: Number(m[2]) } : { yearStart: 0, yearEnd: 0 }
 }
 
-const annuityData = ref<PatentAnnuityResponse[]>([])
+const annuityData      = ref<PatentAnnuityResponse[]>([])
 const customFeeRecords = ref<FeeRecord[] | null>(null)
+const feeEditMode      = ref(false)
+const feeEditDraft     = ref<FeeEditRow[]>([])
 
 const feeRecords = computed(() => {
   if (customFeeRecords.value) return customFeeRecords.value
@@ -1141,8 +1184,6 @@ const feeRecords = computed(() => {
     paid: a.paidDate ?? a.dueDate,
   }))
 })
-const feeEditMode      = ref(false)
-const feeEditDraft     = ref<FeeEditRow[]>([])
 
 function startFeeEdit() {
   feeEditDraft.value = feeRecords.value.map(r => ({
@@ -1228,6 +1269,7 @@ const patentBiblio = computed(() => {
   }
 })
 
+
 // ── 상세 보조 데이터 ─────────────────────────────────
 const detailExtras = computed(() => {
   const p = patent.value
@@ -1241,49 +1283,6 @@ const detailExtras = computed(() => {
     claims: TECH_FIELD_CLAIMS[p.techField] ?? [],
   }
 })
-
-async function fetchPatent() {
-  isLoading.value = true
-  error.value = null
-  try {
-    patentData.value = await patentsApi.getPatent(props.patentId)
-  } catch (e) {
-    console.error('특허 상세 조회 실패:', e)
-    error.value = '특허 정보를 불러오지 못했습니다.'
-  } finally {
-    isLoading.value = false
-  }
-}
-
-async function fetchReviewData() {
-  try {
-    if (isBusiness.value) {
-      businessReviewData.value = await businessReviewsApi.getBusinessReview(props.patentId)
-    } else {
-      const res = await reviewsApi.getReviewTargets({ patentId: props.patentId, size: 1 })
-      reviewData.value = res.items[0] ?? null
-    }
-  } catch (e) {
-    console.error('재평가 데이터 조회 실패:', e)
-  }
-}
-
-async function fetchEvalHistory() {
-  try {
-    const data = await reportsApi.getReportHistory(props.patentId)
-    evalHistory.value = data.items.map(r => ({
-      date: r.evaluatedAt ? formatDate(r.evaluatedAt) : '—',
-      grade: (r.valueGrade ?? 'C') as EvalHistoryItem['grade'],
-      score: r.totalScore ?? 0,
-      decision: r.opinion === 'KEEP' ? '유지' : r.opinion === 'DISPOSE' ? '포기' : '—',
-      opinion: r.comment ?? '',
-      report: null, // TODO: 확인 필요 - API에서 보고서 상세 내용 미제공
-    }))
-  } catch (e) {
-    console.error('평가이력 조회 실패:', e)
-    evalHistory.value = []
-  }
-}
 
 function addMonths(dateStr: string, months: number) {
   const d = new Date(dateStr)
@@ -1341,6 +1340,7 @@ const REVIEW_STATUS_MAP: Record<string, 'unassigned' | 'requested' | 'overdue' |
   OVERDUE:   'overdue',
   SUBMITTED: 'done',
 }
+
 const reevalRecord = computed(() => {
   const r = reviewData.value
   if (!r) return null
@@ -1438,12 +1438,15 @@ function setupObserver() {
 const chatbotOpen     = ref(false)
 const chatbotExpanded = ref(false)
 const chatInput       = ref('')
-const chatMessages    = ref<ChatMessage[]>([
-  { id: 1, role: 'assistant', text: `${patent.value?.title ?? '이 특허'}에 대해 궁금한 점을 질문해주세요.` },
-])
-const chatViewport  = ref<HTMLElement | null>(null)
-const messageId     = ref(2)
-const pendingTimers = new Set<number>()
+const chatViewport    = ref<HTMLElement | null>(null)
+const pendingTimers   = new Set<number>()
+
+if (!patentChatHistories[props.patentId]) {
+  patentChatHistories[props.patentId] = [
+    { id: nextChatId(), role: 'assistant', text: `${patent.value?.title ?? '이 특허'}에 대해 궁금한 점을 질문해주세요.` },
+  ]
+}
+const chatMessages = computed(() => patentChatHistories[props.patentId])
 
 const chatPanelWidth = computed(() =>
   chatbotOpen.value ? (chatbotExpanded.value ? '100vw' : '480px') : '0px'
@@ -1453,9 +1456,7 @@ function scrollChatToBottom() {
   if (chatViewport.value) chatViewport.value.scrollTop = chatViewport.value.scrollHeight
 }
 
-function nextMessageId() {
-  return messageId.value++
-}
+function nextMessageId() { return nextChatId() }
 
 async function toggleChatbot() {
   chatbotOpen.value = !chatbotOpen.value
@@ -1471,18 +1472,19 @@ async function sendChatMessage() {
   if (!text) return
   if (!chatbotOpen.value) { chatbotOpen.value = true; await nextTick() }
 
-  chatMessages.value.push({ id: nextMessageId(), role: 'user', text })
+  const history = patentChatHistories[props.patentId]
+  history.push({ id: nextMessageId(), role: 'user', text })
   chatInput.value = ''
 
   const typingId = nextMessageId()
-  chatMessages.value.push({ id: typingId, role: 'assistant', text: '', typing: true })
+  history.push({ id: typingId, role: 'assistant', text: '', typing: true })
   await nextTick()
   scrollChatToBottom()
 
   const timerId = window.setTimeout(() => {
-    const idx = chatMessages.value.findIndex((m) => m.id === typingId)
+    const idx = history.findIndex((m) => m.id === typingId)
     if (idx !== -1) {
-      chatMessages.value.splice(idx, 1, {
+      history.splice(idx, 1, {
         id: nextMessageId(),
         role: 'assistant',
         text: '해당 특허의 평가 결과를 분석한 결과, 기술적 독창성이 높게 평가되었습니다. 추가적으로 궁금한 점이 있으시면 질문해주세요.',
@@ -1763,13 +1765,12 @@ interface EvalReport {
 }
 interface EvalHistoryItem {
   date: string
-  grade: 'S' | 'A' | 'B' | 'C' | string
+  grade: 'S' | 'A' | 'B' | 'C'
   score: number
   decision: '유지' | '포기' | '—'
   opinion: string
-  report: EvalReport | null  // TODO: 확인 필요 - API에서 보고서 전체 내용 미제공
+  report: EvalReport | null
 }
-
 
 const evalReportOpen = ref(false)
 const selectedEvalReport = ref<EvalReport | null>(null)
@@ -1780,8 +1781,7 @@ const evalPanelTotal = computed(() => {
   return Math.round((tech + rights + biz) / 3)
 })
 
-function openEvalReport(report: EvalReport | null) {
-  if (!report) return  // TODO: 확인 필요 - API에서 보고서 상세 로딩 필요
+function openEvalReport(report: EvalReport) {
   selectedEvalReport.value = report
   evalReportOpen.value = true
 }
