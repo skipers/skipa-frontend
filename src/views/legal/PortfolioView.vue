@@ -13,7 +13,6 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <p class="page-header__eyebrow">보유 특허 전체</p>
         <h2 class="page-header__title">포트폴리오 분석</h2>
         <p class="page-header__desc">보유 특허의 기술 분야, 국가, 가치 등급 분포를 분석합니다</p>
       </div>
@@ -200,7 +199,7 @@
       <!-- 연도별 출원·등록·소멸 추이 -->
       <div class="chart-card">
         <div class="chart-card__header">
-          <h3 class="chart-card__title">연도별 출원 · 등록 · 소멸 추이</h3>
+          <h3 class="chart-card__title">연도별 등록 · 소멸 추이</h3>
           <div class="chart-legend chart-legend--inline">
             <div v-for="(s, i) in trendSeries" :key="s.key" class="legend-item">
               <span class="legend-dot" :style="{ background: trendColors[i] }" />{{ s.label }}
@@ -254,17 +253,17 @@
             stroke="#f1f5f9" stroke-width="1"
           />
           <rect
-            v-for="(d, i) in annuityData" :key="d.year"
+            v-for="(d, i) in ANNUITY_DATA" :key="d.year"
             :x="annBarX(i)" :y="annBarY(d.amount)"
             :width="annBarW" :height="annBarH(d.amount)"
             rx="3" ry="3"
-            :fill="i === annuityData.length - 1 ? '#a5b4fc' : '#6366f1'"
+            :fill="i === ANNUITY_DATA.length - 1 ? '#a5b4fc' : '#6366f1'"
           />
-          <text v-for="(d, i) in annuityData" :key="`amt-${i}`"
+          <text v-for="(d, i) in ANNUITY_DATA" :key="`amt-${i}`"
             :x="annBarX(i) + annBarW / 2" :y="annBarY(d.amount) - 4"
             text-anchor="middle" font-size="7.5" font-weight="700" fill="#475569"
           >{{ (d.amount / 100000000).toFixed(1) }}</text>
-          <text v-for="(d, i) in annuityData" :key="`yr-${i}`"
+          <text v-for="(d, i) in ANNUITY_DATA" :key="`yr-${i}`"
             :x="annBarX(i) + annBarW / 2" :y="annH - 2"
             text-anchor="middle" font-size="8" fill="#64748b"
           >{{ d.year }}</text>
@@ -275,47 +274,55 @@
     </div>
 
 
-    <!-- 재평가 결정 분석: 연도별 + 사업부/기술분야별 -->
-    <div class="decision-row">
-
-      <!-- 연도별 유지·포기 비율 (스택 바) -->
-      <div class="chart-card">
-        <div class="chart-card__header">
-          <h3 class="chart-card__title">분기별 재평가 결정 비율</h3>
-          <div class="chart-legend chart-legend--inline">
-            <div class="legend-item"><span class="legend-dot" style="background: var(--color-keep)" />유지</div>
-            <div class="legend-item"><span class="legend-dot" style="background: var(--color-dispose)" />포기</div>
-          </div>
-        </div>
-        <div class="decision-chart" style="position: relative">
-          <div
-            v-for="d in decisionData"
-            :key="d.quarter"
-            class="decision-bar-group"
-            @mouseenter="showTooltip($event, d)"
-            @mouseleave="hideTooltip"
-          >
-            <div class="decision-bar-stack">
-              <div class="decision-bar-seg decision-bar-seg--keep" :style="{ height: keepPct(d) + '%' }" />
-              <div class="decision-bar-seg decision-bar-seg--dispose" :style="{ height: disposePct(d) + '%' }" />
-            </div>
-            <p class="decision-bar-label">{{ d.quarter }}</p>
-          </div>
-          <div v-if="tooltip.visible" class="decision-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
-            <p class="decision-tooltip__year">{{ tooltip.quarter }}</p>
-            <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-keep)" />유지 {{ tooltip.maintain }}건 ({{ tooltip.keepPct }}%)</div>
-            <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-dispose)" />포기 {{ tooltip.abandon }}건 ({{ tooltip.disposePct }}%)</div>
-          </div>
+    <!-- 재평가 결정 분석 -->
+    <div class="chart-card">
+      <div class="chart-card__header">
+        <h3 class="chart-card__title">유지 · 포기 비율 분석</h3>
+        <div class="chart-legend chart-legend--inline">
+          <div class="legend-item"><span class="legend-dot" style="background: var(--color-keep)" />유지</div>
+          <div class="legend-item"><span class="legend-dot" style="background: var(--color-dispose)" />포기</div>
         </div>
       </div>
 
-      <!-- 사업부별 / 기술분야별 유지·포기 비율 (탭 전환) -->
-      <div class="chart-card">
-        <div class="chart-card__header">
-          <h3 class="chart-card__title">유지 · 포기 비율 분석</h3>
-          <div class="breakdown-tabs">
-            <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'dept' }" @click="breakdownTab = 'dept'">사업부별</button>
-            <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'tech' }" @click="breakdownTab = 'tech'">기술분야별</button>
+      <div class="decision-split">
+        <!-- 왼쪽: 분기별 전체 스택 바 (클릭으로 분기 선택) -->
+        <div class="decision-split__left">
+          <p class="decision-split__subtitle">분기별 전체 비율</p>
+          <div class="decision-chart" style="position: relative">
+            <div
+              v-for="d in decisionData"
+              :key="d.quarter"
+              class="decision-bar-group"
+              :class="{ 'decision-bar-group--selected': selectedQuarter === d.quarter }"
+              @click="selectedQuarter = d.quarter"
+              @mouseenter="showTooltip($event, d)"
+              @mouseleave="hideTooltip"
+            >
+              <div class="decision-bar-stack">
+                <div class="decision-bar-seg decision-bar-seg--keep"    :style="{ height: keepPct(d) + '%' }" />
+                <div class="decision-bar-seg decision-bar-seg--dispose" :style="{ height: disposePct(d) + '%' }" />
+              </div>
+              <p class="decision-bar-label">{{ d.quarter }}</p>
+            </div>
+            <div v-if="tooltip.visible" class="decision-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
+              <p class="decision-tooltip__year">{{ tooltip.quarter }}</p>
+              <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-keep)" />유지 {{ tooltip.maintain }}건 ({{ tooltip.keepPct }}%)</div>
+              <div class="decision-tooltip__row"><span class="decision-tooltip__dot" style="background: var(--color-dispose)" />포기 {{ tooltip.abandon }}건 ({{ tooltip.disposePct }}%)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 구분선 -->
+        <div class="decision-split__divider" />
+
+        <!-- 오른쪽: 선택된 분기의 사업부별/기술분야별 -->
+        <div class="decision-split__right">
+          <div class="decision-split__right-header">
+            <p class="decision-split__subtitle">{{ selectedQuarter }} 상세 분석</p>
+            <div class="breakdown-tabs">
+              <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'dept' }" @click="breakdownTab = 'dept'">사업부별</button>
+              <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'tech' }" @click="breakdownTab = 'tech'">기술분야별</button>
+            </div>
           </div>
         </div>
         <div class="hbar-list">
@@ -329,7 +336,6 @@
           </div>
         </div>
       </div>
-
     </div>
 
 
@@ -342,6 +348,7 @@ import { portfolioApi } from '@/api/portfolio'
 import type {
   TechFieldItem, CountryItem, DepartmentItem, GradeDistributionItem,
   YearlyTrendItem, AnnuityTrendItem, QuarterDecisionItem, BreakdownDecisionItem,
+  PortfolioDistributionResponse, PortfolioTrendsResponse,
 } from '@/api/portfolio'
 
 // ── 색상 팔레트 ──────────────────────────────────────
@@ -350,16 +357,18 @@ const trendColors = ['#ABACED', '#67E2AB', '#FFBC5E']
 
 const isLoading = ref(false)
 
+// ── API 응답 refs ─────────────────────────────────────
+const distribution = ref<PortfolioDistributionResponse | null>(null)
+const trends       = ref<PortfolioTrendsResponse | null>(null)
+
 // ── 분포 데이터 ──────────────────────────────────────
 const treemapItems = ref<TechFieldItem[]>([])
 const totalPatents = computed(() => treemapItems.value.reduce((s, i) => s + i.count, 0))
 const countryItems = ref<CountryItem[]>([])
 const deptItems    = ref<DepartmentItem[]>([])
-const allFieldDist = ref<GradeDistributionItem[]>([])
 
 // ── 추이 데이터 ──────────────────────────────────────
 const trendData    = ref<YearlyTrendItem[]>([])
-const annuityData  = ref<AnnuityTrendItem[]>([])
 
 // ── 결정 데이터 ──────────────────────────────────────
 const decisionData = ref<QuarterDecisionItem[]>([])
@@ -372,22 +381,22 @@ const insights = ref<string[]>([])
 async function fetchAll() {
   isLoading.value = true
   try {
-    const [dist, trends, decisions, ins] = await Promise.all([
+    const [dist, trendsResp, decisionsResp, ins] = await Promise.all([
       portfolioApi.getPortfolioDistribution(),
       portfolioApi.getPortfolioTrends(),
       portfolioApi.getPortfolioDecisions(),
       portfolioApi.getPortfolioInsights(),
     ])
-    treemapItems.value = dist.byTechField        ?? []
-    countryItems.value = dist.byFilingCountry    ?? []
-    deptItems.value    = dist.byDepartment       ?? []
-    allFieldDist.value = dist.byGrade            ?? []
-    trendData.value    = trends.yearlyPatentTrends ?? []
-    annuityData.value  = trends.yearlyAnnuityCosts ?? []
-    decisionData.value = decisions.byQuarter     ?? []
-    deptDecision.value = decisions.byDepartment  ?? []
-    techDecision.value = decisions.byTechField   ?? []
-    insights.value     = ins.insights            ?? []
+    distribution.value = dist
+    trends.value       = trendsResp
+    treemapItems.value = dist.byTechField           ?? []
+    countryItems.value = dist.byFilingCountry       ?? []
+    deptItems.value    = dist.byDepartment          ?? []
+    trendData.value    = trendsResp.yearlyPatentTrends ?? []
+    decisionData.value = decisionsResp.byQuarter    ?? []
+    deptDecision.value = decisionsResp.byDepartment ?? []
+    techDecision.value = decisionsResp.byTechField  ?? []
+    insights.value     = ins.insights               ?? []
   } catch (err) {
     console.error('PortfolioView/fetchAll:', err)
   } finally {
@@ -402,9 +411,11 @@ const totalCountry = computed(() => countryItems.value.reduce((s, i) => s + i.co
 
 const techDonutSegments = computed(() => {
   const circ = 314
+  const total = totalPatents.value
+  if (!total) return []
   let offset = -circ / 4
   return treemapItems.value.map(item => {
-    const dash = Math.round((item.count / (totalPatents.value || 1)) * circ)
+    const dash = Math.round((item.count / total) * circ)
     const seg = { dash, offset }
     offset -= dash
     return seg
@@ -413,9 +424,11 @@ const techDonutSegments = computed(() => {
 
 const countryDonutSegments = computed(() => {
   const circ = 314
+  const total = totalCountry.value
+  if (!total) return []
   let offset = -circ / 4
   return countryItems.value.map(item => {
-    const dash = Math.round((item.count / (totalCountry.value || 1)) * circ)
+    const dash = Math.round((item.count / total) * circ)
     const seg = { dash, offset }
     offset -= dash
     return seg
@@ -424,9 +437,11 @@ const countryDonutSegments = computed(() => {
 
 const donutSegments = computed(() => {
   const circ = 314
+  const total = totalPatents.value
+  if (!total) return []
   let offset = -circ / 4
   return deptItems.value.map(d => {
-    const dash = Math.round((d.count / (totalPatents.value || 1)) * circ)
+    const dash = Math.round((d.count / total) * circ)
     const seg = { dash, offset }
     offset -= dash
     return seg
@@ -448,7 +463,7 @@ const maxTrend = computed(() =>
 
 function trendX(i: number) {
   const len = trendData.value.length
-  return len > 1 ? pad.l + (i / (len - 1)) * plotW : pad.l
+  return len > 1 ? pad.l + (i / (len - 1)) * plotW : pad.l + plotW / 2
 }
 function trendY(v: number, max: number) {
   return pad.t + (1 - v / max) * plotH
@@ -483,8 +498,20 @@ const trendDots = computed(() =>
 function keepPct(d: { maintain: number; abandon: number })    { return Math.round(d.maintain / (d.maintain + d.abandon) * 100) }
 function disposePct(d: { maintain: number; abandon: number }) { return Math.round(d.abandon  / (d.maintain + d.abandon) * 100) }
 
-// ── 툴팁 ─────────────────────────────────────────────
+const selectedQuarter = ref('')
 const breakdownTab = ref<'dept' | 'tech'>('dept')
+
+const activeBreakdown = computed(() => ({
+  dept: decisions.value?.byDepartment ?? [],
+  tech: decisions.value?.byTechField  ?? [],
+}))
+
+const sortedBreakdown = computed(() => {
+  const list: BreakdownItem[] = breakdownTab.value === 'dept'
+    ? activeBreakdown.value.dept
+    : activeBreakdown.value.tech
+  return [...list].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+})
 
 // ── 도넛 툴팁 ────────────────────────────────────────
 const donutTooltip = ref({ visible: false, x: 0, y: 0, name: '', count: 0, pct: 0, color: '' })
@@ -540,17 +567,30 @@ const gradeLabel: Record<string, string> = {
   S: '핵심 특허', A: '고가치', B: '보통', C: '낮은 가치', D: '포기 권장',
 }
 
+const allFieldDist = computed(() => {
+  const gradeDist = distribution.value?.byGrade ?? []
+  if (!gradeDist.length) return []
+  const overall = gradeDist.reduce(
+    (acc, f) => ({ name: '전체', S: acc.S + f.S, A: acc.A + f.A, B: acc.B + f.B, C: acc.C + f.C, D: acc.D + f.D, total: acc.total + f.total }),
+    { name: '전체', S: 0, A: 0, B: 0, C: 0, D: 0, total: 0 }
+  )
+  return [overall, ...gradeDist]
+})
+
 const selectedField = ref('전체')
 const selectedFieldData = computed(() => allFieldDist.value?.find(f => f.name === selectedField.value) ?? null)
 
 // ── 연차료 추이 ──────────────────────────────────────
+const ANNUITY_DATA = computed(() => trends.value?.yearlyAnnuityCosts ?? [])
+
 const annW = 260, annH = 150
 const annPad = { t: 22, b: 24, l: 8, r: 8 }
 const annPlotH = annH - annPad.t - annPad.b
 const annPlotW = annW - annPad.l - annPad.r
-const annSlotW = computed(() => annPlotW / (annuityData.value.length || 1))
+
+const annSlotW = computed(() => ANNUITY_DATA.value.length ? annPlotW / ANNUITY_DATA.value.length : 1)
 const annBarW  = computed(() => annSlotW.value * 0.65)
-const annMax   = computed(() => Math.max(...annuityData.value.map(d => d.amount), 1))
+const annMax   = computed(() => Math.max(...ANNUITY_DATA.value.map(d => d.amount), 1))
 
 function annBarX(i: number) {
   return annPad.l + i * annSlotW.value + (annSlotW.value - annBarW.value) / 2
@@ -561,6 +601,7 @@ function annBarY(amount: number) {
 function annBarH(amount: number) {
   return (amount / annMax.value) * annPlotH
 }
+
 </script>
 
 <style scoped>
@@ -580,11 +621,6 @@ function annBarH(amount: number) {
   gap: 12px;
 }
 
-.page-header__eyebrow {
-  font-size: 12px; font-weight: 600;
-  letter-spacing: .06em; text-transform: uppercase;
-  color: var(--color-primary); margin: 0 0 5px;
-}
 .page-header__title {
   font-size: 22px; font-weight: 700;
   color: var(--color-text); margin: 0 0 4px; letter-spacing: -0.02em;
@@ -659,14 +695,58 @@ function annBarH(amount: number) {
   flex-wrap: wrap;
 }
 
-/* ── 연도별 추이 2-컬럼 ─────────────────────────── */
-.decision-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  align-items: start;
+/* ── 결정 분석 좌우 분할 ─────────────────────────── */
+.decision-split {
+  display: flex;
+  gap: 0;
+  align-items: flex-start;
+  min-height: 220px;
 }
-@media (max-width: 860px) { .decision-row { grid-template-columns: 1fr; } }
+.decision-split__left {
+  flex: 0 0 50%;
+  display: flex;
+  flex-direction: column;
+  padding-right: 20px;
+}
+.decision-split__divider {
+  width: 1px;
+  background: var(--color-border);
+  flex-shrink: 0;
+  margin: 0 20px 0 0;
+}
+.decision-split__right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.decision-split__subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin: 0 0 10px;
+}
+.decision-split__right-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.decision-split__right-header .decision-split__subtitle { margin: 0; }
+.decision-bar-group--selected .decision-bar-stack {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.decision-bar-group { cursor: pointer; }
+
+/* ── 탭 전환 버튼 ────────────────────────────────── */
+.breakdown-tabs { display: flex; gap: 2px; background: var(--color-surface-muted); border-radius: 8px; padding: 3px; }
+.breakdown-tab {
+  background: none; border: none; border-radius: 6px;
+  padding: 3px 12px; font-size: 12px; cursor: pointer;
+  color: var(--color-text-muted); transition: all 0.12s;
+}
+.breakdown-tab--active { background: var(--color-surface); color: var(--color-text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 
 /* ── 연도별 재평가 결정 스택 바 ──────────────────── */
 .decision-chart {
@@ -826,14 +906,6 @@ function annBarH(amount: number) {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
 }
 
-/* ── 탭 전환 버튼 ────────────────────────────────── */
-.breakdown-tabs { display: flex; gap: 2px; background: var(--color-surface-muted); border-radius: 8px; padding: 3px; }
-.breakdown-tab {
-  background: none; border: none; border-radius: 6px;
-  padding: 3px 12px; font-size: 12px; cursor: pointer;
-  color: var(--color-text-muted); transition: all 0.12s;
-}
-.breakdown-tab--active { background: var(--color-surface); color: var(--color-text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 
 /* ── 가로 스택 바 ─────────────────────────────────── */
 .hbar-list { display: flex; flex-direction: column; gap: 12px; max-height: 260px; overflow-y: auto; }

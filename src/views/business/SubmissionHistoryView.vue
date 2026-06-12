@@ -6,7 +6,7 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M19 12H5M12 5l-7 7 7 7"/>
         </svg>
-        검토 현황으로 돌아가기
+        제출 현황으로 돌아가기
       </button>
       <h2 class="page-header__title">제출 이력</h2>
       <p class="page-header__desc">제출한 유지/포기 의견 이력을 확인하세요</p>
