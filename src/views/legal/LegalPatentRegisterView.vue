@@ -1,28 +1,11 @@
 <template>
-  <div class="doc-register-page">
-    <div class="doc-modal-body">
+  <div class="manage-page">
 
-      <!-- 헤더 -->
-      <div class="doc-work-head">
-        <div class="doc-work-title">
-          <div class="card-title">신규 특허 등록</div>
-          <div class="muted doc-list-meta">특허 PDF에서 기본 항목을 추출한 뒤 이상한 문구를 수정해 등록합니다.</div>
-        </div>
-        <div class="doc-work-actions">
-          <button class="btn" type="button" @click="handleCancel">취소</button>
-          <button class="btn primary" type="button" :disabled="isSubmitting || isExtracting" @click="handleSave">저장</button>
-        </div>
-      </div>
-
-
-      <!-- PDF 업로드 -->
-      <div class="doc-upload-panel" aria-label="특허 PDF 업로드">
-        <label class="doc-upload-drop" for="doc-new-pdf">
-          <span aria-hidden="true">↥</span>
-          <span>{{ uploadedFile ? uploadedFile.name : '특허 PDF 업로드 · patent_notice_A.pdf' }}</span>
-        </label>
-        <input id="doc-new-pdf" class="visually-hidden" type="file" accept=".pdf" ref="fileInputRef" @change="handleFileSelect" />
-        <button class="btn" type="button" :disabled="isExtracting" @click="handleExtract">PDF에서 항목 추출</button>
+    <!-- 페이지 헤더 -->
+    <div class="page-header">
+      <div>
+        <h2 class="page-header__title">특허 관리</h2>
+        <p class="page-header__desc">신청을 검토하거나 기존 특허를 수정·삭제합니다.</p>
       </div>
       <button class="btn-new-register" @click="openRegisterModal">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -207,9 +190,9 @@
                     <span class="form-label">발명자</span>
                     <input class="form-input" type="text" v-model="form.inventors" placeholder="홍길동, 김철수" />
                   </label>
-                  <label class="form-field full">
-                    <span class="form-label">발명의 명칭(최종)</span>
-                    <input class="form-input" type="text" v-model="form.finalTitle" />
+                  <label class="form-field">
+                    <span class="form-label">출원인명</span>
+                    <input class="form-input" type="text" v-model="form.applicant" />
                   </label>
                 </div>
               </div>
@@ -266,6 +249,14 @@
                     <input class="form-input" type="date" v-model="form.registrationDate" />
                   </label>
                   <label class="form-field">
+                    <span class="form-label">공개일</span>
+                    <input class="form-input" type="date" v-model="form.publicationDate" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">공고일</span>
+                    <input class="form-input" type="date" v-model="form.announcementDate" />
+                  </label>
+                  <label class="form-field">
                     <span class="form-label">출원번호</span>
                     <input class="form-input" type="text" v-model="form.applicationNumber" placeholder="10-2026-0000000" />
                   </label>
@@ -274,8 +265,28 @@
                     <input class="form-input" type="text" v-model="form.registrationNumber" placeholder="10-0000000" />
                   </label>
                   <label class="form-field">
-                    <span class="form-label">IPC</span>
-                    <input class="form-input" type="text" v-model="form.ipc" />
+                    <span class="form-label">공개번호</span>
+                    <input class="form-input" type="text" v-model="form.publicationNumber" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">공고번호</span>
+                    <input class="form-input" type="text" v-model="form.announcementNumber" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">IPC 코드</span>
+                    <TagInput v-model="form.ipc" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">CPC 코드</span>
+                    <TagInput v-model="form.cpc" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">심사청구항수</span>
+                    <input class="form-input" type="number" min="0" v-model="form.examinationClaimCount" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">피인용 수</span>
+                    <input class="form-input" type="number" min="0" v-model="form.citationCount" />
                   </label>
                   <label class="form-field">
                     <span class="form-label">예상 소멸일</span>
@@ -289,12 +300,12 @@
                 <div class="form-section__title">내용 요약</div>
                 <div class="form-grid">
                   <label class="form-field full">
-                    <span class="form-label">특허 개요</span>
-                    <textarea class="form-textarea" v-model="form.summary" placeholder="특허의 핵심 기술 내용을 요약해 주세요." />
+                    <span class="form-label">키워드</span>
+                    <TagInput v-model="form.keywords" />
                   </label>
                   <label class="form-field full">
-                    <span class="form-label">핵심 내용</span>
-                    <textarea class="form-textarea" v-model="form.coreContent" />
+                    <span class="form-label">발명의 요약</span>
+                    <textarea class="form-textarea" v-model="form.summary" placeholder="특허의 핵심 기술 내용을 요약해 주세요." />
                   </label>
                 </div>
               </div>
@@ -302,32 +313,45 @@
               <!-- 행정 상태 -->
               <div class="form-section">
                 <div class="form-section__title">행정 상태</div>
-                <div class="ah-stack">
-                  <div v-for="(entry, idx) in adminHistory" :key="idx" class="ah-row">
-                    <select :class="['ah-type-select', `ah-type-select--${entry.type}`]" v-model="entry.type">
-                      <option value="file">출원</option>
-                      <option value="pub">공개</option>
-                      <option value="reg">등록</option>
-                      <option value="rejected">거절</option>
-                      <option value="invalid">무효</option>
-                      <option value="expired">소멸</option>
-                      <option value="withdraw">취하</option>
-                      <option value="abandon">포기</option>
-                    </select>
-                    <input class="form-input ah-date" type="date" v-model="entry.date" />
-                    <button class="btn-ah-del" type="button" @click="adminHistory.splice(idx, 1)">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                      </svg>
-                    </button>
+                <template v-if="!editMode">
+                  <div class="ah-stack">
+                    <div v-for="(entry, idx) in adminHistory" :key="idx" class="ah-row">
+                      <select :class="['ah-type-select', `ah-type-select--${entry.type}`]" v-model="entry.type">
+                        <option value="file">출원</option>
+                        <option value="pub">공개</option>
+                        <option value="reg">등록</option>
+                        <option value="rejected">거절</option>
+                        <option value="invalid">무효</option>
+                        <option value="expired">소멸</option>
+                        <option value="withdraw">취하</option>
+                        <option value="abandon">포기</option>
+                      </select>
+                      <input class="form-input ah-date" type="date" v-model="entry.date" />
+                      <button class="btn-ah-del" type="button" @click="adminHistory.splice(idx, 1)">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <button class="btn-ah-add" type="button" @click="adminHistory.push({ type: 'file', date: '' })">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                  상태 추가
-                </button>
+                  <button class="btn-ah-add" type="button" @click="adminHistory.push({ type: 'file', date: '' })">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    상태 추가
+                  </button>
+                </template>
+                <template v-else>
+                  <div v-if="adminHistory.length > 0" class="ah-stack">
+                    <div v-for="entry in adminHistory" :key="entry.type + entry.date" class="ah-row ah-row--readonly">
+                      <span :class="['ah-type-select', `ah-type-select--${entry.type}`, 'ah-type-readonly']">
+                        {{ { file:'출원', pub:'공개', reg:'등록', rejected:'거절', invalid:'무효', expired:'소멸', withdraw:'취하', abandon:'포기' }[entry.type] ?? entry.type }}
+                      </span>
+                      <span class="ah-date-readonly">{{ entry.date || '-' }}</span>
+                    </div>
+                  </div>
+                  <p v-else class="ah-empty">등록된 행정 상태가 없습니다.</p>
+                </template>
               </div>
 
             </div>
@@ -381,16 +405,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onUnmounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { patentsApi, type PatentCreateRequest } from '@/api/patents'
+import TagInput from '@/components/ui/TagInput.vue'
 import { usePatentApplications } from '@/composables/usePatentApplications'
 import { usePatentDatabase, type DBPatentEntry } from '@/composables/usePatentDatabase'
 
 const router = useRouter()
 const { applications } = usePatentApplications()
 const { approvedPatents: patentList, addApprovedPatent } = usePatentDatabase()
-
 // ── 탭 ──────────────────────────────────────────────
 type TabKey = 'review' | 'list'
 const activeTab = ref<TabKey>('review')
@@ -407,6 +431,7 @@ const tabs: { key: TabKey; label: string; icon: string }[] = [
     icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
   },
 ]
+  
 
 // ── 신청 검토 ────────────────────────────────────────
 const reviewApplications = computed(() =>
@@ -431,80 +456,74 @@ const adminHistory = ref<{ type: string; date: string }[]>([])
 const showRegisterModal = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const uploadedFile = ref<File | null>(null)
-const isExtracting = ref(false)
-const isSubmitting = ref(false)
-const extractJobId = ref<number | null>(null)
-let extractPollTimer: ReturnType<typeof setInterval> | null = null
+const editMode = ref(false)
+const editTargetId = ref<number | null>(null)
+const editTargetTitle = ref('')
 
 const form = reactive({
-  title: '', managementNumber: '', inventors: '', finalTitle: '',
+  title: '', finalTitle: '', managementNumber: '', inventors: '', applicant: '',
   bizField: '', techField: '', relatedProducts: '', country: 'KR',
   status: '등록', coApplicant: '아니오', coApplicantName: '',
-  applicationDate: '', registrationDate: '', applicationNumber: '',
-  registrationNumber: '', ipc: '', expiryDate: '', summary: '', coreContent: '',
+  applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
+  applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
+  ipc: [] as string[], cpc: [] as string[], examinationClaimCount: '', citationCount: '',
+  expiryDate: '', keywords: [] as string[], summary: '',
 })
 
-function fillFormFromResult(result: Partial<PatentCreateRequest>) {
-  if (result.title) { form.title = result.title; form.finalTitle = result.title }
-  if (result.applicationNumber) form.applicationNumber = result.applicationNumber
-  if (result.registrationNumber) form.registrationNumber = result.registrationNumber
-  if (result.managementNumber) form.managementNumber = result.managementNumber
-  if (result.inventor) form.inventors = result.inventor
-  if (result.applicationDate) form.applicationDate = result.applicationDate
-  if (result.registrationDate) form.registrationDate = result.registrationDate
-  if (result.ipcCodes?.length) form.ipc = result.ipcCodes.join(', ')
-  if (result.expiryDate) form.expiryDate = result.expiryDate
-  if (result.businessField) form.bizField = result.businessField
-  if (result.techField) form.techField = result.techField
-  if (result.relatedProducts?.length) form.relatedProducts = result.relatedProducts.join(', ')
-  if (result.summary) form.summary = result.summary
-  if (result.filingCountry) form.country = result.filingCountry
+function clearForm() {
+  Object.assign(form, {
+    title: '', finalTitle: '', managementNumber: '', inventors: '', applicant: '',
+    bizField: '', techField: '', relatedProducts: '', country: 'KR',
+    status: '등록', coApplicant: '아니오', coApplicantName: '',
+    applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
+    applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
+    ipc: [], cpc: [], examinationClaimCount: '', citationCount: '',
+    expiryDate: '', keywords: [] as string[], summary: '',
+  })
+  uploadedFile.value = null
+  adminHistory.value = []
+  editMode.value = false
+  editTargetId.value = null
+  editTargetTitle.value = ''
 }
 
-async function handleFileSelect(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (!file) return
-  uploadedFile.value = file
+const isExtracting = ref(false)
+const isSubmitting = ref(false)
+
+function fillFormFromResult(r: Partial<PatentCreateRequest>) {
+  if (r.title)              form.finalTitle = r.title
+  if (r.applicationNumber)  form.applicationNumber = r.applicationNumber
+  if (r.registrationNumber) form.registrationNumber = r.registrationNumber ?? ''
+  if (r.managementNumber)   form.managementNumber   = r.managementNumber ?? ''
+  if (r.applicant)          form.applicant = r.applicant ?? ''
+  if (r.inventor)           form.inventors = r.inventor ?? ''
+  if (r.applicationDate)    form.applicationDate = r.applicationDate ?? ''
+  if (r.registrationDate)   form.registrationDate = r.registrationDate ?? ''
+  if (r.ipcCodes)           form.ipc = r.ipcCodes
+  if (r.cpcCodes)           form.cpc = r.cpcCodes ?? []
+  if (r.expiryDate)         form.expiryDate = r.expiryDate ?? ''
+  if (r.businessField)      form.bizField = r.businessField ?? ''
+  if (r.techField)          form.techField = r.techField ?? ''
+  if (r.keywords)           form.keywords = r.keywords
+  if (r.summary)            form.summary = r.summary ?? ''
+}
+
+async function handleExtract() {
+  if (!uploadedFile.value) return
   isExtracting.value = true
-
   try {
-    // 1. 업로드 URL 생성
-    const { extractJobId: jobId, uploadUrl } = await patentsApi.createExtractUploadUrl()
-    extractJobId.value = jobId
-
-    // 2. presigned URL로 PUT 업로드 (인증 헤더 없이)
-    const putRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/pdf' },
-      body: file,
-    })
-    if (!putRes.ok) throw new Error('PDF 업로드 실패')
-
-    // 3. 업로드 완료 신호
-    await patentsApi.completeExtractUpload(jobId)
-
-    // 4. 상태 폴링 (1초 간격)
-    await new Promise<void>((resolve, reject) => {
-      extractPollTimer = setInterval(async () => {
-        try {
-          const { status } = await patentsApi.getExtractJobStatus(jobId)
-          if (status === 'COMPLETED') {
-            clearInterval(extractPollTimer!)
-            extractPollTimer = null
-            resolve()
-          } else if (status === 'FAILED') {
-            clearInterval(extractPollTimer!)
-            extractPollTimer = null
-            reject(new Error('추출 작업 실패'))
-          }
-        } catch (err) {
-          clearInterval(extractPollTimer!)
-          extractPollTimer = null
-          reject(err)
-        }
-      }, 1000)
-    })
-
+    const { extractJobId, uploadUrl } = await patentsApi.createExtractUploadUrl()
+    await fetch(uploadUrl, { method: 'PUT', body: uploadedFile.value, headers: { 'Content-Type': 'application/pdf' } })
+    await patentsApi.completeExtractUpload(extractJobId)
+    let jobId = extractJobId
+    let attempts = 0
+    while (attempts < 30) {
+      await new Promise(r => setTimeout(r, 2000))
+      const status = await patentsApi.getExtractJobStatus(jobId)
+      if (status.status === 'COMPLETED') break
+      if (status.status === 'FAILED') throw new Error('추출 실패')
+      attempts++
+    }
     // 5. 결과 조회 후 폼 자동 입력
     const result = await patentsApi.getExtractJobResult(jobId)
     if (result.result) fillFormFromResult(result.result)
@@ -515,89 +534,22 @@ async function handleFileSelect(e: Event) {
   }
 }
 
-// ── 특허 목록 (탭 2) ─────────────────────────────────
-const searchQuery = ref('')
-const filteredPatents = computed(() => {
-  if (!searchQuery.value) return patentList.value
-  const q = searchQuery.value.toLowerCase()
-  return patentList.value.filter(p =>
-    p.title.toLowerCase().includes(q) || p.applicationNumber.toLowerCase().includes(q)
-  )
-})
-
-function statusLabel(s: string) {
-  return ({ REGISTERED: '등록', EXPIRED: '소멸', ABANDONED: '포기' } as Record<string, string>)[s] ?? s
-}
-function statusClass(s: string) {
-  return ({ REGISTERED: 'status--registered', EXPIRED: 'status--expired', ABANDONED: 'status--abandoned' } as Record<string, string>)[s] ?? ''
-}
-
-// ── 모달 상태 ─────────────────────────────────────────
-const editMode = ref(false)
-const editTargetId = ref<number | null>(null)
-const editTargetTitle = ref('')
-const deleteTarget = ref<DBPatentEntry | null>(null)
-
-const FORM_DEFAULTS = {
-  title: '', managementNumber: '', inventors: '', finalTitle: '',
-  bizField: '', techField: '', relatedProducts: '', country: 'KR',
-  status: '등록', coApplicant: '아니오', coApplicantName: '',
-  applicationDate: '', registrationDate: '', applicationNumber: '',
-  registrationNumber: '', ipc: '', expiryDate: '', summary: '', coreContent: '',
-}
-
 function openRegisterModal() {
-  editMode.value = false
-  editTargetId.value = null
-  editTargetTitle.value = ''
-  Object.assign(form, FORM_DEFAULTS)
-  adminHistory.value = []
+  clearForm()
   showRegisterModal.value = true
 }
 
 function closeRegisterModal() {
   showRegisterModal.value = false
-  editMode.value = false
-  editTargetId.value = null
+  clearForm()
 }
 
-function startEdit(p: DBPatentEntry) {
-  editMode.value = true
-  editTargetId.value = p.id
-  editTargetTitle.value = p.title
-  Object.assign(form, {
-    ...FORM_DEFAULTS,
-    title: p.title,
-    finalTitle: p.title,
-    applicationNumber: p.applicationNumber,
-    registrationNumber: p.registrationNumber,
-    applicationDate: p.applicationDate,
-    expiryDate: p.expiryDate,
-    techField: p.techField,
-    summary: p.summary,
-    status: p.status === 'REGISTERED' ? '등록' : p.status === 'ABANDONED' ? '포기' : '소멸',
-  })
-  adminHistory.value = []
-  showRegisterModal.value = true
-}
-
-function confirmDelete(p: DBPatentEntry) {
-  deleteTarget.value = p
-}
-
-function handleDelete() {
-  if (!deleteTarget.value) return
-  const idx = patentList.value.findIndex(p => p.id === deleteTarget.value!.id)
-  if (idx !== -1) patentList.value.splice(idx, 1)
-  deleteTarget.value = null
-}
-
-function handleExtract() {
-  fileInputRef.value?.click()
-}
-
-function handleCancel() {
-  router.push('/legal/patent-search')
+function handleFileSelect(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (file) {
+    uploadedFile.value = file
+    handleExtract()
+  }
 }
 
 async function handleSave() {
@@ -627,7 +579,7 @@ async function handleSave() {
         inventor: form.inventors || undefined,
         applicationDate: form.applicationDate || undefined,
         registrationDate: form.registrationDate || undefined,
-        ipcCodes: form.ipc ? form.ipc.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+        ipcCodes: form.ipc ? form.ipc.map(s => s.trim()).filter(Boolean) : undefined,
         expiryDate: form.expiryDate || undefined,
         businessField: form.bizField || undefined,
         techField: form.techField || undefined,
@@ -656,14 +608,59 @@ async function handleSave() {
   } finally {
     isSubmitting.value = false
   }
+  closeRegisterModal()
 }
 
-onUnmounted(() => {
-  if (extractPollTimer) {
-    clearInterval(extractPollTimer)
-    extractPollTimer = null
-  }
+const searchQuery = ref('')
+
+const filteredPatents = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return patentList.value
+  return patentList.value.filter(p =>
+    p.title.toLowerCase().includes(q) ||
+    p.applicationNumber.toLowerCase().includes(q)
+  )
 })
+
+function statusLabel(s: string) {
+  return { REGISTERED: '등록', EXPIRED: '소멸', ABANDONED: '포기' }[s] ?? s
+}
+function statusClass(s: string) {
+  return { REGISTERED: 'status--registered', EXPIRED: 'status--expired', ABANDONED: 'status--abandoned' }[s] ?? ''
+}
+
+function startEdit(p: typeof patentList.value[0]) {
+  editMode.value = true
+  editTargetId.value = p.id
+  editTargetTitle.value = p.title
+  Object.assign(form, {
+    title: p.title,
+    applicationNumber: p.applicationNumber,
+    applicationDate: p.applicationDate,
+    techField: p.techField,
+    status: statusLabel(p.status),
+    managementNumber: '', inventors: '', applicant: '',
+    bizField: '', relatedProducts: '', country: 'KR',
+    coApplicant: '아니오', coApplicantName: '',
+    registrationDate: '', publicationDate: '', announcementDate: '',
+    registrationNumber: '', publicationNumber: '', announcementNumber: '',
+    ipc: [], cpc: [], examinationClaimCount: '', citationCount: '',
+    expiryDate: '', keywords: [] as string[], summary: '',
+  })
+  showRegisterModal.value = true
+}
+
+// ── 삭제 ────────────────────────────────────────────
+const deleteTarget = ref<typeof patentList.value[0] | null>(null)
+
+function confirmDelete(p: typeof patentList.value[0]) { deleteTarget.value = p }
+
+function handleDelete() {
+  if (!deleteTarget.value) return
+  const idx = patentList.value.findIndex(p => p.id === deleteTarget.value!.id)
+  if (idx !== -1) patentList.value.splice(idx, 1)
+  deleteTarget.value = null
+}
 </script>
 
 <style scoped>
@@ -673,6 +670,10 @@ onUnmounted(() => {
   gap: 20px;
   font-family: 'Pretendard', sans-serif;
 }
+.btn-action--edit { background: var(--color-primary-bg); border: 1px solid var(--color-primary-border); color: var(--color-primary-dark); }
+.btn-action--edit:hover { background: var(--color-primary-border); }
+.btn-action--delete { background: var(--color-danger-bg); border: 1px solid #fecaca; color: var(--color-danger); }
+.btn-action--delete:hover { background: #fecaca; }
 
 .page-header {
   display: flex;
@@ -761,6 +762,11 @@ onUnmounted(() => {
   padding: 14px 20px;
   border-bottom: 1px solid var(--color-surface-muted);
 }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+.form-field { display: flex; flex-direction: column; gap: 5px; }
+.form-field.full { grid-column: 1 / -1; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+.required { color: var(--color-danger); }
 
 .list-search-wrap { position: relative; flex: 1; max-width: 320px; }
 .list-search-icon {
@@ -894,6 +900,15 @@ onUnmounted(() => {
   box-shadow: 0 32px 80px rgba(15, 23, 42, 0.22);
   overflow: hidden;
 }
+.btn-submit {
+  display: flex; align-items: center; gap: 8px; padding: 9px 24px;
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: #fff; border: none; border-radius: 9px;
+  font-size: 13.5px; font-weight: 600; font-family: inherit;
+  cursor: pointer; box-shadow: 0 4px 12px rgba(79,70,229,.25); transition: opacity .15s;
+}
+.btn-submit:disabled { opacity: .45; cursor: not-allowed; }
+.btn-submit:not(:disabled):hover { opacity: .9; }
 
 .reg-panel__head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
@@ -923,6 +938,7 @@ onUnmounted(() => {
   border-top: 1px solid var(--color-border);
   flex-shrink: 0;
 }
+.btn-delete-confirm:hover { opacity: .85; }
 
 /* ── 폼 공통 ── */
 .upload-panel {
@@ -1091,6 +1107,15 @@ onUnmounted(() => {
   transition: border-color .13s, color .13s, background .13s;
 }
 .btn-ah-add:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-bg); }
+
+.ah-row--readonly { cursor: default; }
+.ah-type-readonly {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  pointer-events: none;
+}
+.ah-date-readonly { font-size: 13px; color: var(--color-text-secondary); }
+.ah-empty { font-size: 13px; color: var(--color-text-muted); margin: 4px 0 8px; }
 
 .visually-hidden {
   position: absolute; width: 1px; height: 1px;
