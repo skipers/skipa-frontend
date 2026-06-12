@@ -6,19 +6,38 @@ import type { PreEvaluationListItem, PreEvaluationDetailResponse } from '@/api/p
 type Grade = string
 type ChatRole = 'assistant' | 'user'
 
+interface MetricItem {
+  key: string
+  label: string
+  score: number
+  maxScore: number
+  basis: string
+}
+
 interface EvaluationMetric {
   key: string
   label: string
   score: number
   comment: string
+  items: MetricItem[]
+}
+
+interface NextAction {
+  priority: string
+  action: string
 }
 
 interface EvaluationResult {
   ipc: string
   grade: Grade
   gradeDescription: string
+  overallScore: number
   overallComment: string
+  readinessDecision: string
   metrics: EvaluationMetric[]
+  strengths: string[]
+  keyRisks: string[]
+  nextActions: NextAction[]
 }
 
 interface ChatMessage {
@@ -39,6 +58,11 @@ const gradeDescriptions: Record<string, string> = {
   'C+': '미흡, 보완 필요',
   C:   '미흡, 출원 재검토 권고',
   D:   '불량, 전면 재검토 권고',
+}
+
+const expandedDimensions = ref<Record<string, boolean>>({})
+function toggleDimension(key: string) {
+  expandedDimensions.value[key] = !expandedDimensions.value[key]
 }
 
 // ── 입력 폼 ──────────────────────────────────────────
@@ -106,34 +130,93 @@ async function parseReportUrl(reportUrl: string): Promise<EvaluationResult | nul
     if (!res.ok) return null
     const json = await res.json()
 
-    // frontend_summary가 있으면 우선 사용
-    const fs  = json.frontend_summary
-    const es  = json.executive_summary
+    const fs  = json.frontend_summary as Record<string, unknown> | undefined
+    const es  = json.executive_summary as Record<string, unknown> | undefined  // v2
+    const ov  = json.overall           as Record<string, unknown> | undefined  // v1
+    const llm = json.llm_comment       as Record<string, unknown> | undefined  // v1
 
-    const grade: string | undefined = fs?.overall_grade ?? es?.grade
+    const grade = String(fs?.overall_grade ?? ov?.grade ?? es?.grade ?? '')
     if (!grade) return null
 
-    const ipc: string =
-      fs?.ipc ?? json.ai_classification?.ipc ?? json.input_summary?.estimated_ipc?.ipc ?? ''
+    const ipc = String(fs?.ipc ?? (json.ai_classification as Record<string, unknown>)?.ipc ?? '')
 
-    // dimensions 배열에서 메트릭 구성
-    const metrics: EvaluationMetric[] = (json.dimensions ?? []).map((d: Record<string, unknown>) => {
-      const items = (d.items ?? []) as Array<Record<string, unknown>>
-      const comment = items.map(i => String(i.reason ?? '')).filter(Boolean).join('\n')
-      return {
-        key:   String(d.key),
-        label: String(d.label),
-        score: Number(d.score_out_of_100 ?? 0),
-        comment,
-      }
+    // v1: overall.score_out_of_100 / v2: frontend_summary.overall_score
+    const overallScore = Number(ov?.score_out_of_100 ?? fs?.overall_score ?? 0)
+
+    // v1: overall.comment / v2: executive_summary.opinion
+    const overallComment = String(ov?.comment ?? llm?.overall_comment ?? es?.opinion ?? '')
+
+    // v1: comments[] = [{dimension: label, comment}] → label 기준 맵
+    const commentsMap: Record<string, string> = {}
+    ;((json.comments ?? []) as Array<Record<string, unknown>>).forEach(c => {
+      commentsMap[String(c.dimension)] = String(c.comment ?? '')
     })
+
+    const metrics: EvaluationMetric[] = ((json.dimensions ?? []) as Array<Record<string, unknown>>).map(d => {
+      const label = String(d.label)
+      // v1: comments[] 맵 우선 사용
+      const dimComment = commentsMap[label]
+      let comment: string
+      if (dimComment) {
+        comment = dimComment
+      } else {
+        // v2: items[].reason, fallback 제거 후 합산; v1 fallback: items[].basis
+        const allItems = (d.items ?? []) as Array<Record<string, unknown>>
+        const realItems = allItems.filter(i => i.method !== 'llm_missing_item_fallback')
+        const commentItems = realItems.length > 0 ? realItems : allItems
+        comment = commentItems.map(i => String(i.reason ?? i.basis ?? '')).filter(Boolean).join('\n')
+      }
+
+      const realItemsForDisplay = (d.items as Array<Record<string, unknown>> ?? [])
+        .filter((i: Record<string, unknown>) => i.method !== 'llm_missing_item_fallback')
+      const items: MetricItem[] = realItemsForDisplay.map((i: Record<string, unknown>) => ({
+        key:      String(i.key ?? ''),
+        label:    String(i.label ?? ''),
+        score:    Number(i.score ?? 0),
+        maxScore: Number(i.max_score ?? 5),
+        basis:    String(i.basis ?? i.reason ?? ''),
+      }))
+
+      return { key: String(d.key), label, score: Number(d.score_out_of_100 ?? 0), comment, items }
+    })
+
+    // v1: llm_comment.strengths
+    const strengths: string[] = ((llm?.strengths ?? []) as unknown[]).map(s => String(s))
+
+    // v1: llm_comment.risks / v2: executive_summary.key_risks
+    const keyRisks: string[] = ((llm?.risks ?? es?.key_risks ?? []) as unknown[]).map(r => String(r))
+
+    // v1: llm_comment.next_actions (strings) + recommendations (strings)
+    // v2: next_actions (objects {priority, action})
+    const v1LlmActions = (llm?.next_actions ?? []) as unknown[]
+    const v1Recommendations = (json.recommendations ?? []) as unknown[]
+    const v2Actions = (json.next_actions ?? []) as Array<Record<string, unknown>>
+
+    let nextActions: NextAction[]
+    if (v1LlmActions.length > 0 || v1Recommendations.length > 0) {
+      nextActions = [
+        ...v1LlmActions.map(a => ({ priority: 'medium', action: String(a) })),
+        ...v1Recommendations.map(r => ({ priority: 'medium', action: String(r) })),
+      ].filter(a => a.action)
+    } else {
+      nextActions = v2Actions
+        .map(a => ({ priority: String(a.priority ?? 'medium'), action: String(a.action ?? '') }))
+        .filter(a => a.action)
+    }
+
+    const readinessDecision = String((json.readiness as Record<string, unknown>)?.decision ?? '')
 
     return {
       ipc,
       grade,
       gradeDescription: gradeDescriptions[grade] ?? '',
-      overallComment: String(es?.opinion ?? ''),
+      overallScore,
+      overallComment,
+      readinessDecision,
       metrics,
+      strengths,
+      keyRisks,
+      nextActions,
     }
   } catch {
     return null
@@ -535,6 +618,7 @@ onBeforeUnmount(() => {
             <div class="grade-card">
               <p class="grade-card__kicker">종합 등급</p>
               <p class="grade-card__letter">{{ evaluationResult.grade }}</p>
+              <p class="grade-card__score">{{ evaluationResult.overallScore }}점</p>
             </div>
 
             <div class="metrics-strip">
@@ -556,13 +640,74 @@ onBeforeUnmount(() => {
 
             <div class="comment-list">
               <div v-for="metric in evaluationResult.metrics" :key="metric.key + '-c'" class="comment-item">
-                <p class="comment-item__label">{{ metric.label }} 코멘트</p>
+                <div class="comment-item__top">
+                  <p class="comment-item__label">{{ metric.label }} 코멘트</p>
+                  <button
+                    v-if="metric.items.length"
+                    class="expand-btn"
+                    :class="{ 'expand-btn--open': expandedDimensions[metric.key] }"
+                    type="button"
+                    @click="toggleDimension(metric.key)"
+                  >
+                    세부 항목
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                </div>
                 <p class="comment-item__text">{{ metric.comment }}</p>
+
+                <!-- 세부 항목 아코디언 -->
+                <div v-if="expandedDimensions[metric.key]" class="item-list">
+                  <div v-for="item in metric.items" :key="item.key" class="item-row">
+                    <div class="item-row__meta">
+                      <span class="item-row__label">{{ item.label }}</span>
+                      <span class="item-row__score">{{ item.score }}<span class="item-row__max">/{{ item.maxScore }}</span></span>
+                    </div>
+                    <div class="item-row__track">
+                      <div class="item-row__fill" :style="{ width: (item.score / item.maxScore * 100) + '%' }"/>
+                    </div>
+                    <p v-if="item.basis" class="item-row__basis">{{ item.basis }}</p>
+                  </div>
+                </div>
               </div>
               <div class="comment-item comment-item--overall">
                 <p class="comment-item__label">종합 코멘트</p>
                 <p class="comment-item__text">{{ evaluationResult.overallComment }}</p>
               </div>
+              <div v-if="evaluationResult.readinessDecision" class="comment-item comment-item--decision">
+                <p class="comment-item__label">출원 준비도 판정</p>
+                <p class="comment-item__text">{{ evaluationResult.readinessDecision }}</p>
+              </div>
+            </div>
+
+            <!-- 강점 -->
+            <div v-if="evaluationResult.strengths.length" class="strengths-section">
+              <p class="strengths-section__title">강점</p>
+              <ul class="strengths-list">
+                <li v-for="(s, i) in evaluationResult.strengths" :key="i" class="strength-item">{{ s }}</li>
+              </ul>
+            </div>
+
+            <!-- 주요 리스크 -->
+            <div v-if="evaluationResult.keyRisks.length" class="risk-section">
+              <p class="risk-section__title">주요 리스크</p>
+              <ul class="risk-list">
+                <li v-for="(risk, i) in evaluationResult.keyRisks" :key="i" class="risk-item">{{ risk }}</li>
+              </ul>
+            </div>
+
+            <!-- 보완 액션 -->
+            <div v-if="evaluationResult.nextActions.length" class="action-section">
+              <p class="action-section__title">보완 액션</p>
+              <ul class="action-list">
+                <li
+                  v-for="(item, i) in evaluationResult.nextActions"
+                  :key="i"
+                  class="action-item"
+                  :class="`action-item--${item.priority}`"
+                >
+                  {{ item.action }}
+                </li>
+              </ul>
             </div>
           </template>
         </section>
@@ -1020,6 +1165,10 @@ onBeforeUnmount(() => {
   font-size: 60px; font-weight: 900; color: var(--accent);
   line-height: 1; margin: 0; letter-spacing: -0.04em;
 }
+.grade-card__score {
+  font-size: 13px; font-weight: 600; color: #6366f1;
+  margin: 6px 0 0; opacity: 0.75;
+}
 
 .metrics-strip {
   display: flex;
@@ -1035,11 +1184,47 @@ onBeforeUnmount(() => {
 .metric-col__fill  { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s ease; }
 
 .comment-list { display: flex; flex-direction: column; gap: 14px; }
+.comment-item__top {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;
+}
 .comment-item__label {
   font-size: 11.5px; font-weight: 700; color: #94a3b8;
-  text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 4px;
+  text-transform: uppercase; letter-spacing: 0.04em; margin: 0;
 }
 .comment-item__text { font-size: 13.5px; color: #374151; line-height: 1.7; margin: 0; white-space: pre-line; }
+
+/* 세부 항목 토글 버튼 */
+.expand-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11.5px; font-weight: 600; color: #94a3b8;
+  background: none; border: none; cursor: pointer; padding: 2px 4px;
+  border-radius: 4px; transition: color 0.15s;
+}
+.expand-btn:hover { color: var(--accent); }
+.expand-btn svg { transition: transform 0.2s; }
+.expand-btn--open { color: var(--accent); }
+.expand-btn--open svg { transform: rotate(180deg); }
+
+/* 세부 항목 리스트 */
+.item-list {
+  margin-top: 12px; display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 14px;
+  background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;
+}
+.item-row__meta {
+  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;
+}
+.item-row__label { font-size: 12.5px; font-weight: 600; color: #475569; }
+.item-row__score { font-size: 13px; font-weight: 800; color: var(--accent); }
+.item-row__max   { font-size: 11px; font-weight: 400; color: #94a3b8; }
+.item-row__track {
+  height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-bottom: 5px;
+}
+.item-row__fill  {
+  height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s ease;
+  opacity: 0.75;
+}
+.item-row__basis { font-size: 12px; color: #6b7280; line-height: 1.6; margin: 0; }
 .comment-item--overall {
   padding: 14px 16px;
   background: #eef2ff;
@@ -1047,6 +1232,51 @@ onBeforeUnmount(() => {
   border-radius: 0 10px 10px 0;
 }
 .comment-item--overall .comment-item__label { color: var(--accent); }
+.comment-item--decision {
+  padding: 14px 16px;
+  background: #f0fdf4;
+  border-left: 3px solid #22c55e;
+  border-radius: 0 10px 10px 0;
+}
+.comment-item--decision .comment-item__label { color: #15803d; }
+
+/* ── 리스크 & 액션 섹션 ─────────────────────────────── */
+.strengths-section,
+.risk-section,
+.action-section {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+.strengths-section { background: #f0fdf4; border-color: #bbf7d0; }
+.strengths-section__title,
+.risk-section__title,
+.action-section__title {
+  font-size: 11.5px; font-weight: 700; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  margin: 0 0 10px;
+}
+.strengths-section__title { color: #15803d; }
+.strengths-list,
+.risk-list,
+.action-list {
+  margin: 0; padding-left: 18px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.strength-item {
+  font-size: 13px; color: #166534; line-height: 1.6;
+}
+.risk-item {
+  font-size: 13px; color: #b91c1c; line-height: 1.6;
+}
+.action-item {
+  font-size: 13px; color: #374151; line-height: 1.6;
+}
+.action-item--high   { color: #b45309; }
+.action-item--medium { color: #374151; }
+.action-item--low    { color: #6b7280; }
 
 /* ── 챗봇 FAB ─────────────────────────────────────── */
 .chat-fab {
