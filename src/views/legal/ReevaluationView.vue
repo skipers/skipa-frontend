@@ -198,7 +198,7 @@
           <div class="item-dept" @click.stop>
             <div v-if="item.departmentId" class="dept-chip">
               <span class="dept-chip__dot" />
-              {{ deptName(item.departmentId) }}
+              {{ item.departmentName ?? deptName(item.departmentId) }}
               <button class="dept-chip__change" @click="openAssign(item)" title="변경">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -219,6 +219,7 @@
             <span v-if="item.decision" class="decision-badge" :class="`decision-badge--${item.decision.toLowerCase()}`">
               {{ decisionLabel(item.decision) }}
             </span>
+            <span v-else-if="item.reviewStatus === 'unassigned'" class="text-muted">—</span>
             <span v-else class="decision-pending">미회신</span>
           </div>
 
@@ -409,8 +410,8 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { patentsApi } from '@/api/patents'
 import { reviewsApi } from '@/api/reviews'
+import { reviewCyclesApi, type ReviewCycleResponse } from '@/api/reviewCycles'
 import type { ReviewTargetParams } from '@/api/reviews'
 import { usePagination } from '@/composables/usePagination'
 import { useReadReplies } from '@/composables/useReadReplies'
@@ -424,6 +425,7 @@ const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = us
 
 // ── 상태 ────────────────────────────────────────────
 const mockPatents: any[] = [] // TODO: 백엔드 미확정, API 연동 후 교체
+const currentCycle = ref<ReviewCycleResponse | null>(null)
 const loading  = ref(false)
 const sending     = ref(false)
 const sendSuccess = ref(false)
@@ -442,7 +444,7 @@ const decisionOpts = [
 const showAssignModal  = ref(false)
 const showSendModal    = ref(false)
 const showDueDateModal = ref(false)
-const globalDueDate    = ref('2026-06-15')
+const globalDueDate    = ref('')
 const newDueDate       = ref('')
 const today            = new Date().toISOString().slice(0, 10)
 const assignTarget    = ref<ReevalItem | null>(null)
@@ -484,6 +486,7 @@ interface ReevalItem {
   techField?: string
   summary?: string
   departmentId?: number
+  departmentName?: string
   decision?: string | null
   reviewStatus: 'unassigned' | 'requested' | 'overdue' | 'done'
   isOverdue?: boolean
@@ -492,6 +495,8 @@ interface ReevalItem {
 
 // ── 분기 레이블 ──────────────────────────────────────
 const quarterLabel = computed(() => {
+  const rc = currentCycle.value
+  if (rc) return `${rc.year}년 ${rc.quarter}분기`
   const d = new Date()
   return `${d.getFullYear()}년 ${Math.ceil((d.getMonth() + 1) / 3)}분기`
 })
@@ -595,25 +600,53 @@ const reviewToStatus: Record<string, ReevalItem['reviewStatus']> = {
   SUBMITTED: 'done',
 }
 
+async function fetchStatusCounts(deptId?: number | null) {
+  const base: ReviewTargetParams = { page: 1, size: 1 }
+  if (deptId != null && deptId !== -1) base.departmentId = deptId
+  const [all, scheduled, pending, overdue, submitted, unread] = await Promise.all([
+    reviewsApi.getReviewTargets({ ...base }),
+    reviewsApi.getReviewTargets({ ...base, status: 'SCHEDULED' }),
+    reviewsApi.getReviewTargets({ ...base, status: 'PENDING' }),
+    reviewsApi.getReviewTargets({ ...base, status: 'OVERDUE' }),
+    reviewsApi.getReviewTargets({ ...base, status: 'SUBMITTED' }),
+    reviewsApi.getReviewTargets({ ...base, status: 'SUBMITTED', checked: false }),
+  ])
+  statusCounts.value = {
+    all:        all.totalItems,
+    unassigned: scheduled.totalItems,
+    requested:  pending.totalItems,
+    overdue:    overdue.totalItems,
+    done:       submitted.totalItems,
+    unread:     unread.totalItems,
+  }
+}
+
 async function fetchList(p = 1) {
   loading.value = true
   setPage(p)
   selectedIds.clear()
   try {
     const params: ReviewTargetParams = { page: p, size: pageQuery.value.size }
-    if (activeStatus.value !== 'all' && activeStatus.value !== 'unread' && statusToReview[activeStatus.value]) {
+    if (activeStatus.value === 'unread') {
+      params.status = 'SUBMITTED'
+      params.checked = false
+    } else if (activeStatus.value !== 'all' && statusToReview[activeStatus.value]) {
       params.status = statusToReview[activeStatus.value]
     }
     if (activeDept.value !== null && activeDept.value !== -1) {
       params.departmentId = activeDept.value
     }
 
-    const res = await reviewsApi.getReviewTargets(params)
+    const [res] = await Promise.all([
+      reviewsApi.getReviewTargets(params),
+      fetchStatusCounts(activeDept.value),
+    ])
     items.value = res.items.map(r => ({
       id: r.patentId,
       title: r.title,
       applicationNumber: r.applicationNumber,
       departmentId: r.departmentId,
+      departmentName: r.departmentName,
       decision: r.opinion ?? null,
       reviewStatus: reviewToStatus[r.status] ?? 'unassigned',
       isOverdue: r.status === 'OVERDUE',
@@ -719,6 +752,14 @@ onMounted(async () => {
   if (tab)      activeStatus.value   = tab
   if (dept)     activeDept.value     = Number(dept)
   if (decision) activeDecision.value = decision
+
+  try {
+    currentCycle.value = await reviewCyclesApi.getCurrent()
+    if (currentCycle.value.deadline) globalDueDate.value = currentCycle.value.deadline
+  } catch {
+    // 폴백: 하드코딩 없이 빈 값 유지
+  }
+
   await fetchList(1)
   if (open) {
     await router.replace({ path: '/legal/reevaluation', query: tab ? { tab } : {} })
