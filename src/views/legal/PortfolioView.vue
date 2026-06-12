@@ -348,6 +348,7 @@ import { portfolioApi } from '@/api/portfolio'
 import type {
   TechFieldItem, CountryItem, DepartmentItem, GradeDistributionItem,
   YearlyTrendItem, AnnuityTrendItem, QuarterDecisionItem, BreakdownDecisionItem,
+  PortfolioDistributionResponse, PortfolioTrendsResponse,
 } from '@/api/portfolio'
 
 // ── 색상 팔레트 ──────────────────────────────────────
@@ -356,16 +357,18 @@ const trendColors = ['#ABACED', '#67E2AB', '#FFBC5E']
 
 const isLoading = ref(false)
 
+// ── API 응답 refs ─────────────────────────────────────
+const distribution = ref<PortfolioDistributionResponse | null>(null)
+const trends       = ref<PortfolioTrendsResponse | null>(null)
+
 // ── 분포 데이터 ──────────────────────────────────────
 const treemapItems = ref<TechFieldItem[]>([])
 const totalPatents = computed(() => treemapItems.value.reduce((s, i) => s + i.count, 0))
 const countryItems = ref<CountryItem[]>([])
 const deptItems    = ref<DepartmentItem[]>([])
-const allFieldDist = ref<GradeDistributionItem[]>([])
 
 // ── 추이 데이터 ──────────────────────────────────────
 const trendData    = ref<YearlyTrendItem[]>([])
-const annuityData  = ref<AnnuityTrendItem[]>([])
 
 // ── 결정 데이터 ──────────────────────────────────────
 const decisionData = ref<QuarterDecisionItem[]>([])
@@ -378,22 +381,22 @@ const insights = ref<string[]>([])
 async function fetchAll() {
   isLoading.value = true
   try {
-    const [dist, trends, decisions, ins] = await Promise.all([
+    const [dist, trendsResp, decisionsResp, ins] = await Promise.all([
       portfolioApi.getPortfolioDistribution(),
       portfolioApi.getPortfolioTrends(),
       portfolioApi.getPortfolioDecisions(),
       portfolioApi.getPortfolioInsights(),
     ])
-    treemapItems.value = dist.byTechField        ?? []
-    countryItems.value = dist.byFilingCountry    ?? []
-    deptItems.value    = dist.byDepartment       ?? []
-    allFieldDist.value = dist.byGrade            ?? []
-    trendData.value    = trends.yearlyPatentTrends ?? []
-    annuityData.value  = trends.yearlyAnnuityCosts ?? []
-    decisionData.value = decisions.byQuarter     ?? []
-    deptDecision.value = decisions.byDepartment  ?? []
-    techDecision.value = decisions.byTechField   ?? []
-    insights.value     = ins.insights            ?? []
+    distribution.value = dist
+    trends.value       = trendsResp
+    treemapItems.value = dist.byTechField           ?? []
+    countryItems.value = dist.byFilingCountry       ?? []
+    deptItems.value    = dist.byDepartment          ?? []
+    trendData.value    = trendsResp.yearlyPatentTrends ?? []
+    decisionData.value = decisionsResp.byQuarter    ?? []
+    deptDecision.value = decisionsResp.byDepartment ?? []
+    techDecision.value = decisionsResp.byTechField  ?? []
+    insights.value     = ins.insights               ?? []
   } catch (err) {
     console.error('PortfolioView/fetchAll:', err)
   } finally {
@@ -444,10 +447,6 @@ const donutSegments = computed(() => {
     return seg
   })
 })
-
-// ── 연도별 추이 ──────────────────────────────────────
-const trendData = computed(() => trends.value?.yearlyTrends ?? [])
-const maxTrend  = computed(() => Math.max(...trendData.value.flatMap(d => [d.registered, d.expired]), 1))
 
 // ── 꺾은선 차트 설정 ─────────────────────────────────
 const svgW = 540
@@ -569,7 +568,7 @@ const gradeLabel: Record<string, string> = {
 }
 
 const allFieldDist = computed(() => {
-  const gradeDist = distribution.value?.gradeDistribution ?? []
+  const gradeDist = distribution.value?.byGrade ?? []
   if (!gradeDist.length) return []
   const overall = gradeDist.reduce(
     (acc, f) => ({ name: '전체', S: acc.S + f.S, A: acc.A + f.A, B: acc.B + f.B, C: acc.C + f.C, D: acc.D + f.D, total: acc.total + f.total }),
@@ -582,7 +581,7 @@ const selectedField = ref('전체')
 const selectedFieldData = computed(() => allFieldDist.value?.find(f => f.name === selectedField.value) ?? null)
 
 // ── 연차료 추이 ──────────────────────────────────────
-const ANNUITY_DATA = computed(() => trends.value?.annuityTrends ?? [])
+const ANNUITY_DATA = computed(() => trends.value?.yearlyAnnuityCosts ?? [])
 
 const annW = 260, annH = 150
 const annPad = { t: 22, b: 24, l: 8, r: 8 }
@@ -603,20 +602,6 @@ function annBarH(amount: number) {
   return (amount / annMax.value) * annPlotH
 }
 
-// ── 데이터 로드 ──────────────────────────────────────
-async function loadAll() {
-  await Promise.allSettled([
-    portfolioApi.getPortfolioDistribution().then(d => { distribution.value = d }).catch(console.error),
-    portfolioApi.getPortfolioTrends().then(d => { trends.value = d }).catch(console.error),
-    portfolioApi.getPortfolioDecisions().then(d => {
-      decisions.value = d
-      if (d.quarters.length) selectedQuarter.value = d.quarters[d.quarters.length - 1].year
-    }).catch(console.error),
-    portfolioApi.getPortfolioInsights().then(d => { insights.value = d }).catch(console.error),
-  ])
-}
-
-onMounted(loadAll)
 </script>
 
 <style scoped>

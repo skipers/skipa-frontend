@@ -41,28 +41,6 @@
           <p>검토할 신청이 없습니다.</p>
         </div>
       </div>
-      <button class="btn-new-register" @click="openRegisterModal">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        신규 등록
-      </button>
-    </div>
-
-    <!-- 탭 -->
-    <div class="tab-bar">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        class="tab-btn"
-        :class="{ 'tab-btn--active': activeTab === tab.key }"
-        @click="activeTab = tab.key"
-      >
-        <span v-html="tab.icon" class="tab-btn__icon" />
-        {{ tab.label }}
-        <span v-if="tab.key === 'review' && pendingCount > 0" class="tab-badge tab-badge--alert">{{ pendingCount }}</span>
-      </button>
-    </div>
 
       <div v-else class="review-list">
         <div
@@ -483,7 +461,7 @@ const editTargetId = ref<number | null>(null)
 const editTargetTitle = ref('')
 
 const form = reactive({
-  title: '', managementNumber: '', inventors: '', applicant: '',
+  title: '', finalTitle: '', managementNumber: '', inventors: '', applicant: '',
   bizField: '', techField: '', relatedProducts: '', country: 'KR',
   status: '등록', coApplicant: '아니오', coApplicantName: '',
   applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
@@ -494,7 +472,7 @@ const form = reactive({
 
 function clearForm() {
   Object.assign(form, {
-    title: '', managementNumber: '', inventors: '', applicant: '',
+    title: '', finalTitle: '', managementNumber: '', inventors: '', applicant: '',
     bizField: '', techField: '', relatedProducts: '', country: 'KR',
     status: '등록', coApplicant: '아니오', coApplicantName: '',
     applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
@@ -509,6 +487,43 @@ function clearForm() {
   editTargetTitle.value = ''
 }
 
+const isExtracting = ref(false)
+const isSubmitting = ref(false)
+
+function fillFormFromResult(r: Partial<PatentCreateRequest>) {
+  if (r.title)              form.finalTitle = r.title
+  if (r.applicationNumber)  form.applicationNumber = r.applicationNumber
+  if (r.registrationNumber) form.registrationNumber = r.registrationNumber ?? ''
+  if (r.managementNumber)   form.managementNumber   = r.managementNumber ?? ''
+  if (r.applicant)          form.applicant = r.applicant ?? ''
+  if (r.inventor)           form.inventors = r.inventor ?? ''
+  if (r.applicationDate)    form.applicationDate = r.applicationDate ?? ''
+  if (r.registrationDate)   form.registrationDate = r.registrationDate ?? ''
+  if (r.ipcCodes)           form.ipc = r.ipcCodes
+  if (r.cpcCodes)           form.cpc = r.cpcCodes ?? []
+  if (r.expiryDate)         form.expiryDate = r.expiryDate ?? ''
+  if (r.businessField)      form.bizField = r.businessField ?? ''
+  if (r.techField)          form.techField = r.techField ?? ''
+  if (r.keywords)           form.keywords = r.keywords
+  if (r.summary)            form.summary = r.summary ?? ''
+}
+
+async function handleExtract() {
+  if (!uploadedFile.value) return
+  isExtracting.value = true
+  try {
+    const { extractJobId, uploadUrl } = await patentsApi.createExtractUploadUrl()
+    await fetch(uploadUrl, { method: 'PUT', body: uploadedFile.value, headers: { 'Content-Type': 'application/pdf' } })
+    await patentsApi.completeExtractUpload(extractJobId)
+    let jobId = extractJobId
+    let attempts = 0
+    while (attempts < 30) {
+      await new Promise(r => setTimeout(r, 2000))
+      const status = await patentsApi.getExtractJobStatus(jobId)
+      if (status.status === 'COMPLETED') break
+      if (status.status === 'FAILED') throw new Error('추출 실패')
+      attempts++
+    }
     // 5. 결과 조회 후 폼 자동 입력
     const result = await patentsApi.getExtractJobResult(jobId)
     if (result.result) fillFormFromResult(result.result)
@@ -528,11 +543,13 @@ function closeRegisterModal() {
   showRegisterModal.value = false
   clearForm()
 }
-}
 
 function handleFileSelect(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
-  if (file) uploadedFile.value = file
+  if (file) {
+    uploadedFile.value = file
+    handleExtract()
+  }
 }
 
 async function handleSave() {
@@ -594,19 +611,6 @@ async function handleSave() {
   closeRegisterModal()
 }
 
-// ── 목록 ────────────────────────────────────────────
-const patentList = ref(
-  MOCK_PATENTS.map(p => ({
-    id: p.id,
-    title: p.title,
-    applicationNumber: p.applicationNumber,
-    applicationDate: p.applicationDate,
-    techField: p.techField,
-    status: p.status,
-    dept: p.dept,
-  }))
-)
-
 const searchQuery = ref('')
 
 const filteredPatents = computed(() => {
@@ -645,7 +649,6 @@ function startEdit(p: typeof patentList.value[0]) {
   })
   showRegisterModal.value = true
 }
-.list-header__cell--action { text-align: right; }
 
 // ── 삭제 ────────────────────────────────────────────
 const deleteTarget = ref<typeof patentList.value[0] | null>(null)
