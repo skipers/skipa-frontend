@@ -14,7 +14,9 @@ export interface CountryItem {
 }
 
 export interface DepartmentItem {
-  name: string
+  name?: string
+  departmentName?: string
+  departmentId?: number
   count: number
 }
 

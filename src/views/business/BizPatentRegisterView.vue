@@ -372,7 +372,7 @@
             {{ app.appStatus === 'pending' && app.isResubmit ? '재신청' : appStatusLabel(app.appStatus) }}
           </span>
           <span class="review-row__title">{{ app.title }}</span>
-          <span class="review-row__dept">신청일 {{ app.submittedAt }}</span>
+          <span class="review-row__dept">신청일 {{ app.submittedAt ? app.submittedAt.slice(0, 10) : '' }}</span>
 
           <!-- 오른쪽 끝: 항상 chevron, 승인이면 hover 시 절대위치 쓰레기통 -->
           <div class="row-end">

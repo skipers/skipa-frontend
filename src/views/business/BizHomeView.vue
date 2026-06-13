@@ -331,10 +331,10 @@ const filedPoints   = computed(() => bizTrendData.value.map((d, i) => `${tX(i)},
 const expiredPoints = computed(() => bizTrendData.value.map((d, i) => `${tX(i)},${tY(d.expired)}`).join(' '))
 
 function decisionLabel(d: string) {
-  return { KEEP: '유지', MAINTAIN: '유지', DISPOSE: '포기' }[d] ?? d
+  return ({ KEEP: '유지', MAINTAIN: '유지', DISPOSE: '포기', ABANDON: '포기', SELL: '매각' } as Record<string, string>)[d] ?? d
 }
 function decisionIcon(d: string) {
-  return { KEEP: '✅', MAINTAIN: '✅', DISPOSE: '🗑' }[d] ?? '—'
+  return ({ KEEP: '✅', MAINTAIN: '✅', DISPOSE: '🗑', ABANDON: '🗑', SELL: '💰' } as Record<string, string>)[d] ?? '—'
 }
 function formatDate(d?: string) {
   if (!d) return '—'
