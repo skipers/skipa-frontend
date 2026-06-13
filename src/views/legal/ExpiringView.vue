@@ -292,12 +292,18 @@ const filteredItems = computed(() => {
 })
 
 // ── 기술분야별 스택 바 (allItems로부터 계산) ─────────────
-const heatmapFields = ['반도체', '배터리', 'AI/SW', '소재']
-const fieldColors   = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED']
+const FIELD_COLORS = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#F9A8D4', '#6EE7B7', '#FCD34D']
+
+const heatmapFields = computed(() =>
+  [...new Set(allItems.value.map(i => i.techField).filter(Boolean))]
+)
+const fieldColors = computed(() =>
+  heatmapFields.value.map((_, i) => FIELD_COLORS[i % FIELD_COLORS.length])
+)
 
 const heatmapData = computed(() => {
   const result: Record<string, Record<string, number>> = {}
-  for (const field of heatmapFields) {
+  for (const field of heatmapFields.value) {
     result[field] = {
       '3m': allItems.value.filter(i => i.techField === field && i.dday <= 90).length,
       '6m': allItems.value.filter(i => i.techField === field && i.dday <= 180).length,
@@ -311,7 +317,7 @@ const heatmapData = computed(() => {
 
 const heatmapKey = computed(() => activeFilter.value === 'all' ? '5y' : activeFilter.value)
 const fieldStackTotal = computed(() =>
-  heatmapFields.reduce((sum, f) => sum + (heatmapData.value[f]?.[heatmapKey.value] ?? 0), 0)
+  heatmapFields.value.reduce((sum, f) => sum + (heatmapData.value[f]?.[heatmapKey.value] ?? 0), 0)
 )
 function fieldStackPct(field: string) {
   const total = fieldStackTotal.value

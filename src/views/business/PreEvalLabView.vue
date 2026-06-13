@@ -407,7 +407,7 @@ async function pollStatus(id: number) {
       }
       await loadChatHistory(id)
       isEvaluating.value = false
-    } else if (detail.status === 'FAILED') {
+    } else if (['FAILED', 'REPORT_FAILED'].includes(detail.status)) {
       isEvaluating.value = false
     } else {
       pollingTimer.value = window.setTimeout(() => void pollStatus(id), 3000)
@@ -586,8 +586,8 @@ onBeforeUnmount(() => {
                   <span v-if="gradeCache[item.id]" class="grade-pill" :class="`grade-pill--${gradeCache[item.id].charAt(0).toLowerCase()}`">
                     {{ gradeCache[item.id] }}
                   </span>
-                  <span v-else-if="['PROCESSING', 'PENDING', 'REPORT_PENDING', 'REPORT_PROCESSING'].includes(item.status)" class="status-pill status-pill--pending">평가 중</span>
-                  <span v-else-if="item.status === 'FAILED'" class="status-pill status-pill--failed">오류</span>
+                  <span v-else-if="['PROCESSING', 'PENDING', 'REPORT_PENDING', 'REPORT_PROCESSING', 'REPORT_CREATED', 'EMBEDDING_COMPLETED'].includes(item.status)" class="status-pill status-pill--pending">평가 중</span>
+                  <span v-else-if="['FAILED', 'REPORT_FAILED'].includes(item.status)" class="status-pill status-pill--failed">오류</span>
                 </div>
               </li>
             </ul>
