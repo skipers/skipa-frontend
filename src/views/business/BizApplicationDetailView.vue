@@ -58,8 +58,8 @@
             >
               {{ app.appStatus === 'pending' && app.isResubmit ? '재신청' : appStatusLabel(app.appStatus) }}
             </span>
-            <span class="meta-chip">신청일 {{ app.submittedAt }}</span>
-            <span v-if="app.reviewedAt" class="meta-chip">검토일 {{ app.reviewedAt }}</span>
+            <span class="meta-chip">신청일 {{ formatDate(app.submittedAt) }}</span>
+            <span v-if="app.reviewedAt" class="meta-chip">검토일 {{ formatDate(app.reviewedAt) }}</span>
           </div>
         </div>
       </div>
@@ -112,7 +112,7 @@
               </tr>
               <tr>
                 <th>발명자</th>
-                <td><input v-if="isEditing" class="edit-input" v-model="editForm.inventors" /><span v-else>{{ app.inventors || '—' }}</span></td>
+                <td><input v-if="isEditing" class="edit-input" v-model="editForm.inventors" /><span v-else>{{ formatInventors(app.inventors) }}</span></td>
               </tr>
               <tr>
                 <th>관리번호</th>
@@ -139,7 +139,7 @@
               </tr>
               <tr>
                 <th>관련제품</th>
-                <td><input v-if="isEditing" class="edit-input" v-model="editForm.relatedProducts" /><span v-else>{{ app.relatedProducts || '—' }}</span></td>
+                <td><input v-if="isEditing" class="edit-input" v-model="editForm.relatedProducts" /><span v-else>{{ joinArray(app.relatedProducts) }}</span></td>
               </tr>
             </tbody>
           </table>
@@ -154,19 +154,19 @@
             <tbody>
               <tr>
                 <th>출원국</th>
-                <td><input v-if="isEditing" class="edit-input" v-model="editForm.country" /><span v-else>{{ app.country || '—' }}</span></td>
+                <td><input v-if="isEditing" class="edit-input" v-model="editForm.country" /><span v-else>{{ app.country ? countryLabel(app.country) : '—' }}</span></td>
               </tr>
               <tr>
                 <th>특허 상태</th>
-                <td><input v-if="isEditing" class="edit-input" v-model="editForm.patentStatus" /><span v-else>{{ app.patentStatus || '—' }}</span></td>
+                <td><input v-if="isEditing" class="edit-input" v-model="editForm.patentStatus" /><span v-else>{{ app.patentStatus ? patentStatusLabel(app.patentStatus) : '—' }}</span></td>
               </tr>
               <tr>
                 <th>출원번호</th>
-                <td><input v-if="isEditing" class="edit-input mono" v-model="editForm.applicationNumber" /><span v-else class="mono-text">{{ app.applicationNumber || '—' }}</span></td>
+                <td><input v-if="isEditing" class="edit-input" v-model="editForm.applicationNumber" /><span v-else>{{ app.applicationNumber || '—' }}</span></td>
               </tr>
               <tr>
                 <th>등록번호</th>
-                <td><input v-if="isEditing" class="edit-input mono" v-model="editForm.registrationNumber" /><span v-else class="mono-text">{{ app.registrationNumber || '—' }}</span></td>
+                <td><input v-if="isEditing" class="edit-input" v-model="editForm.registrationNumber" /><span v-else>{{ app.registrationNumber || '—' }}</span></td>
               </tr>
               <tr>
                 <th>출원일</th>
@@ -178,7 +178,7 @@
               </tr>
               <tr>
                 <th>IPC</th>
-                <td><input v-if="isEditing" class="edit-input" v-model="editForm.ipc" /><span v-else>{{ app.ipc || '—' }}</span></td>
+                <td><input v-if="isEditing" class="edit-input" v-model="editForm.ipc" /><span v-else>{{ joinArray(app.ipc) }}</span></td>
               </tr>
               <tr>
                 <th>예상 소멸일</th>
@@ -236,14 +236,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePatentApplications } from '@/composables/usePatentApplications'
 
 const props = defineProps<{ appId: number }>()
 const router = useRouter()
 
-const { applications, resubmit, withdraw } = usePatentApplications()
+const { applications, resubmit, withdraw, fetchApplications } = usePatentApplications()
+
+onMounted(() => fetchApplications())
 
 const app = computed(() => applications.value.find(a => a.id === props.appId) ?? null)
 
@@ -260,6 +262,34 @@ const editForm   = reactive({
 
 function appStatusLabel(s: string) {
   return { pending: '검토 중', approved: '승인', rejected: '거절', withdrawn: '철회' }[s] ?? s
+}
+
+function formatInventors(s: string) {
+  return s ? s.replace(/\s*;\s*/g, ', ') : '—'
+}
+
+function countryLabel(code: string) {
+  return ({
+    KR: '한국', US: '미국', JP: '일본', CN: '중국',
+    EP: '유럽', DE: '독일', GB: '영국', FR: '프랑스',
+  } as Record<string, string>)[code?.toUpperCase()] ?? code
+}
+
+function patentStatusLabel(s: string) {
+  return ({
+    REGISTERED: '등록', ABANDONED: '포기', EXPIRED: '소멸',
+    PENDING: '출원', REJECTED: '거절', INVALID: '무효', WITHDRAW: '취하',
+    등록: '등록', 포기: '포기', 소멸: '소멸', 출원: '출원',
+    거절: '거절', 무효: '무효', 취하: '취하', 공개: '공개',
+  } as Record<string, string>)[s] ?? s
+}
+
+function formatDate(s: string) {
+  return s ? s.slice(0, 10) : ''
+}
+
+function joinArray(arr: string[] | undefined) {
+  return arr?.length ? arr.join(', ') : '—'
 }
 
 function goBack() {
@@ -302,9 +332,9 @@ function submitResubmit() {
   goBack()
 }
 
-function handleWithdraw() {
+async function handleWithdraw() {
   if (!app.value) return
-  withdraw(props.appId)
+  await withdraw(props.appId)
   goBack()
 }
 </script>
