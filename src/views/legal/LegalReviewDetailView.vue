@@ -45,8 +45,8 @@
               {{ app.appStatus === 'pending' && app.isResubmit ? '재신청' : appStatusLabel(app.appStatus) }}
             </span>
             <span class="meta-chip">{{ app.submittedBy }}</span>
-            <span class="meta-chip">신청일 {{ app.submittedAt }}</span>
-            <span v-if="app.reviewedAt" class="meta-chip">검토일 {{ app.reviewedAt }}</span>
+            <span class="meta-chip">신청일 {{ formatDate(app.submittedAt) }}</span>
+            <span v-if="app.reviewedAt" class="meta-chip">검토일 {{ formatDate(app.reviewedAt) }}</span>
           </div>
         </div>
       </div>
@@ -110,7 +110,7 @@
             <tbody>
               <tr><th>특허 제목</th><td>{{ app.title }}</td></tr>
               <tr><th>발명의 명칭(최종)</th><td>{{ app.finalTitle || '—' }}</td></tr>
-              <tr><th>발명자</th><td>{{ app.inventors || '—' }}</td></tr>
+              <tr><th>발명자</th><td>{{ formatInventors(app.inventors) }}</td></tr>
               <tr><th>관리번호</th><td>{{ app.managementNumber || '—' }}</td></tr>
             </tbody>
           </table>
@@ -127,7 +127,7 @@
             <tbody>
               <tr><th>관련사업 분야</th><td>{{ app.bizField || '—' }}</td></tr>
               <tr><th>관련기술 분야</th><td>{{ app.techField || '—' }}</td></tr>
-              <tr><th>관련제품</th><td>{{ app.relatedProducts || '—' }}</td></tr>
+              <tr><th>관련제품</th><td>{{ joinArray(app.relatedProducts) }}</td></tr>
             </tbody>
           </table>
         </section>
@@ -141,13 +141,13 @@
           </div>
           <table class="info-table">
             <tbody>
-              <tr><th>출원국</th><td>{{ app.country || '—' }}</td></tr>
-              <tr><th>특허 상태</th><td>{{ app.patentStatus || '—' }}</td></tr>
-              <tr><th>출원번호</th><td class="mono">{{ app.applicationNumber || '—' }}</td></tr>
-              <tr><th>등록번호</th><td class="mono">{{ app.registrationNumber || '—' }}</td></tr>
+              <tr><th>출원국</th><td>{{ app.country ? countryLabel(app.country) : '—' }}</td></tr>
+              <tr><th>특허 상태</th><td>{{ app.patentStatus ? patentStatusLabel(app.patentStatus) : '—' }}</td></tr>
+              <tr><th>출원번호</th><td>{{ app.applicationNumber || '—' }}</td></tr>
+              <tr><th>등록번호</th><td>{{ app.registrationNumber || '—' }}</td></tr>
               <tr><th>출원일</th><td>{{ app.applicationDate || '—' }}</td></tr>
               <tr><th>등록일</th><td>{{ app.registrationDate || '—' }}</td></tr>
-              <tr><th>IPC</th><td>{{ app.ipc || '—' }}</td></tr>
+              <tr><th>IPC</th><td>{{ joinArray(app.ipc) }}</td></tr>
               <tr><th>예상 소멸일</th><td>{{ app.expiryDate || '—' }}</td></tr>
               <tr><th>공동출원여부</th><td>{{ app.coApplicant }}</td></tr>
               <tr v-if="app.coApplicant === '예'"><th>공동출원인명</th><td>{{ app.coApplicantName }}</td></tr>
@@ -194,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePatentApplications } from '@/composables/usePatentApplications'
 import { usePatentDatabase } from '@/composables/usePatentDatabase'
@@ -202,8 +202,10 @@ import { usePatentDatabase } from '@/composables/usePatentDatabase'
 const props = defineProps<{ appId: number }>()
 const router = useRouter()
 
-const { applications, approve, reject } = usePatentApplications()
+const { applications, approve, reject, fetchApplications } = usePatentApplications()
 const { addApprovedPatent } = usePatentDatabase()
+
+onMounted(() => fetchApplications())
 
 const app = computed(() => applications.value.find(a => a.id === props.appId) ?? null)
 
@@ -213,6 +215,34 @@ const rejectReason   = ref('')
 
 function appStatusLabel(s: string) {
   return { pending: '검토 중', approved: '승인', rejected: '거절', withdrawn: '철회' }[s] ?? s
+}
+
+function formatInventors(s: string) {
+  return s ? s.replace(/\s*;\s*/g, ', ') : '—'
+}
+
+function countryLabel(code: string) {
+  return ({
+    KR: '한국', US: '미국', JP: '일본', CN: '중국',
+    EP: '유럽', DE: '독일', GB: '영국', FR: '프랑스',
+  } as Record<string, string>)[code?.toUpperCase()] ?? code
+}
+
+function patentStatusLabel(s: string) {
+  return ({
+    REGISTERED: '등록', ABANDONED: '포기', EXPIRED: '소멸',
+    PENDING: '출원', REJECTED: '거절', INVALID: '무효', WITHDRAW: '취하',
+    등록: '등록', 포기: '포기', 소멸: '소멸', 출원: '출원',
+    거절: '거절', 무효: '무효', 취하: '취하', 공개: '공개',
+  } as Record<string, string>)[s] ?? s
+}
+
+function formatDate(s: string) {
+  return s ? s.slice(0, 10) : ''
+}
+
+function joinArray(arr: string[] | undefined) {
+  return arr?.length ? arr.join(', ') : '—'
 }
 
 function goBack() {
@@ -236,9 +266,9 @@ function handleApprove() {
   goBack()
 }
 
-function handleReject() {
+async function handleReject() {
   if (!rejectReason.value.trim()) return
-  reject(props.appId, rejectReason.value.trim())
+  await reject(props.appId, rejectReason.value.trim())
   goBack()
 }
 </script>

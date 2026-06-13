@@ -426,16 +426,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePatentApplications, type PatentApplication } from '@/composables/usePatentApplications'
 import { useAuthStore } from '@/stores/auth'
 import { patentsApi, type PatentCreateRequest } from '@/api/patents'
+import TagInput from '@/components/ui/TagInput.vue'
 
 const router = useRouter()
 const route  = useRoute()
 const auth = useAuthStore()
-const { applications, submit, resubmit, withdraw, remove } = usePatentApplications()
+const { applications, submit, resubmit, withdraw, remove, fetchApplications } = usePatentApplications()
+
+onMounted(() => fetchApplications())
 
 const confirmDeleteId = ref<number | null>(null)
 const submitted = ref(false)
