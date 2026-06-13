@@ -349,9 +349,11 @@ import { computed, ref, onMounted } from 'vue'
 import { portfolioApi } from '@/api/portfolio'
 import type {
   TechFieldItem, CountryItem, DepartmentItem, GradeDistributionItem,
-  YearlyTrendItem, AnnuityTrendItem, QuarterDecisionItem,
+  YearlyTrendItem, AnnuityTrendItem, QuarterDecisionItem, TechFieldDecision,
   PortfolioDistributionResponse, PortfolioTrendsResponse,
 } from '@/api/portfolio'
+
+type BreakdownDecisionItem = TechFieldDecision
 
 // ── 색상 팔레트 ──────────────────────────────────────
 const techColors  = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#6366f1', '#ABACED', '#67E2AB']
