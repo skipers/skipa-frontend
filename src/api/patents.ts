@@ -19,6 +19,7 @@ export interface PatentListItem {
   latestLegalStatus?: string
   techField?: string
   businessField?: string
+  relatedProducts?: string[]
   keywords?: string[]
   summary?: string
   citationCount?: number
