@@ -68,6 +68,7 @@ interface EvaluationResult {
   investmentNextSprint: string[]
   nextActions: NextActionItem[]
   limitations: string[]
+  evaluatedAt: string
 }
 
 interface ChatMessage {
@@ -79,13 +80,19 @@ interface ChatMessage {
 
 const GREETING = '안녕하세요! 평가 결과에 대해 궁금한 점을 질문해주세요.'
 
-const expandedDimensions = ref<Record<string, boolean>>({})
-function toggleDimension(key: string) {
-  expandedDimensions.value[key] = !expandedDimensions.value[key]
-}
 
 const priorityLabel: Record<string, string> = { high: '높음', medium: '중간', low: '낮음' }
-function getPriorityLabel(p: string) { return priorityLabel[p.toLowerCase()] ?? p }
+
+const groupedNextActions = computed(() => {
+  const order = ['high', 'medium', 'low']
+  const map: Record<string, NextActionItem[]> = {}
+  for (const a of evaluationResult.value?.nextActions ?? []) {
+    const k = a.priority.toLowerCase()
+    if (!map[k]) map[k] = []
+    map[k].push(a)
+  }
+  return order.filter(k => map[k]?.length).map(k => ({ priority: k, label: priorityLabel[k] ?? k, items: map[k] }))
+})
 
 const valueGradeLabel: Record<string, string> = {
   high_value:         '고가치',
@@ -171,15 +178,43 @@ function formatDate(iso: string) {
   return iso.slice(0, 10).replace(/-/g, '.')
 }
 
+function formatDateTime(iso: string) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const ymd = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+  const hm  = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return `${ymd} ${hm}`
+}
+
 function scrollChatToBottom() {
   if (chatViewport.value) chatViewport.value.scrollTop = chatViewport.value.scrollHeight
 }
 
 // ── 이력 ─────────────────────────────────────────────
+async function fetchGradesEagerly(items: PreEvaluationListItem[]) {
+  const targets = items.filter(
+    item => item.status === 'REPORT_COMPLETED' && item.reportUrl && !gradeCache.value[item.id],
+  )
+  await Promise.all(
+    targets.map(async item => {
+      try {
+        const res = await fetch(item.reportUrl!)
+        if (!res.ok) return
+        const j = await res.json() as Record<string, unknown>
+        const fs = (j.frontend_summary ?? {}) as Record<string, unknown>
+        const es = (j.executive_summary ?? {}) as Record<string, unknown>
+        const grade = String(fs.overall_grade ?? es.grade ?? '')
+        if (grade) gradeCache.value[item.id] = grade
+      } catch { /* silent */ }
+    }),
+  )
+}
+
 async function fetchHistory() {
   try {
     const res = await preEvaluationsApi.getList({ size: 100 })
     historyList.value = res.items ?? []
+    fetchGradesEagerly(historyList.value)
   } catch {
     historyList.value = []
   }
@@ -275,6 +310,7 @@ async function parseReportUrl(reportUrl: string): Promise<EvaluationResult | nul
       investmentNextSprint:      strs(fi.recommended_next_sprint),
       nextActions,
       limitations:           strs(j.limitations),
+      evaluatedAt:           String(j.evaluated_at ?? ''),
     }
   } catch {
     return null
@@ -542,9 +578,8 @@ onBeforeUnmount(() => {
                   <span v-if="gradeCache[item.id]" class="grade-pill" :class="`grade-pill--${gradeCache[item.id].charAt(0).toLowerCase()}`">
                     {{ gradeCache[item.id] }}
                   </span>
-                  <span v-else-if="item.status === 'COMPLETED'" class="status-pill status-pill--completed">완료</span>
-                  <span v-else-if="item.status === 'PROCESSING' || item.status === 'PENDING'" class="status-pill status-pill--pending">평가 중</span>
-                  <span v-else class="status-pill">{{ item.status }}</span>
+                  <span v-else-if="['PROCESSING', 'PENDING', 'REPORT_PENDING', 'REPORT_PROCESSING'].includes(item.status)" class="status-pill status-pill--pending">평가 중</span>
+                  <span v-else-if="item.status === 'FAILED'" class="status-pill status-pill--failed">오류</span>
                 </div>
               </li>
             </ul>
@@ -566,7 +601,7 @@ onBeforeUnmount(() => {
           <template v-if="selectedDetail">
             <div class="readonly-header">
               <h2 class="panel-title readonly-panel-title">{{ selectedDetail.title }}</h2>
-              <p class="readonly-date">평가일 {{ formatDate(selectedDetail.completedAt ?? selectedDetail.createdAt) }}</p>
+              <p class="readonly-date">평가일 {{ evaluationResult ? formatDateTime(evaluationResult.evaluatedAt) || formatDate(selectedDetail.completedAt ?? selectedDetail.createdAt) : formatDate(selectedDetail.completedAt ?? selectedDetail.createdAt) }}</p>
             </div>
 
             <div class="readonly-fields">
@@ -813,15 +848,14 @@ onBeforeUnmount(() => {
               <p class="rpt-section__title">평가 기준별 상세</p>
               <div class="dim-accordion">
                 <div v-for="dim in evaluationResult.dimensions" :key="dim.key" class="dim-item">
-                  <button class="dim-item__header" type="button" @click="toggleDimension(dim.key)">
+                  <div class="dim-item__header">
                     <span class="dim-item__label">{{ dim.label }}</span>
                     <span class="dim-item__meta">
                       <span v-if="dim.grade" class="dim-item__grade">{{ dim.grade }}</span>
                       <span class="dim-item__score">{{ dim.score }}점</span>
-                      <svg class="dim-item__chevron" :class="{ 'dim-item__chevron--open': expandedDimensions[dim.key] }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                     </span>
-                  </button>
-                  <ul v-if="expandedDimensions[dim.key] && dim.items.length" class="dim-item__list">
+                  </div>
+                  <ul v-if="dim.items.length" class="dim-item__list">
                     <li v-for="(item, ii) in dim.items" :key="ii">{{ item }}</li>
                   </ul>
                 </div>
@@ -911,20 +945,20 @@ onBeforeUnmount(() => {
             <!-- 보완 액션 -->
             <div v-if="evaluationResult.nextActions.length" class="rpt-section">
               <p class="rpt-section__title">보완 액션</p>
-              <ul class="action-list">
-                <li
-                  v-for="(a, i) in evaluationResult.nextActions"
-                  :key="i"
-                  class="action-item"
-                  :class="`action-item--${a.priority}`"
-                >
-                  <div class="action-item__head">
-                    <span class="action-item__priority">{{ getPriorityLabel(a.priority) }}</span>
+              <div v-for="group in groupedNextActions" :key="group.priority" class="action-group">
+                <p class="action-group__label" :class="`action-group__label--${group.priority}`">{{ group.label }}</p>
+                <div class="action-grid">
+                  <div
+                    v-for="(a, i) in group.items"
+                    :key="i"
+                    class="action-item"
+                    :class="`action-item--${group.priority}`"
+                  >
                     <span class="action-item__text">{{ a.action }}</span>
+                    <p v-if="a.reason" class="action-item__reason">{{ a.reason }}</p>
                   </div>
-                  <p v-if="a.reason" class="action-item__reason">{{ a.reason }}</p>
-                </li>
-              </ul>
+                </div>
+              </div>
             </div>
 
             <!-- 평가 한계 -->
@@ -1012,6 +1046,7 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 800;
   flex-shrink: 0;
+  position: relative;
 }
 .grade-pill--s { background: #dcfce7; color: #14532d; }
 .grade-pill--a { background: #dbeafe; color: #1e3a8a; }
@@ -1032,6 +1067,7 @@ onBeforeUnmount(() => {
 }
 .status-pill--completed { background: #dcfce7; color: #14532d; }
 .status-pill--pending   { background: #fff7ed; color: #92400e; }
+.status-pill--failed    { background: #fee2e2; color: #991b1b; }
 
 /* ══════════════════════════════════════════════════
    메인 콘텐츠 영역
@@ -1495,19 +1531,27 @@ onBeforeUnmount(() => {
 .dim-item__list li { font-size: 12.5px; color: #475569; line-height: 1.65; }
 
 /* ── 보완 액션 ─────────────────────────────────────── */
-.action-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.action-group { margin-bottom: 16px; }
+.action-group__label {
+  font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px;
+  display: inline-block; margin-bottom: 8px;
+}
+.action-group__label--high   { background: #fee2e2; color: #b91c1c; }
+.action-group__label--medium { background: #fef3c7; color: #b45309; }
+.action-group__label--low    { background: #f1f5f9; color: #64748b; }
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .action-item {
   padding: 10px 14px; border-radius: 10px;
   background: #f8fafc; border: 1px solid #e2e8f0;
 }
-.action-item__head { display: flex; align-items: baseline; gap: 8px; }
-.action-item__priority {
-  font-size: 11px; font-weight: 700;
-  padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
-}
-.action-item--high   .action-item__priority { background: #fee2e2; color: #b91c1c; }
-.action-item--medium .action-item__priority { background: #fef3c7; color: #b45309; }
-.action-item--low    .action-item__priority { background: #f1f5f9; color: #64748b; }
+.action-item--high   { background: #fff5f5; border-color: #fecaca; }
+.action-item--medium { background: #fffbeb; border-color: #fde68a; }
+.action-item--low    { background: #f8fafc; border-color: #e2e8f0; }
+.action-item--high   .action-item__text { color: #7f1d1d; }
+.action-item--medium .action-item__text { color: #78350f; }
+.action-item--high   .action-item__reason { color: #b91c1c; }
+.action-item--medium .action-item__reason { color: #b45309; }
 .action-item__text   { font-size: 13px; color: #374151; line-height: 1.65; font-weight: 600; }
 .action-item__reason { font-size: 12px; color: #6b7280; line-height: 1.6; margin: 4px 0 0; }
 
