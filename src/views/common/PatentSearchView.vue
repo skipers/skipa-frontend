@@ -167,8 +167,8 @@ async function fetchFilterOptions() {
   try {
     const departments = await departmentsApi.getDepartments()
     deptOptions.value = departments.items.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
-  } catch (e) {
-    console.error('필터 옵션 로드 실패:', e)
+  } catch (e: any) {
+    if (e?.code !== 'FORBIDDEN') console.error('필터 옵션 로드 실패:', e)
   }
 }
 
