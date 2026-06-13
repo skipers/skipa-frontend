@@ -437,9 +437,9 @@ const activeDept     = ref<number | null>(null)
 const activeDecision = ref<string | null>(null)
 
 const decisionOpts = [
-  { label: '전체', value: null },
-  { label: '유지', value: 'KEEP' },
-  { label: '포기', value: 'DISPOSE' },
+  { label: '전체',   value: null },
+  { label: '유지',   value: 'MAINTAIN' },
+  { label: '포기',   value: 'ABANDON' },
 ]
 const showAssignModal  = ref(false)
 const showSendModal    = ref(false)
@@ -645,6 +645,7 @@ async function fetchList(p = 1) {
       id: r.patentId,
       title: r.title,
       applicationNumber: r.applicationNumber,
+      techField: r.techField,
       departmentId: r.departmentId,
       departmentName: r.departmentName,
       decision: r.opinion ?? null,
@@ -1166,7 +1167,7 @@ onMounted(async () => {
 /* ── 열 헤더 ─────────────────────────────────────── */
 .col-header {
   display: grid;
-  grid-template-columns: 36px 1fr 150px 90px 180px 100px 36px;
+  grid-template-columns: 36px 1fr 150px 140px 180px 72px 36px;
   gap: 20px;
   padding: 8px 20px;
   border-bottom: 1.5px solid var(--color-border);
@@ -1192,7 +1193,7 @@ onMounted(async () => {
 
 .reeval-item {
   display: grid;
-  grid-template-columns: 36px 1fr 150px 90px 180px 100px 36px;
+  grid-template-columns: 36px 1fr 150px 140px 180px 72px 36px;
   align-items: center;
   gap: 20px;
   padding: 14px 20px;

@@ -8,6 +8,8 @@ export interface ReviewResponse {
   patentId: number
   title: string
   applicationNumber: string
+  techField?: string
+  businessField?: string
   reportId?: number
   departmentId: number
   departmentName: string

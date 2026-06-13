@@ -57,24 +57,6 @@
 
     <!-- ── 유지중인 특허 ── -->
     <template v-if="activeTab === 'active'">
-      <!-- 필터 바 -->
-      <div class="filter-bar">
-        <div class="filter-bar__group">
-          <span class="filter-bar__label">기술 분야</span>
-          <select v-model="filterTechField" class="filter-bar__select">
-            <option value="">전체</option>
-            <option v-for="f in techFieldOptions" :key="f" :value="f">{{ f }}</option>
-          </select>
-        </div>
-        <div class="filter-bar__divider" />
-        <div class="filter-bar__group">
-          <span class="filter-bar__label">상태</span>
-          <select v-model="filterStatus" class="filter-bar__select">
-            <option value="">전체</option>
-            <option value="REGISTERED">등록</option>
-          </select>
-        </div>
-      </div>
       <div class="table-card">
         <!-- 툴바 -->
         <div class="table-toolbar">
@@ -173,16 +155,6 @@
 
     <!-- ── 소멸/포기 특허 ── -->
     <template v-if="activeTab === 'expired'">
-      <!-- 필터 바 -->
-      <div class="filter-bar">
-        <div class="filter-bar__group">
-          <span class="filter-bar__label">기술 분야</span>
-          <select v-model="filterTechField" class="filter-bar__select">
-            <option value="">전체</option>
-            <option v-for="f in techFieldOptions" :key="f" :value="f">{{ f }}</option>
-          </select>
-        </div>
-      </div>
       <div class="table-card">
         <!-- 툴바 -->
         <div class="table-toolbar">
@@ -301,10 +273,8 @@ const activeTotalPages = ref(1)
 const activeTotalItems = ref(0)
 
 // ── 검색 / 필터 ──────────────────────────────────────
-const searchInput    = ref('')
-const searchQuery    = ref('')
-const filterTechField = ref('')
-const filterStatus   = ref('')
+const searchInput = ref('')
+const searchQuery = ref('')
 
 function doSearch() {
   searchQuery.value = searchInput.value
@@ -337,28 +307,16 @@ function sortIconChar(key: string) {
   return sortDir.value === 'asc' ? '↑' : '↓'
 }
 
-// ── 기술 분야 옵션 ───────────────────────────────────
-const techFieldOptions = computed(() => {
-  const all = [...activePatents.value, ...expiredPatents.value]
-  return [...new Set(all.map(p => p.techField).filter(Boolean))] as string[]
-})
-
 // ── 필터 + 정렬 적용 헬퍼 ────────────────────────────
 function applySearchFilter(list: PatentItem[]): PatentItem[] {
-  let result = list
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
-    result = result.filter(p =>
-      p.title.toLowerCase().includes(q) ||
-      p.applicationNumber.toLowerCase().includes(q) ||
-      (p.techField && p.techField.toLowerCase().includes(q)) ||
-      (p.tags && p.tags.some(t => t.toLowerCase().includes(q)))
-    )
-  }
-  if (filterTechField.value) {
-    result = result.filter(p => p.techField === filterTechField.value)
-  }
-  return result
+  if (!searchQuery.value) return list
+  const q = searchQuery.value.toLowerCase()
+  return list.filter(p =>
+    p.title.toLowerCase().includes(q) ||
+    p.applicationNumber.toLowerCase().includes(q) ||
+    (p.techField && p.techField.toLowerCase().includes(q)) ||
+    (p.tags && p.tags.some(t => t.toLowerCase().includes(q)))
+  )
 }
 
 function applySort(list: PatentItem[]): PatentItem[] {
@@ -372,13 +330,7 @@ function applySort(list: PatentItem[]): PatentItem[] {
 }
 
 // ── 계산된 필터/정렬 결과 ────────────────────────────
-const filteredActivePatents = computed(() => {
-  let list = applySearchFilter(activePatents.value)
-  if (filterStatus.value) {
-    list = list.filter(p => patentStatus(p.expiryDate) === filterStatus.value)
-  }
-  return applySort(list)
-})
+const filteredActivePatents = computed(() => applySort(applySearchFilter(activePatents.value)))
 
 const filteredExpiredPatents = computed(() => {
   return applySort(applySearchFilter(expiredPatents.value))

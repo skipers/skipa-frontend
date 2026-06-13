@@ -319,7 +319,7 @@
             >
               <div class="opinion-item__header">
                 <div class="opinion-item__badge" :class="`opinion-item__badge--${op.decision.toLowerCase()}`">
-                  {{ op.decision === 'KEEP' ? '유지' : '포기' }}
+                  {{ ['KEEP','MAINTAIN'].includes(op.decision) ? '유지' : '포기' }}
                 </div>
                 <div class="opinion-item__info">
                   <p class="opinion-item__submitter">{{ op.submitter }}</p>
@@ -958,8 +958,10 @@ function relevanceClass(r: '상' | '중' | '하') {
   width: 60px; height: 60px; border-radius: 14px;
   font-size: 18px; font-weight: 800; flex-shrink: 0;
 }
-.opinion-item__badge--keep    { background: #f0fdf4; color: #15803d; border: 2px solid #86efac; }
-.opinion-item__badge--dispose { background: #fef2f2; color: #dc2626; border: 2px solid #fca5a5; }
+.opinion-item__badge--keep     { background: #f0fdf4; color: #15803d; border: 2px solid #86efac; }
+.opinion-item__badge--maintain { background: #f0fdf4; color: #15803d; border: 2px solid #86efac; }
+.opinion-item__badge--dispose  { background: #fef2f2; color: #dc2626; border: 2px solid #fca5a5; }
+.opinion-item__badge--abandon  { background: #fef2f2; color: #dc2626; border: 2px solid #fca5a5; }
 
 .opinion-item__info { display: flex; flex-direction: column; gap: 3px; }
 .opinion-item__submitter { font-size: 14px; font-weight: 600; color: #0f172a; margin: 0; }

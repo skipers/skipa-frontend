@@ -19,13 +19,13 @@ export interface DepartmentItem {
 }
 
 export interface GradeDistributionItem {
-  name: string
-  S: number
-  A: number
-  B: number
-  C: number
-  D: number
-  total: number
+  departmentId: number
+  departmentName: string
+  s: number
+  a: number
+  b: number
+  c: number
+  d: number
 }
 
 export interface PortfolioDistributionResponse {
@@ -52,22 +52,29 @@ export interface PortfolioTrendsResponse {
   yearlyAnnuityCosts: AnnuityTrendItem[]
 }
 
-export interface QuarterDecisionItem {
-  quarter: string
+export interface DepartmentDecision {
+  departmentId: number
+  departmentName: string
   maintain: number
   abandon: number
 }
 
-export interface BreakdownDecisionItem {
+export interface TechFieldDecision {
   name: string
   maintain: number
   abandon: number
 }
 
+export interface QuarterDecisionItem {
+  quarter: string
+  maintain: number
+  abandon: number
+  byDepartment: DepartmentDecision[]
+  byTechField: TechFieldDecision[]
+}
+
 export interface PortfolioDecisionResponse {
   byQuarter: QuarterDecisionItem[]
-  byDepartment: BreakdownDecisionItem[]
-  byTechField: BreakdownDecisionItem[]
 }
 
 export interface PortfolioInsightsResponse {

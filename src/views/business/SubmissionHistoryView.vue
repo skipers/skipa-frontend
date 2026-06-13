@@ -36,8 +36,8 @@
         <span class="filter-label">의견</span>
         <div class="chip-row">
           <button class="chip" :class="{ 'chip--active': filterDecision === '' }"      @click="filterDecision = ''">전체</button>
-          <button class="chip chip--keep"    :class="{ 'chip--active': filterDecision === 'KEEP' }"    @click="filterDecision = 'KEEP'">유지</button>
-          <button class="chip chip--dispose" :class="{ 'chip--active': filterDecision === 'DISPOSE' }" @click="filterDecision = 'DISPOSE'">포기</button>
+          <button class="chip chip--keep"    :class="{ 'chip--active': filterDecision === 'MAINTAIN' }" @click="filterDecision = 'MAINTAIN'">유지</button>
+          <button class="chip chip--dispose" :class="{ 'chip--active': filterDecision === 'ABANDON' }"  @click="filterDecision = 'ABANDON'">포기</button>
         </div>
       </div>
       <span class="filter-result">{{ filteredHistory.length }}건</span>
@@ -125,7 +125,7 @@ async function fetchHistory() {
         patentId: r.patentId,
         patentTitle: r.title,
         applicationNumber: r.applicationNumber,
-        decision: r.opinion === 'MAINTAIN' ? 'KEEP' : 'DISPOSE',
+        decision: r.opinion ?? '',
         decidedAt: r.submittedAt!,
         quarter: `${r.reviewCycle.year}년 ${r.reviewCycle.quarter}분기`,
       }))
@@ -170,7 +170,7 @@ const groupedHistory = computed(() => {
 })
 
 function decisionLabel(d: string) {
-  return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
+  return { KEEP: '유지', MAINTAIN: '유지', DISPOSE: '포기', ABANDON: '포기' }[d] ?? d
 }
 function formatDate(d: string) {
   return d.slice(0, 10).replace(/-/g, '.')
@@ -365,8 +365,10 @@ onMounted(() => fetchHistory())
   padding: 3px 10px; border-radius: 6px;
   font-size: 12px; font-weight: 700; flex-shrink: 0;
 }
-.decision-badge--keep    { background: #f0fdf4; color: #15803d; }
-.decision-badge--dispose { background: #fef2f2; color: #dc2626; }
+.decision-badge--keep     { background: #f0fdf4; color: #15803d; }
+.decision-badge--maintain { background: #f0fdf4; color: #15803d; }
+.decision-badge--dispose  { background: #fef2f2; color: #dc2626; }
+.decision-badge--abandon  { background: #fef2f2; color: #dc2626; }
 
 .history-item__date {
   font-size: 12px; color: #94a3b8;
