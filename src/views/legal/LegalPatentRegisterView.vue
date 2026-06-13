@@ -105,7 +105,7 @@
                 <span v-else class="text-muted">—</span>
               </div>
               <div class="list-row__cell">
-                <span class="status-badge" :class="statusClass(p.status)">{{ statusLabel(p.status) }}</span>
+                <span class="status-badge" :class="statusClass(p.latestLegalStatus ?? '')">{{ statusLabel(p.latestLegalStatus ?? '') }}</span>
               </div>
               <div class="list-row__cell list-row__mono">{{ p.applicationDate }}</div>
               <div class="list-row__cell list-row__actions">
@@ -405,16 +405,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { patentsApi, type PatentCreateRequest } from '@/api/patents'
+import { patentsApi, type PatentCreateRequest, type PatentListItem } from '@/api/patents'
 import TagInput from '@/components/ui/TagInput.vue'
 import { usePatentApplications } from '@/composables/usePatentApplications'
-import { usePatentDatabase, type DBPatentEntry } from '@/composables/usePatentDatabase'
 
 const router = useRouter()
-const { applications } = usePatentApplications()
-const { approvedPatents: patentList, addApprovedPatent } = usePatentDatabase()
+const { applications, fetchApplications } = usePatentApplications()
+
+const patentItems = ref<PatentListItem[]>([])
+
+async function fetchPatents() {
+  try {
+    const res = await patentsApi.getPatents({ size: 200 })
+    patentItems.value = res.items
+  } catch (err) {
+    console.error('특허 목록 조회 오류:', err)
+  }
+}
+
+onMounted(() => { fetchApplications(); fetchPatents() })
 // ── 탭 ──────────────────────────────────────────────
 type TabKey = 'review' | 'list'
 const activeTab = ref<TabKey>('review')
@@ -557,18 +568,23 @@ async function handleSave() {
   isSubmitting.value = true
   try {
     if (editMode.value && editTargetId.value !== null) {
-      const mappedStatus = form.status === '등록' ? 'REGISTERED' : form.status === '포기' ? 'ABANDONED' : 'EXPIRED'
-      const idx = patentList.value.findIndex(p => p.id === editTargetId.value)
-      if (idx !== -1) {
-        patentList.value[idx] = {
-          ...patentList.value[idx],
-          title: form.title,
-          applicationNumber: form.applicationNumber,
-          applicationDate: form.applicationDate,
-          techField: form.techField,
-          status: mappedStatus,
-        }
-      }
+      await patentsApi.updatePatent(editTargetId.value, {
+        title: form.title,
+        applicationNumber: form.applicationNumber,
+        applicationDate: form.applicationDate || undefined,
+        techField: form.techField || undefined,
+        inventor: form.inventors || undefined,
+        applicant: form.applicant || undefined,
+        registrationNumber: form.registrationNumber || undefined,
+        ipcCodes: form.ipc?.length ? form.ipc : undefined,
+        cpcCodes: form.cpc?.length ? form.cpc : undefined,
+        expiryDate: form.expiryDate || undefined,
+        businessField: form.bizField || undefined,
+        keywords: form.keywords?.length ? form.keywords : undefined,
+        summary: form.summary || undefined,
+        filingCountry: form.country || undefined,
+      })
+      await fetchPatents()
       closeRegisterModal()
     } else {
       await patentsApi.createPatent({
@@ -588,77 +604,69 @@ async function handleSave() {
           : undefined,
         summary: form.summary || undefined,
         filingCountry: form.country || undefined,
-        // TODO: 확인 필요 - isJointApplication / jointApplicant 필드 API 지원 여부
       })
-      addApprovedPatent({
-        title: form.title,
-        applicationNumber: form.applicationNumber,
-        registrationNumber: form.registrationNumber,
-        applicationDate: form.applicationDate,
-        expiryDate: form.expiryDate,
-        techField: form.techField,
-        status: 'REGISTERED',
-        summary: form.summary,
-        citationCount: 0,
-      })
-      router.push('/legal/patent-search')
+      await fetchPatents()
+      closeRegisterModal()
     }
   } catch (err) {
     console.error('특허 저장 오류:', err)
   } finally {
     isSubmitting.value = false
   }
-  closeRegisterModal()
 }
 
 const searchQuery = ref('')
 
 const filteredPatents = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return patentList.value
-  return patentList.value.filter(p =>
+  if (!q) return patentItems.value
+  return patentItems.value.filter(p =>
     p.title.toLowerCase().includes(q) ||
     p.applicationNumber.toLowerCase().includes(q)
   )
 })
 
 function statusLabel(s: string) {
-  return { REGISTERED: '등록', EXPIRED: '소멸', ABANDONED: '포기' }[s] ?? s
+  return ({ REGISTERED: '등록', EXPIRED: '소멸', ABANDONED: '포기', PUBLISHED: '공개', PENDING: '출원' } as Record<string, string>)[s] ?? s
 }
 function statusClass(s: string) {
-  return { REGISTERED: 'status--registered', EXPIRED: 'status--expired', ABANDONED: 'status--abandoned' }[s] ?? ''
+  return ({ REGISTERED: 'status--registered', EXPIRED: 'status--expired', ABANDONED: 'status--abandoned', PUBLISHED: 'status--published', PENDING: 'status--pending' } as Record<string, string>)[s] ?? ''
 }
 
-function startEdit(p: typeof patentList.value[0]) {
+function startEdit(p: PatentListItem) {
   editMode.value = true
   editTargetId.value = p.id
   editTargetTitle.value = p.title
   Object.assign(form, {
     title: p.title,
     applicationNumber: p.applicationNumber,
-    applicationDate: p.applicationDate,
-    techField: p.techField,
-    status: statusLabel(p.status),
-    managementNumber: '', inventors: '', applicant: '',
-    bizField: '', relatedProducts: '', country: 'KR',
+    applicationDate: p.applicationDate ?? '',
+    techField: p.techField ?? '',
+    status: statusLabel(p.latestLegalStatus ?? ''),
+    managementNumber: '', inventors: p.inventor ?? '', applicant: p.applicant ?? '',
+    bizField: p.businessField ?? '', relatedProducts: '', country: p.filingCountry ?? 'KR',
     coApplicant: '아니오', coApplicantName: '',
     registrationDate: '', publicationDate: '', announcementDate: '',
-    registrationNumber: '', publicationNumber: '', announcementNumber: '',
-    ipc: [], cpc: [], examinationClaimCount: '', citationCount: '',
-    expiryDate: '', keywords: [] as string[], summary: '',
+    registrationNumber: p.registrationNumber ?? '', publicationNumber: '', announcementNumber: '',
+    ipc: p.ipcCodes ?? [], cpc: p.cpcCodes ?? [], examinationClaimCount: '', citationCount: p.citationCount?.toString() ?? '',
+    expiryDate: p.expiryDate ?? '', keywords: p.keywords ?? [], summary: p.summary ?? '',
   })
   showRegisterModal.value = true
 }
 
 // ── 삭제 ────────────────────────────────────────────
-const deleteTarget = ref<typeof patentList.value[0] | null>(null)
+const deleteTarget = ref<PatentListItem | null>(null)
 
-function confirmDelete(p: typeof patentList.value[0]) { deleteTarget.value = p }
+function confirmDelete(p: PatentListItem) { deleteTarget.value = p }
 
-function handleDelete() {
+async function handleDelete() {
   if (!deleteTarget.value) return
-  const idx = patentList.value.findIndex(p => p.id === deleteTarget.value!.id)
-  if (idx !== -1) patentList.value.splice(idx, 1)
+  try {
+    await patentsApi.deletePatent(deleteTarget.value.id)
+    await fetchPatents()
+  } catch (err) {
+    console.error('특허 삭제 오류:', err)
+  }
   deleteTarget.value = null
 }
 </script>
@@ -795,7 +803,7 @@ function handleDelete() {
 
 .list-header {
   display: grid;
-  grid-template-columns: 2.5fr 1.5fr 100px 80px 110px 160px;
+  grid-template-columns: 2.5fr 1.3fr 1.4fr 80px 110px 160px;
   gap: 16px;
   padding: 8px 20px;
   background: var(--color-surface-muted);
@@ -811,7 +819,7 @@ function handleDelete() {
 .list-rows { display: flex; flex-direction: column; }
 .list-row {
   display: grid;
-  grid-template-columns: 2.5fr 1.5fr 100px 80px 110px 160px;
+  grid-template-columns: 2.5fr 1.3fr 1.4fr 80px 110px 160px;
   gap: 16px; align-items: center;
   padding: 13px 20px;
   border-bottom: 1px solid var(--color-surface-hover);
@@ -836,6 +844,8 @@ function handleDelete() {
 .status--registered { background: #dcfce7; color: #166534; }
 .status--expired    { background: #fee2e2; color: #b91c1c; }
 .status--abandoned  { background: #f1f5f9; color: #475569; }
+.status--published  { background: #ede9fe; color: #5b21b6; }
+.status--pending    { background: #fef9c3; color: #854d0e; }
 
 .btn-action {
   display: flex; align-items: center; gap: 5px; padding: 5px 11px;

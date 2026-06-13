@@ -3,6 +3,8 @@ import type { Report, ReportWithUrl, PatentLegalStatus, Annuity } from '@/types'
 
 // ── List / Detail Types ─────────────────────────────────────
 
+export type ApprovalStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN'
+
 export interface PatentListItem {
   id: number
   title: string
@@ -23,6 +25,7 @@ export interface PatentListItem {
   examinationClaimCount?: number
   filingCountry?: string
   approvalStatus?: string
+  rejectionReason?: string | null
   currentDepartmentId?: number
   currentDepartmentName?: string
   createdAt?: string
@@ -62,6 +65,8 @@ export interface PatentDetail {
   latestReportScore?: number
   keywords?: string[]
   summary?: string
+  approvalStatus?: string
+  rejectionReason?: string | null
   createdAt?: string
   updatedAt?: string
 }
@@ -108,6 +113,19 @@ export interface PatentCreateRequest {
 
 export type PatentUpdateRequest = Partial<PatentCreateRequest>
 
+export interface ApplicationListParams {
+  approvalStatus?: ApprovalStatus | 'PENDING'
+  page?: number
+  size?: number
+}
+
+export interface PatentApplicationItem extends PatentListItem {
+  approvalStatus: string
+  rejectionReason?: string | null
+  submittedAt?: string
+  submittedBy?: string
+}
+
 export interface PatentExtractResultResponse {
   extractJobId: number
   objectKey: string
@@ -152,6 +170,21 @@ export const patentsApi = {
 
   changePatentDepartment: async (patentId: number, departmentId: number): Promise<PatentDetail> => {
     return apiClient.patch(`/patents/${patentId}/department`, { departmentId })
+  },
+
+  // ── Applications ───────────────────────────────────────
+
+  getApplications: async (params?: ApplicationListParams): Promise<PageResponse<PatentApplicationItem>> => {
+    const p = params ? { ...params, page: params.page != null ? params.page - 1 : 0 } : {}
+    return apiClient.get('/patents/applications', { params: p })
+  },
+
+  rejectApplication: async (patentId: number, reason: string): Promise<void> => {
+    return apiClient.patch(`/patents/${patentId}/reject`, { reason })
+  },
+
+  withdrawApplication: async (patentId: number): Promise<void> => {
+    return apiClient.patch(`/patents/${patentId}/withdraw`)
   },
 
   // ── Legal Status ───────────────────────────────────────
