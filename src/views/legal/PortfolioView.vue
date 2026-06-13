@@ -172,7 +172,7 @@
               :stroke-dashoffset="seg.offset"
               stroke-linecap="butt"
               style="cursor:pointer"
-              @mouseenter="showDonutTooltip(deptItems[i].name, deptItems[i].count, totalPatents, techColors[i % techColors.length])"
+              @mouseenter="showDonutTooltip(deptItems[i].name ?? '', deptItems[i].count, totalPatents, techColors[i % techColors.length])"
               @mouseleave="hideDonutTooltip"
             />
             <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="800" fill="#0f172a">{{ totalPatents }}</text>
