@@ -90,7 +90,7 @@ export const preEvaluationsApi = {
   },
 
   sendChatMessage: async (id: number, message: string): Promise<PreEvaluationChatSendResponse> => {
-    return apiClient.post(`/pre-evaluations/${id}/chat/messages`, { message })
+    return apiClient.post(`/pre-evaluations/${id}/chat/messages`, { message }, { timeout: 120_000 })
   },
 
   clearChat: async (id: number): Promise<void> => {

@@ -973,7 +973,8 @@
     </button>
 
     <!-- ── 챗봇 패널 ── -->
-    <aside v-if="showChatbot" class="chat-panel" :class="{ open: chatbotOpen, expanded: chatbotExpanded }">
+    <aside v-if="showChatbot" class="chat-panel" :class="{ open: chatbotOpen, expanded: chatbotExpanded, resizing: isResizing }">
+      <div v-if="chatbotOpen && !chatbotExpanded" class="chat-resize-handle" @mousedown="startResizeDrag"></div>
       <div class="chat-shell">
         <header class="chat-header">
           <button class="icon-button" type="button" @click="chatbotExpanded = !chatbotExpanded">
@@ -1005,7 +1006,7 @@
         </div>
 
         <form class="chat-composer" @submit.prevent="sendChatMessage">
-          <input v-model="chatInput" type="text" placeholder="특허에 대해 질문해 보세요." :disabled="chatSending" @keydown="handleChatKeydown"/>
+          <textarea ref="chatInputEl" v-model="chatInput" rows="1" placeholder="특허에 대해 질문해 보세요." :disabled="chatSending" @keydown="handleChatKeydown" @input="autoResizeChatInput"></textarea>
           <button type="submit" :disabled="chatSending || !latestReportId">{{ chatSending ? '...' : '전송' }}</button>
         </form>
       </div>
@@ -1451,8 +1452,20 @@ function setupObserver() {
 // ── 챗봇 ─────────────────────────────────────────────
 const chatbotOpen     = ref(false)
 const chatbotExpanded = ref(false)
+const chatWidth       = ref(480)
+const isResizing      = ref(false)
 const chatInput       = ref('')
 const chatViewport    = ref<HTMLElement | null>(null)
+const chatInputEl     = ref<HTMLTextAreaElement | null>(null)
+
+function autoResizeChatInput() {
+  const el = chatInputEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  const maxH = 120
+  el.style.height    = `${Math.min(el.scrollHeight, maxH)}px`
+  el.style.overflowY = el.scrollHeight > maxH ? 'auto' : 'hidden'
+}
 
 if (!patentChatHistories[props.patentId]) {
   patentChatHistories[props.patentId] = [
@@ -1466,9 +1479,11 @@ function renderMarkdown(text: string): string {
   return DOMPurify.sanitize(html)
 }
 
-const chatPanelWidth = computed(() =>
-  chatbotOpen.value ? (chatbotExpanded.value ? '100vw' : '480px') : '0px'
-)
+const chatPanelWidth = computed(() => {
+  if (!chatbotOpen.value) return '0px'
+  if (chatbotExpanded.value) return '100vw'
+  return `${chatWidth.value}px`
+})
 
 function scrollChatToBottom() {
   if (chatViewport.value) chatViewport.value.scrollTop = chatViewport.value.scrollHeight
@@ -1485,6 +1500,26 @@ async function toggleChatbot() {
 
 function closeChatbot() { chatbotOpen.value = false; chatbotExpanded.value = false }
 
+function startResizeDrag(e: MouseEvent) {
+  if (chatbotExpanded.value) return
+  e.preventDefault()
+  isResizing.value = true
+  const startX     = e.clientX
+  const startWidth = chatWidth.value
+
+  function onMove(ev: MouseEvent) {
+    const delta    = startX - ev.clientX
+    chatWidth.value = Math.min(Math.max(startWidth + delta, 320), Math.round(window.innerWidth * 0.85))
+  }
+  function onUp() {
+    isResizing.value = false
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+  }
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+}
+
 const chatSending = ref(false)
 
 async function sendChatMessage() {
@@ -1495,6 +1530,7 @@ async function sendChatMessage() {
   const history = patentChatHistories[props.patentId]
   history.push({ id: nextMessageId(), role: 'user', text })
   chatInput.value = ''
+  await nextTick(); autoResizeChatInput()
 
   const typingId = nextMessageId()
   history.push({ id: typingId, role: 'assistant', text: '', typing: true })
@@ -2665,13 +2701,30 @@ function closeEvalReport() {
 /* ── 챗봇 패널 ────────────────────────────────────── */
 .chat-panel {
   position: fixed; top: 0; right: 0; bottom: 0; z-index: 55;
-  width: 480px;
+  width: var(--chat-width);
   transform: translateX(100%);
   transition: transform 0.3s ease, width 0.3s ease;
   pointer-events: none;
 }
-.chat-panel.open { transform: translateX(0); pointer-events: auto; }
-.chat-panel.expanded { width: 100vw; }
+.chat-panel.open     { transform: translateX(0); pointer-events: auto; }
+.chat-panel.resizing { transition: transform 0.3s ease; user-select: none; }
+
+.chat-resize-handle {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 8px;
+  cursor: ew-resize; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+}
+.chat-resize-handle::after {
+  content: '';
+  width: 3px; height: 36px; border-radius: 2px;
+  background: rgba(99, 102, 241, 0.25);
+  transition: background 0.15s, height 0.15s;
+}
+.chat-resize-handle:hover::after,
+.chat-panel.resizing .chat-resize-handle::after {
+  background: rgba(99, 102, 241, 0.65);
+  height: 56px;
+}
 
 .chat-shell {
   display: flex; flex-direction: column;
@@ -2754,21 +2807,23 @@ function closeEvalReport() {
 .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
 
 .chat-composer {
-  display: grid; grid-template-columns: 1fr auto; gap: 10px;
+  display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end;
   padding: 14px 18px 18px;
   border-top: 1px solid rgba(15,23,42,0.08);
   background: rgba(255,255,255,0.9);
 }
-.chat-composer input {
+.chat-composer textarea {
   width: 100%; box-sizing: border-box;
   border: 1px solid rgba(15,23,42,0.12); border-radius: 12px;
-  padding: 10px 14px; font-size: 13.5px; font-family: inherit;
+  padding: 10px 14px; font-size: 13.5px; font-family: inherit; line-height: 1.55;
   color: #102033; background: #fff; outline: none;
   transition: border-color 0.15s;
+  resize: none; overflow: hidden; min-height: 40px;
 }
-.chat-composer input:focus { border-color: #10b981; }
+.chat-composer textarea:focus { border-color: #10b981; }
+.chat-composer textarea:disabled { background: #f1f5f9; color: #94a3b8; }
 .chat-composer button {
-  padding: 0 18px; border-radius: 12px; border: none;
+  padding: 0 18px; border-radius: 12px; border: none; height: 40px;
   background: #0f172a; color: #fff;
   font-size: 13.5px; font-weight: 700; font-family: inherit; cursor: pointer;
   transition: background 0.13s;

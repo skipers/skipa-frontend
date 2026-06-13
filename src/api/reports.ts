@@ -107,7 +107,7 @@ export const reportsApi = {
   },
 
   sendChatMessage: async (patentId: number, reportId: number, message: string): Promise<ReportChatSendResponse> => {
-    return apiClient.post(`/patents/${patentId}/reports/${reportId}/chat/messages`, { message })
+    return apiClient.post(`/patents/${patentId}/reports/${reportId}/chat/messages`, { message }, { timeout: 120_000 })
   },
 
   clearChatHistory: async (patentId: number, reportId: number): Promise<void> => {
