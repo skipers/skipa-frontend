@@ -392,8 +392,17 @@ async function fetchAll() {
     distribution.value = dist
     trends.value       = trendsResp
     treemapItems.value = dist.byTechField           ?? []
-    countryItems.value = dist.byFilingCountry       ?? []
-    deptItems.value    = dist.byDepartment          ?? []
+    const COUNTRY_LABEL: Record<string, { label: string; flag: string }> = {
+      KR: { label: '한국', flag: '🇰🇷' }, US: { label: '미국', flag: '🇺🇸' },
+      JP: { label: '일본', flag: '🇯🇵' }, CN: { label: '중국', flag: '🇨🇳' },
+      TW: { label: '대만', flag: '🇹🇼' }, UAE: { label: '아랍에미리트', flag: '🇦🇪' },
+    }
+    countryItems.value = (dist.byFilingCountry ?? []).map(d => ({
+      country: COUNTRY_LABEL[d.country]?.label ?? d.country,
+      flag:    COUNTRY_LABEL[d.country]?.flag  ?? '',
+      count:   d.count,
+    }))
+    deptItems.value    = (dist.byDepartment ?? []).map(d => ({ ...d, name: d.departmentName ?? d.name ?? '' }))
     trendData.value    = trendsResp.yearlyPatentTrends ?? []
     decisionData.value = decisionsResp.byQuarter ?? []
     if (decisionData.value.length) selectedQuarter.value = decisionData.value[0].quarter

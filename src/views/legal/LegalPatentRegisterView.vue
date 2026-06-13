@@ -408,6 +408,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { patentsApi, type PatentCreateRequest, type PatentListItem } from '@/api/patents'
+import { patentHistoryApi } from '@/api/patentHistory'
 import TagInput from '@/components/ui/TagInput.vue'
 import { usePatentApplications } from '@/composables/usePatentApplications'
 
@@ -633,25 +634,66 @@ function statusClass(s: string) {
   return ({ REGISTERED: 'status--registered', EXPIRED: 'status--expired', ABANDONED: 'status--abandoned', PUBLISHED: 'status--published', PENDING: 'status--pending' } as Record<string, string>)[s] ?? ''
 }
 
-function startEdit(p: PatentListItem) {
+const LEGAL_TYPE_MAP: Record<string, string> = {
+  APPLIED: 'file', PUBLISHED: 'pub', REGISTERED: 'reg',
+  REJECTED: 'rejected', INVALID: 'invalid', EXPIRED: 'expired', WITHDRAWN: 'withdraw', ABANDONED: 'abandon',
+  '출원': 'file', '공개': 'pub', '등록': 'reg',
+  '거절': 'rejected', '무효': 'invalid', '소멸': 'expired', '취하': 'withdraw', '포기': 'abandon',
+}
+
+async function startEdit(p: PatentListItem) {
   editMode.value = true
   editTargetId.value = p.id
   editTargetTitle.value = p.title
+  adminHistory.value = []
   Object.assign(form, {
     title: p.title,
     applicationNumber: p.applicationNumber,
     applicationDate: p.applicationDate ?? '',
     techField: p.techField ?? '',
     status: statusLabel(p.latestLegalStatus ?? ''),
-    managementNumber: '', inventors: p.inventor ?? '', applicant: p.applicant ?? '',
+    managementNumber: '', inventors: p.inventor ? p.inventor.replace(/\s*;\s*/g, ', ') : '',
+    applicant: p.applicant ?? '',
     bizField: p.businessField ?? '', relatedProducts: '', country: p.filingCountry ?? 'KR',
     coApplicant: '아니오', coApplicantName: '',
     registrationDate: '', publicationDate: '', announcementDate: '',
     registrationNumber: p.registrationNumber ?? '', publicationNumber: '', announcementNumber: '',
-    ipc: p.ipcCodes ?? [], cpc: p.cpcCodes ?? [], examinationClaimCount: '', citationCount: p.citationCount?.toString() ?? '',
+    ipc: p.ipcCodes ?? [], cpc: p.cpcCodes ?? [],
+    examinationClaimCount: p.examinationClaimCount?.toString() ?? '',
+    citationCount: p.citationCount?.toString() ?? '',
     expiryDate: p.expiryDate ?? '', keywords: p.keywords ?? [], summary: p.summary ?? '',
   })
   showRegisterModal.value = true
+
+  try {
+    const [detail, history] = await Promise.all([
+      patentsApi.getPatent(p.id),
+      patentHistoryApi.getLegalStatusHistory(p.id),
+    ])
+    Object.assign(form, {
+      managementNumber: detail.managementNumber ?? '',
+      inventors: detail.inventor ? detail.inventor.replace(/\s*;\s*/g, ', ') : '',
+      applicant: detail.applicant ?? '',
+      relatedProducts: detail.relatedProducts?.join(', ') ?? '',
+      coApplicant: detail.isJointApplication ? '예' : '아니오',
+      coApplicantName: detail.jointApplicant ?? '',
+      registrationDate: detail.registrationDate ?? '',
+      publicationDate: detail.publicationDate ?? '',
+      announcementDate: detail.announcementDate ?? '',
+      registrationNumber: detail.registrationNumber ?? '',
+      publicationNumber: detail.publicationNumber ?? '',
+      announcementNumber: detail.announcementNumber ?? '',
+      examinationClaimCount: detail.examinationClaimCount?.toString() ?? '',
+      citationCount: detail.citationCount?.toString() ?? '',
+    })
+    const items: any[] = Array.isArray(history) ? history : (history as any)?.items ?? []
+    adminHistory.value = items.map(h => ({
+      type: LEGAL_TYPE_MAP[h.status] ?? h.status,
+      date: h.changedAt ? h.changedAt.slice(0, 10) : '',
+    }))
+  } catch (err) {
+    console.error('특허 상세 조회 오류:', err)
+  }
 }
 
 // ── 삭제 ────────────────────────────────────────────
