@@ -451,6 +451,14 @@ async function toggleChatbot() {
 }
 function closeChatbot() { chatbotOpen.value = false; chatbotExpanded.value = false }
 
+async function resetChat() {
+  const id = selectedHistoryId.value
+  if (id) {
+    try { await preEvaluationsApi.clearChat(id) } catch { /* silent */ }
+  }
+  chatMessages.value = [{ id: nextMsgId(), role: 'assistant', text: GREETING }]
+}
+
 function startResizeDrag(e: MouseEvent) {
   if (chatbotExpanded.value) return
   e.preventDefault()
@@ -995,11 +1003,19 @@ onBeforeUnmount(() => {
             </svg>
           </button>
           <strong>SKIPA AI</strong>
-          <button class="icon-button" type="button" @click="closeChatbot">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M6 6l12 12M18 6 6 18"/>
-            </svg>
-          </button>
+          <div style="display:flex;gap:4px">
+            <button class="icon-button" type="button" title="대화 초기화" @click="resetChat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+              </svg>
+            </button>
+            <button class="icon-button" type="button" @click="closeChatbot">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18"/>
+              </svg>
+            </button>
+          </div>
         </header>
 
         <div ref="chatViewport" class="chat-body">
@@ -1072,10 +1088,6 @@ onBeforeUnmount(() => {
 /* ══════════════════════════════════════════════════
    메인 콘텐츠 영역
 ══════════════════════════════════════════════════ */
-.lab-main {
-  padding-right: var(--chat-width);
-  transition: padding-right 0.3s ease;
-}
 
 /* ── 상단 바 ──────────────────────────────────────── */
 .top-bar {

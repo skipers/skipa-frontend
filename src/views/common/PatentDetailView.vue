@@ -986,11 +986,19 @@
             </svg>
           </button>
           <strong>SKIPA AI</strong>
-          <button class="icon-button" type="button" @click="closeChatbot">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M6 6l12 12M18 6 6 18"/>
-            </svg>
-          </button>
+          <div style="display:flex;gap:4px">
+            <button class="icon-button" type="button" title="대화 초기화" @click="resetChat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+              </svg>
+            </button>
+            <button class="icon-button" type="button" @click="closeChatbot">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18"/>
+              </svg>
+            </button>
+          </div>
         </header>
 
         <div ref="chatViewport" class="chat-body">
@@ -1491,6 +1499,15 @@ function scrollChatToBottom() {
 
 function nextMessageId() { return nextChatId() }
 
+async function resetChat() {
+  if (latestReportId.value) {
+    try { await reportsApi.clearChatHistory(props.patentId, latestReportId.value) } catch { /* silent */ }
+  }
+  patentChatHistories[props.patentId] = [
+    { id: nextChatId(), role: 'assistant', text: `${patent.value?.title ?? '이 특허'}에 대해 궁금한 점을 질문해주세요.` },
+  ]
+}
+
 async function toggleChatbot() {
   chatbotOpen.value = !chatbotOpen.value
   if (!chatbotOpen.value) { chatbotExpanded.value = false; return }
@@ -1903,8 +1920,6 @@ function closeEvalReport() {
   flex-direction: column;
   gap: 0;
   --chat-width: 0px;
-  padding-right: var(--chat-width);
-  transition: padding-right 0.3s ease;
 }
 /* ── 헤더 래퍼 (non-sticky) ─────────────────────────── */
 .detail-header { margin-bottom: 20px; }
