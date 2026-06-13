@@ -47,6 +47,7 @@
           <h3 class="chart-card__title">가치 평가 등급 분포</h3>
           <span class="chart-card__sub">총 {{ selectedFieldData?.total }}건</span>
         </div>
+        <div class="tg-content">
         <div class="tg-field-tabs">
           <button
             v-for="f in allFieldDist"
@@ -71,6 +72,7 @@
             <span class="tg-grade-count">{{ selectedFieldData[g] }}건</span>
             <span class="tg-grade-pct">{{ Math.round(selectedFieldData[g] / selectedFieldData.total * 100) }}%</span>
           </div>
+        </div>
         </div>
       </div>
 
@@ -324,15 +326,15 @@
               <button class="breakdown-tab" :class="{ 'breakdown-tab--active': breakdownTab === 'tech' }" @click="breakdownTab = 'tech'">기술분야별</button>
             </div>
           </div>
-        </div>
-        <div class="hbar-list">
-          <div v-for="d in breakdownTab === 'dept' ? deptDecision : techDecision" :key="d.name" class="hbar-item">
-            <span class="hbar-item__label">{{ d.name }}</span>
-            <div class="hbar-track">
-              <div class="hbar-seg hbar-seg--keep"    :style="{ width: Math.round(d.maintain/(d.maintain+d.abandon)*100) + '%' }" :title="`유지 ${d.maintain}건`" />
-              <div class="hbar-seg hbar-seg--dispose" :style="{ width: Math.round(d.abandon/(d.maintain+d.abandon)*100) + '%' }" :title="`포기 ${d.abandon}건`" />
+          <div class="hbar-list">
+            <div v-for="d in breakdownTab === 'dept' ? deptDecision : techDecision" :key="d.name" class="hbar-item">
+              <span class="hbar-item__label">{{ d.name }}</span>
+              <div class="hbar-track">
+                <div class="hbar-seg hbar-seg--keep"    :style="{ width: Math.round(d.maintain/(d.maintain+d.abandon)*100) + '%' }" :title="`유지 ${d.maintain}건`" />
+                <div class="hbar-seg hbar-seg--dispose" :style="{ width: Math.round(d.abandon/(d.maintain+d.abandon)*100) + '%' }" :title="`포기 ${d.abandon}건`" />
+              </div>
+              <span class="hbar-item__pct">{{ Math.round(d.maintain/(d.maintain+d.abandon)*100) }}%</span>
             </div>
-            <span class="hbar-item__pct">{{ Math.round(d.maintain/(d.maintain+d.abandon)*100) }}%</span>
           </div>
         </div>
       </div>
@@ -347,7 +349,7 @@ import { computed, ref, onMounted } from 'vue'
 import { portfolioApi } from '@/api/portfolio'
 import type {
   TechFieldItem, CountryItem, DepartmentItem, GradeDistributionItem,
-  YearlyTrendItem, AnnuityTrendItem, QuarterDecisionItem, BreakdownDecisionItem,
+  YearlyTrendItem, AnnuityTrendItem, QuarterDecisionItem,
   PortfolioDistributionResponse, PortfolioTrendsResponse,
 } from '@/api/portfolio'
 
@@ -372,8 +374,6 @@ const trendData    = ref<YearlyTrendItem[]>([])
 
 // ── 결정 데이터 ──────────────────────────────────────
 const decisionData = ref<QuarterDecisionItem[]>([])
-const deptDecision = ref<BreakdownDecisionItem[]>([])
-const techDecision = ref<BreakdownDecisionItem[]>([])
 
 // ── 인사이트 ─────────────────────────────────────────
 const insights = ref<string[]>([])
@@ -393,9 +393,8 @@ async function fetchAll() {
     countryItems.value = dist.byFilingCountry       ?? []
     deptItems.value    = dist.byDepartment          ?? []
     trendData.value    = trendsResp.yearlyPatentTrends ?? []
-    decisionData.value = decisionsResp.byQuarter    ?? []
-    deptDecision.value = decisionsResp.byDepartment ?? []
-    techDecision.value = decisionsResp.byTechField  ?? []
+    decisionData.value = decisionsResp.byQuarter ?? []
+    if (decisionData.value.length) selectedQuarter.value = decisionData.value[0].quarter
     insights.value     = ins.insights               ?? []
   } catch (err) {
     console.error('PortfolioView/fetchAll:', err)
@@ -501,6 +500,18 @@ function disposePct(d: { maintain: number; abandon: number }) { return Math.roun
 const selectedQuarter = ref('')
 const breakdownTab = ref<'dept' | 'tech'>('dept')
 
+const selectedQuarterData = computed(() =>
+  decisionData.value.find(d => d.quarter === selectedQuarter.value) ?? null
+)
+
+const deptDecision = computed(() =>
+  (selectedQuarterData.value?.byDepartment ?? []).map(d => ({ name: d.departmentName, maintain: d.maintain, abandon: d.abandon }))
+)
+
+const techDecision = computed(() =>
+  selectedQuarterData.value?.byTechField ?? []
+)
+
 const activeBreakdown = computed(() => ({
   dept: deptDecision.value,
   tech: techDecision.value,
@@ -570,11 +581,15 @@ const gradeLabel: Record<string, string> = {
 const allFieldDist = computed(() => {
   const gradeDist = distribution.value?.byGrade ?? []
   if (!gradeDist.length) return []
+  const normalize = (item: typeof gradeDist[0], name: string) => {
+    const S = item.s, A = item.a, B = item.b, C = item.c, D = item.d
+    return { name, S, A, B, C, D, total: S + A + B + C + D }
+  }
   const overall = gradeDist.reduce(
-    (acc, f) => ({ name: '전체', S: acc.S + f.S, A: acc.A + f.A, B: acc.B + f.B, C: acc.C + f.C, D: acc.D + f.D, total: acc.total + f.total }),
+    (acc, f) => ({ name: '전체', S: acc.S + f.s, A: acc.A + f.a, B: acc.B + f.b, C: acc.C + f.c, D: acc.D + f.d, total: acc.total + f.s + f.a + f.b + f.c + f.d }),
     { name: '전체', S: 0, A: 0, B: 0, C: 0, D: 0, total: 0 }
   )
-  return [overall, ...gradeDist]
+  return [overall, ...gradeDist.map(f => normalize(f, f.departmentName))]
 })
 
 const selectedField = ref('전체')
@@ -951,6 +966,14 @@ function annBarH(amount: number) {
   border-color: var(--color-primary);
   color: #fff;
   font-weight: 600;
+}
+
+.tg-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
 }
 
 .tg-detail { display: flex; flex-direction: column; gap: 12px; }

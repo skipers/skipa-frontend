@@ -584,7 +584,7 @@
               <div v-if="submittedOpinion" class="opinion-done">
                 <div class="opinion-done__header">
                   <div class="opinion-done__badge" :class="`opinion-done__badge--${submittedOpinion.decision.toLowerCase()}`">
-                    {{ submittedOpinion.decision === 'KEEP' ? '유지' : '포기' }}
+                    {{ ['KEEP','MAINTAIN'].includes(submittedOpinion.decision) ? '유지' : '포기' }}
                   </div>
                   <div>
                     <p class="opinion-done__label">제출 완료</p>
@@ -647,7 +647,7 @@
                   <div v-if="reevalRecord.decision" class="opinion-done">
                     <div class="opinion-done__header">
                       <div class="opinion-done__badge" :class="`opinion-done__badge--${reevalRecord.decision.toLowerCase()}`">
-                        {{ reevalRecord.decision === 'KEEP' ? '유지' : '포기' }}
+                        {{ ['KEEP','MAINTAIN'].includes(reevalRecord.decision) ? '유지' : '포기' }}
                       </div>
                       <div>
                         <p class="opinion-done__label">제출 완료</p>
@@ -986,11 +986,19 @@
             </svg>
           </button>
           <strong>SKIPA AI</strong>
-          <button class="icon-button" type="button" @click="closeChatbot">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M6 6l12 12M18 6 6 18"/>
-            </svg>
-          </button>
+          <div style="display:flex;gap:4px">
+            <button class="icon-button" type="button" title="대화 초기화" @click="resetChat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+              </svg>
+            </button>
+            <button class="icon-button" type="button" @click="closeChatbot">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18"/>
+              </svg>
+            </button>
+          </div>
         </header>
 
         <div ref="chatViewport" class="chat-body">
@@ -1134,7 +1142,7 @@ async function fetchEvalHistory() {
       date: r.evaluatedAt ? formatDate(r.evaluatedAt) : '—',
       grade: ((r.valueGrade ?? 'C') as EvalHistoryItem['grade']),
       score: r.totalScore ?? 0,
-      decision: (r.opinion === 'KEEP' ? '유지' : r.opinion === 'DISPOSE' ? '포기' : '—') as '유지' | '포기',
+      decision: (['KEEP','MAINTAIN'].includes(r.opinion ?? '') ? '유지' : ['DISPOSE','ABANDON'].includes(r.opinion ?? '') ? '포기' : '—') as '유지' | '포기',
       opinion: r.comment ?? '',
       report: null,
     }))
@@ -1491,6 +1499,15 @@ function scrollChatToBottom() {
 
 function nextMessageId() { return nextChatId() }
 
+async function resetChat() {
+  if (latestReportId.value) {
+    try { await reportsApi.clearChatHistory(props.patentId, latestReportId.value) } catch { /* silent */ }
+  }
+  patentChatHistories[props.patentId] = [
+    { id: nextChatId(), role: 'assistant', text: `${patent.value?.title ?? '이 특허'}에 대해 궁금한 점을 질문해주세요.` },
+  ]
+}
+
 async function toggleChatbot() {
   chatbotOpen.value = !chatbotOpen.value
   if (!chatbotOpen.value) { chatbotExpanded.value = false; return }
@@ -1580,8 +1597,8 @@ const opinionForm = reactive<{ decision: 'KEEP' | 'DISPOSE' | ''; comment: strin
 const opinionSubmitting = ref(false)
 
 const opinionOptions = [
-  { value: 'KEEP',    label: '유지' },
-  { value: 'DISPOSE', label: '포기' },
+  { value: 'MAINTAIN', label: '유지' },
+  { value: 'ABANDON',  label: '포기' },
 ]
 
 const latestReportId = ref<number | null>(null)
@@ -1903,8 +1920,6 @@ function closeEvalReport() {
   flex-direction: column;
   gap: 0;
   --chat-width: 0px;
-  padding-right: var(--chat-width);
-  transition: padding-right 0.3s ease;
 }
 /* ── 헤더 래퍼 (non-sticky) ─────────────────────────── */
 .detail-header { margin-bottom: 20px; }
@@ -2626,8 +2641,10 @@ function closeEvalReport() {
   width: 60px; height: 60px; border-radius: 14px;
   font-size: 18px; font-weight: 800; flex-shrink: 0;
 }
-.opinion-done__badge--keep    { background: #f0fdf4; color: #15803d; border: 2px solid #86efac; }
-.opinion-done__badge--dispose { background: #fef2f2; color: #dc2626; border: 2px solid #fca5a5; }
+.opinion-done__badge--keep     { background: #f0fdf4; color: #15803d; border: 2px solid #86efac; }
+.opinion-done__badge--maintain { background: #f0fdf4; color: #15803d; border: 2px solid #86efac; }
+.opinion-done__badge--dispose  { background: #fef2f2; color: #dc2626; border: 2px solid #fca5a5; }
+.opinion-done__badge--abandon  { background: #fef2f2; color: #dc2626; border: 2px solid #fca5a5; }
 
 .opinion-done__label { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 3px; }
 .opinion-done__date  { font-size: 13px; color: #94a3b8; margin: 0; }
@@ -3190,8 +3207,10 @@ details[open] .rpt-appendix__chevron { transform: rotate(180deg); }
 .eval-decision-badge {
   font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px;
 }
-.eval-decision-badge--keep    { background: #dcfce7; color: #166534; }
-.eval-decision-badge--dispose { background: #fee2e2; color: #b91c1c; }
+.eval-decision-badge--keep     { background: #dcfce7; color: #166534; }
+.eval-decision-badge--maintain { background: #dcfce7; color: #166534; }
+.eval-decision-badge--dispose  { background: #fee2e2; color: #b91c1c; }
+.eval-decision-badge--abandon  { background: #fee2e2; color: #b91c1c; }
 .eval-history-item__opinion {
   margin: 0; font-size: 13px; color: #475569; line-height: 1.55;
 }

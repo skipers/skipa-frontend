@@ -331,10 +331,10 @@ const filedPoints   = computed(() => bizTrendData.value.map((d, i) => `${tX(i)},
 const expiredPoints = computed(() => bizTrendData.value.map((d, i) => `${tX(i)},${tY(d.expired)}`).join(' '))
 
 function decisionLabel(d: string) {
-  return { KEEP: '유지', DISPOSE: '포기' }[d] ?? d
+  return { KEEP: '유지', MAINTAIN: '유지', DISPOSE: '포기' }[d] ?? d
 }
 function decisionIcon(d: string) {
-  return { KEEP: '✅', DISPOSE: '🗑' }[d] ?? '—'
+  return { KEEP: '✅', MAINTAIN: '✅', DISPOSE: '🗑' }[d] ?? '—'
 }
 function formatDate(d?: string) {
   if (!d) return '—'
@@ -646,9 +646,11 @@ onMounted(fetchDashboard)
   padding: 3px 9px; border-radius: 6px;
   font-size: 12px; font-weight: 700; flex-shrink: 0;
 }
-.decision-badge--keep    { background: #f0fdf4; color: #15803d; }
-.decision-badge--sell    { background: #eef2ff; color: #4338ca; }
-.decision-badge--dispose { background: #fef2f2; color: #dc2626; }
+.decision-badge--keep     { background: #f0fdf4; color: #15803d; }
+.decision-badge--maintain { background: #f0fdf4; color: #15803d; }
+.decision-badge--sell     { background: #eef2ff; color: #4338ca; }
+.decision-badge--dispose  { background: #fef2f2; color: #dc2626; }
+.decision-badge--abandon  { background: #fef2f2; color: #dc2626; }
 
 /* ── 신규 특허 신청 현황 ──────────────────────────────── */
 .app-list { display: flex; flex-direction: column; gap: 0; }

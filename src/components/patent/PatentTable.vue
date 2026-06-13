@@ -267,11 +267,11 @@ function isExpired(d?: string) {
 }
 
 /* ── 셀 너비 ─────────────────────────────────────────── */
-.col-title    { min-width: 260px; }
+.col-title    { min-width: 200px; }
 .col-number   { width: 160px; }
 .col-date     { width: 100px; white-space: nowrap; }
 .col-status   { width: 110px; }
-.col-field    { width: 110px; }
+.col-field    { width: 160px; }
 .col-citation { width: 70px; text-align: center; }
 .col-action   { width: 40px; text-align: right; }
 
