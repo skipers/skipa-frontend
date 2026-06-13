@@ -58,16 +58,7 @@
           <label class="filter-label">국가</label>
           <select class="filter-select" v-model="filters.country" @change="fetchPatents(1)">
             <option value="">전체</option>
-            <option v-for="c in countryOptions" :key="c" :value="c">{{ c }}</option>
-          </select>
-        </div>
-
-        <!-- 기술 분야 -->
-        <div class="filter-group">
-          <label class="filter-label">기술 분야</label>
-          <select class="filter-select" v-model="filters.techField" @change="fetchPatents(1)">
-            <option value="">전체</option>
-            <option v-for="t in techFieldOptions" :key="t" :value="t">{{ t }}</option>
+            <option v-for="c in countryOptions" :key="c.value" :value="c.value">{{ c.label }}</option>
           </select>
         </div>
 
@@ -81,22 +72,6 @@
             </select>
           </div>
         </template>
-
-        <div class="filter-divider" />
-
-        <!-- 정렬 -->
-        <div class="filter-group">
-          <label class="filter-label">정렬</label>
-          <div class="chip-group">
-            <button
-              v-for="opt in sortOptions"
-              :key="opt.value"
-              class="chip"
-              :class="{ 'chip--active': filters.sort === opt.value }"
-              @click="handleSort(opt.value)"
-            >{{ opt.label }}</button>
-          </div>
-        </div>
 
         <!-- 필터 초기화 -->
         <button v-if="hasActiveFilters" class="filter-reset" @click="resetFilters">
@@ -121,7 +96,7 @@
     <!-- 테이블 카드 -->
     <div class="table-card">
       <PatentTable
-        :items="tableItems"
+        :items="displayItems"
         :loading="loading"
         @select="goToDetail"
         @sort="handleSort"
@@ -146,6 +121,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { patentsApi } from '@/api/patents'
+import { departmentsApi } from '@/api/departments'
 import { usePagination } from '@/composables/usePagination'
 import PatentTable, { type PatentRow } from '@/components/patent/PatentTable.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
@@ -163,7 +139,6 @@ const filters = reactive({
   q:            '' as string,
   status:       '' as string,
   country:      '' as string,
-  techField:    '' as string,
   sort:         'expiryDate,asc' as string,
   departmentId: undefined as number | undefined,
 })
@@ -175,37 +150,23 @@ const statusOptions = [
   { value: 'EXPIRED',    label: '소멸/포기' },
 ]
 
-const sortOptions = [
-  { value: 'expiryDate,asc',       label: '소멸일순' },
-  { value: 'applicationDate,desc', label: '출원일순' },
-  { value: 'citationCount,desc',   label: '피인용순' },
+// ── 동적 필터 옵션 ───────────────────────────────────
+const countryOptions = [
+  { value: 'KR',  label: '한국' },
+  ...[
+    { value: 'TW',  label: '대만' },
+    { value: 'US',  label: '미국' },
+    { value: 'UAE', label: '아랍에미리트' },
+    { value: 'JP',  label: '일본' },
+    { value: 'CN',  label: '중국' },
+  ].sort((a, b) => a.label.localeCompare(b.label, 'ko')),
 ]
-
-// ── 동적 필터 옵션 (데이터에서 추출) ─────────────────
-const countryOptions  = ref<string[]>([])
-const techFieldOptions = ref<string[]>([])
-const deptOptions     = ref<{ id: number; name: string }[]>([])
+const deptOptions    = ref<{ id: number; name: string }[]>([])
 
 async function fetchFilterOptions() {
   try {
-    const res = await patentsApi.getPatents({ page: 1, size: 1000 })
-    const countries  = new Set<string>()
-    const techFields = new Set<string>()
-    const deptMap    = new Map<number, string>()
-
-    res.items.forEach(item => {
-      if (item.filingCountry)    countries.add(item.filingCountry)
-      if (item.techField)        techFields.add(item.techField)
-      if (item.currentDepartmentId && item.currentDepartmentName) {
-        deptMap.set(item.currentDepartmentId, item.currentDepartmentName)
-      }
-    })
-
-    countryOptions.value   = [...countries].sort()
-    techFieldOptions.value = [...techFields].sort((a, b) => a.localeCompare(b, 'ko'))
-    deptOptions.value      = [...deptMap.entries()]
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+    const departments = await departmentsApi.getDepartments()
+    deptOptions.value = departments.items.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
   } catch (e) {
     console.error('필터 옵션 로드 실패:', e)
   }
@@ -213,8 +174,10 @@ async function fetchFilterOptions() {
 
 // ── 계산 ────────────────────────────────────────────
 const hasActiveFilters = computed(() =>
-  !!filters.q || !!filters.status || !!filters.country || !!filters.techField || !!filters.departmentId
+  !!filters.q || !!filters.status || !!filters.country || !!filters.departmentId
 )
+
+const displayItems = computed(() => tableItems.value)
 
 // ── 특허 목록 로드 ───────────────────────────────────
 async function fetchPatents(p = page.value) {
@@ -259,7 +222,6 @@ function resetFilters() {
   filters.q            = ''
   filters.status       = ''
   filters.country      = ''
-  filters.techField    = ''
   filters.sort         = 'expiryDate,asc'
   filters.departmentId = undefined
   fetchPatents(1)
