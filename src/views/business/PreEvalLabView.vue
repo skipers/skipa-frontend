@@ -605,12 +605,11 @@ onBeforeUnmount(() => {
               <span class="info-card__kicker">
                 <template v-if="selectedDetail">특허 정보</template>
                 <template v-else-if="isEvaluating">AI 평가 진행 중</template>
-                <template v-else>발명 정보 입력</template>
               </span>
               <p class="info-card__title">
                 <template v-if="selectedDetail">{{ selectedDetail.title }}</template>
                 <template v-else-if="isEvaluating">{{ patentName || '발명을 분석하고 있습니다…' }}</template>
-                <template v-else>{{ patentName || '새 발명 평가' }}</template>
+                <template v-else>{{ patentName || '발명 정보 입력' }}</template>
               </p>
               <p v-if="selectedDetail" class="info-card__date">
                 평가일 {{ formatDate(selectedDetail.completedAt ?? selectedDetail.createdAt) }}
