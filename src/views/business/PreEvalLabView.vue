@@ -3,41 +3,71 @@ import { nextTick, onBeforeUnmount, onMounted, ref, computed } from 'vue'
 import { preEvaluationsApi } from '@/api/preEvaluations'
 import type { PreEvaluationListItem, PreEvaluationDetailResponse } from '@/api/preEvaluations'
 
-type Grade = string
 type ChatRole = 'assistant' | 'user'
 
-interface MetricItem {
+interface DimensionResult {
   key: string
   label: string
   score: number
-  maxScore: number
-  basis: string
+  averageScore: number
+  grade: string
+  weight: number
+  items: string[]
 }
 
-interface EvaluationMetric {
-  key: string
-  label: string
-  score: number
-  comment: string
-  items: MetricItem[]
-}
-
-interface NextAction {
+interface NextActionItem {
   priority: string
   action: string
+  reason: string
+}
+
+interface FocusItem {
+  item: string
+  score: number
+  reason: string
 }
 
 interface EvaluationResult {
+  patentTitle: string
   ipc: string
-  grade: Grade
-  gradeDescription: string
+  grade: string
   overallScore: number
-  overallComment: string
-  readinessDecision: string
-  metrics: EvaluationMetric[]
-  strengths: string[]
+  opinion: string
+  strongestDimension: string
+  weakestDimension: string
   keyRisks: string[]
-  nextActions: NextAction[]
+  valueGrade: string
+  valueScore: number
+  valueSummary: string
+  positiveValueDrivers: string[]
+  valueConstraints: string[]
+  evidenceNeeded: string[]
+  targetMarket: string
+  expectedUseCases: string[]
+  monetizationPaths: string[]
+  marketValidationGaps: string[]
+  readinessLevel: string
+  readinessDecision: string
+  requiredBeforeFiling: string[]
+  diagnosticGaps: string[]
+  dimensions: DimensionResult[]
+  claimIndependentDirection: string
+  claimDependentIdeas: string[]
+  claimAvoidanceNotes: string[]
+  priorArtPurpose: string
+  priorArtQueries: string[]
+  priorArtFocusItems: FocusItem[]
+  filingRoute: string
+  filingCountryNotes: string[]
+  filingTargetCount: number
+  filingHasOverseas: boolean
+  investmentDecision: string
+  investmentRationale: string
+  investmentGoConditions: string[]
+  investmentStopConditions: string[]
+  investmentNextSprint: string[]
+  nextActions: NextActionItem[]
+  limitations: string[]
 }
 
 interface ChatMessage {
@@ -49,21 +79,39 @@ interface ChatMessage {
 
 const GREETING = '안녕하세요! 평가 결과에 대해 궁금한 점을 질문해주세요.'
 
-const gradeDescriptions: Record<string, string> = {
-  S:   '매우 우수, 적극 출원 권고',
-  'A+': '우수, 출원 권고',
-  A:   '우수, 출원 권고',
-  'B+': '보통 이상, 출원 검토',
-  B:   '보통, 보완 후 출원 검토',
-  'C+': '미흡, 보완 필요',
-  C:   '미흡, 출원 재검토 권고',
-  D:   '불량, 전면 재검토 권고',
-}
-
 const expandedDimensions = ref<Record<string, boolean>>({})
 function toggleDimension(key: string) {
   expandedDimensions.value[key] = !expandedDimensions.value[key]
 }
+
+const priorityLabel: Record<string, string> = { high: '높음', medium: '중간', low: '낮음' }
+function getPriorityLabel(p: string) { return priorityLabel[p.toLowerCase()] ?? p }
+
+const valueGradeLabel: Record<string, string> = {
+  high_value:         '고가치',
+  conditional_value:  '조건부 가치',
+  low_value:          '저가치',
+  no_value:           '가치 없음',
+}
+function getValueGradeLabel(v: string) { return valueGradeLabel[v.toLowerCase()] ?? v }
+
+const readinessLabel: Record<string, string> = {
+  ready:                          '출원 준비 완료',
+  promising_with_targeted_revisions: '보완 후 출원 가능',
+  needs_significant_work:         '상당한 보완 필요',
+  not_ready:                      '출원 불가',
+}
+function getReadinessLabel(v: string) { return readinessLabel[v.toLowerCase()] ?? v }
+
+const investmentLabel: Record<string, string> = {
+  go:                      '출원 진행',
+  conditional_go:          '조건부 진행',
+  hold:                    '보류',
+  hold_for_value_validation: '가치 검증 후 보류',
+  revise_then_file:        '보완 후 출원',
+  stop:                    '출원 중단',
+}
+function getInvestmentLabel(v: string) { return investmentLabel[v.toLowerCase()] ?? v }
 
 // ── 입력 폼 ──────────────────────────────────────────
 const patentName      = ref('')
@@ -137,100 +185,96 @@ async function fetchHistory() {
   }
 }
 
-// ── 보고서 URL 파싱 ───────────────────────────────────
+// ── 보고서 URL 파싱 (v3) ──────────────────────────────
 async function parseReportUrl(reportUrl: string): Promise<EvaluationResult | null> {
   try {
     const res = await fetch(reportUrl)
     if (!res.ok) return null
-    const json = await res.json()
+    const j = await res.json()
 
-    const fs  = json.frontend_summary as Record<string, unknown> | undefined
-    const es  = json.executive_summary as Record<string, unknown> | undefined  // v2
-    const ov  = json.overall           as Record<string, unknown> | undefined  // v1
-    const llm = json.llm_comment       as Record<string, unknown> | undefined  // v1
+    type R = Record<string, unknown>
+    const fs  = (j.frontend_summary             ?? {}) as R
+    const es  = (j.executive_summary            ?? {}) as R
+    const va  = (j.valuation_assessment         ?? {}) as R
+    const ca  = (j.commercialization_assessment ?? {}) as R
+    const rd  = (j.readiness                    ?? {}) as R
+    const cs  = (j.claim_strategy               ?? {}) as R
+    const pa  = (j.prior_art_search_plan        ?? {}) as R
+    const fst = (j.filing_strategy              ?? {}) as R
+    const fi  = (j.filing_investment_decision   ?? {}) as R
 
-    const grade = String(fs?.overall_grade ?? ov?.grade ?? es?.grade ?? '')
+    const grade = String(fs.overall_grade ?? es.grade ?? '')
     if (!grade) return null
 
-    const ipc = String(fs?.ipc ?? (json.ai_classification as Record<string, unknown>)?.ipc ?? '')
+    const strs = (arr: unknown) => ((arr ?? []) as unknown[]).map(v => String(v))
 
-    // v1: overall.score_out_of_100 / v2: frontend_summary.overall_score
-    const overallScore = Number(ov?.score_out_of_100 ?? fs?.overall_score ?? 0)
+    const dimensions: DimensionResult[] = ((j.dimensions ?? []) as R[]).map(d => ({
+      key:          String(d.key   ?? ''),
+      label:        String(d.label ?? ''),
+      score:        Number(d.score_out_of_100 ?? 0),
+      averageScore: Number(d.average_score    ?? 0),
+      grade:        String(d.grade  ?? ''),
+      weight:       Number(d.weight ?? 0),
+      items:        ((d.items ?? []) as R[]).map(i =>
+        typeof i === 'string' ? i : String((i as R).item ?? '')
+      ).filter(Boolean),
+    }))
 
-    // v1: overall.comment / v2: executive_summary.opinion
-    const overallComment = String(ov?.comment ?? llm?.overall_comment ?? es?.opinion ?? '')
+    const priorArtFocusItems: FocusItem[] = ((pa.focus_items ?? []) as R[]).map(f => ({
+      item:   String(f.item   ?? ''),
+      score:  Number(f.score  ?? 0),
+      reason: String(f.reason ?? ''),
+    }))
 
-    // v1: comments[] = [{dimension: label, comment}] → label 기준 맵
-    const commentsMap: Record<string, string> = {}
-    ;((json.comments ?? []) as Array<Record<string, unknown>>).forEach(c => {
-      commentsMap[String(c.dimension)] = String(c.comment ?? '')
-    })
-
-    const metrics: EvaluationMetric[] = ((json.dimensions ?? []) as Array<Record<string, unknown>>).map(d => {
-      const label = String(d.label)
-      // v1: comments[] 맵 우선 사용
-      const dimComment = commentsMap[label]
-      let comment: string
-      if (dimComment) {
-        comment = dimComment
-      } else {
-        // v2: items[].reason, fallback 제거 후 합산; v1 fallback: items[].basis
-        const allItems = (d.items ?? []) as Array<Record<string, unknown>>
-        const realItems = allItems.filter(i => i.method !== 'llm_missing_item_fallback')
-        const commentItems = realItems.length > 0 ? realItems : allItems
-        comment = commentItems.map(i => String(i.reason ?? i.basis ?? '')).filter(Boolean).join('\n')
-      }
-
-      const realItemsForDisplay = (d.items as Array<Record<string, unknown>> ?? [])
-        .filter((i: Record<string, unknown>) => i.method !== 'llm_missing_item_fallback')
-      const items: MetricItem[] = realItemsForDisplay.map((i: Record<string, unknown>) => ({
-        key:      String(i.key ?? ''),
-        label:    String(i.label ?? ''),
-        score:    Number(i.score ?? 0),
-        maxScore: Number(i.max_score ?? 5),
-        basis:    String(i.basis ?? i.reason ?? ''),
-      }))
-
-      return { key: String(d.key), label, score: Number(d.score_out_of_100 ?? 0), comment, items }
-    })
-
-    // v1: llm_comment.strengths
-    const strengths: string[] = ((llm?.strengths ?? []) as unknown[]).map(s => String(s))
-
-    // v1: llm_comment.risks / v2: executive_summary.key_risks
-    const keyRisks: string[] = ((llm?.risks ?? es?.key_risks ?? []) as unknown[]).map(r => String(r))
-
-    // v1: llm_comment.next_actions (strings) + recommendations (strings)
-    // v2: next_actions (objects {priority, action})
-    const v1LlmActions = (llm?.next_actions ?? []) as unknown[]
-    const v1Recommendations = (json.recommendations ?? []) as unknown[]
-    const v2Actions = (json.next_actions ?? []) as Array<Record<string, unknown>>
-
-    let nextActions: NextAction[]
-    if (v1LlmActions.length > 0 || v1Recommendations.length > 0) {
-      nextActions = [
-        ...v1LlmActions.map(a => ({ priority: 'medium', action: String(a) })),
-        ...v1Recommendations.map(r => ({ priority: 'medium', action: String(r) })),
-      ].filter(a => a.action)
-    } else {
-      nextActions = v2Actions
-        .map(a => ({ priority: String(a.priority ?? 'medium'), action: String(a.action ?? '') }))
-        .filter(a => a.action)
-    }
-
-    const readinessDecision = String((json.readiness as Record<string, unknown>)?.decision ?? '')
+    const nextActions: NextActionItem[] = ((j.next_actions ?? []) as R[])
+      .map(a => ({ priority: String(a.priority ?? ''), action: String(a.action ?? ''), reason: String(a.reason ?? '') }))
+      .filter(a => a.action)
 
     return {
-      ipc,
+      patentTitle:           String(j.patent_title ?? ''),
+      ipc:                   String(fs.ipc ?? ''),
       grade,
-      gradeDescription: gradeDescriptions[grade] ?? '',
-      overallScore,
-      overallComment,
-      readinessDecision,
-      metrics,
-      strengths,
-      keyRisks,
+      overallScore:          Number(fs.overall_score ?? es.score_out_of_100 ?? 0),
+      opinion:               String(es.opinion ?? ''),
+      strongestDimension:    String(fs.strongest_dimension ?? es.strongest_dimension ?? ''),
+      weakestDimension:      String(fs.weakest_dimension   ?? es.weakest_dimension   ?? ''),
+      keyRisks:              strs(es.key_risks),
+      valueGrade:            String(va.value_grade  ?? fs.value_grade ?? ''),
+      valueScore:            Number(va.value_score  ?? 0),
+      valueSummary:          String(va.value_summary ?? ''),
+      positiveValueDrivers:  strs(va.positive_value_drivers),
+      valueConstraints:      strs(va.value_constraints),
+      evidenceNeeded:        strs(va.evidence_needed),
+      targetMarket:          String(ca.target_market ?? ''),
+      expectedUseCases:      strs(ca.expected_use_cases),
+      monetizationPaths:     strs(ca.monetization_paths),
+      marketValidationGaps:  strs(ca.market_validation_gaps),
+      readinessLevel:        String(rd.level    ?? ''),
+      readinessDecision:     String(rd.decision ?? ''),
+      requiredBeforeFiling:  ((rd.required_before_filing ?? []) as R[]).map(v =>
+        typeof v === 'string' ? v : String((v as R).action ?? '')
+      ).filter(Boolean),
+      diagnosticGaps:        ((rd.diagnostic_gaps ?? []) as R[]).map(v =>
+        typeof v === 'string' ? v : String((v as R).message ?? '')
+      ).filter(Boolean),
+      dimensions,
+      claimIndependentDirection: String(cs.independent_claim_direction ?? ''),
+      claimDependentIdeas:       strs(cs.dependent_claim_ideas),
+      claimAvoidanceNotes:       strs(cs.avoidance_design_notes),
+      priorArtPurpose:       String(pa.purpose ?? ''),
+      priorArtQueries:       strs(pa.recommended_queries),
+      priorArtFocusItems,
+      filingRoute:           String(fst.recommended_route ?? ''),
+      filingCountryNotes:    strs(fst.country_notes),
+      filingTargetCount:     Number(fst.target_country_count ?? 0),
+      filingHasOverseas:     Boolean(fst.has_overseas_target ?? false),
+      investmentDecision:    String(fi.decision  ?? fs.investment_decision ?? ''),
+      investmentRationale:   String(fi.rationale ?? ''),
+      investmentGoConditions:    strs(fi.go_conditions),
+      investmentStopConditions:  strs(fi.stop_or_hold_conditions),
+      investmentNextSprint:      strs(fi.recommended_next_sprint),
       nextActions,
+      limitations:           strs(j.limitations),
     }
   } catch {
     return null
@@ -645,103 +689,249 @@ onBeforeUnmount(() => {
           </div>
 
           <template v-else>
-            <div class="ipc-row">
+            <!-- IPC -->
+            <div v-if="evaluationResult.ipc" class="ipc-row">
               <span class="ipc-row__label">AI 자동 분류 IPC</span>
               <strong class="ipc-row__code">{{ evaluationResult.ipc }}</strong>
             </div>
 
+            <!-- 종합 등급 -->
             <div class="grade-card">
               <p class="grade-card__kicker">종합 등급</p>
               <p class="grade-card__letter">{{ evaluationResult.grade }}</p>
               <p class="grade-card__score">{{ evaluationResult.overallScore }}점</p>
+              <p v-if="evaluationResult.strongestDimension" class="grade-card__meta">
+                강점 · {{ evaluationResult.strongestDimension }}
+              </p>
             </div>
 
+            <!-- 영역별 점수 바 -->
             <div class="metrics-strip">
               <div
-                v-for="(metric, i) in evaluationResult.metrics"
-                :key="metric.key"
+                v-for="(dim, i) in evaluationResult.dimensions"
+                :key="dim.key"
                 class="metric-col"
-                :class="{ 'metric-col--last': i === evaluationResult.metrics.length - 1 }"
+                :class="{ 'metric-col--last': i === evaluationResult.dimensions.length - 1 }"
               >
                 <div class="metric-col__row">
-                  <span class="metric-col__label">{{ metric.label }}</span>
-                  <strong class="metric-col__score">{{ metric.score }}점</strong>
+                  <span class="metric-col__label">{{ dim.label }}</span>
+                  <strong class="metric-col__score">{{ dim.score }}점</strong>
                 </div>
                 <div class="metric-col__track">
-                  <div class="metric-col__fill" :style="{ width: metric.score + '%' }"/>
+                  <div class="metric-col__fill" :style="{ width: dim.score + '%' }"/>
                 </div>
               </div>
             </div>
 
-            <div class="comment-list">
-              <div v-for="metric in evaluationResult.metrics" :key="metric.key + '-c'" class="comment-item">
-                <div class="comment-item__top">
-                  <p class="comment-item__label">{{ metric.label }} 코멘트</p>
-                  <button
-                    v-if="metric.items.length"
-                    class="expand-btn"
-                    :class="{ 'expand-btn--open': expandedDimensions[metric.key] }"
-                    type="button"
-                    @click="toggleDimension(metric.key)"
-                  >
-                    세부 항목
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <!-- 종합 의견 -->
+            <div class="rpt-section">
+              <p class="rpt-section__title">종합 의견</p>
+              <p class="rpt-section__body">{{ evaluationResult.opinion }}</p>
+              <ul v-if="evaluationResult.keyRisks.length" class="rpt-list rpt-list--risk">
+                <li v-for="(r, i) in evaluationResult.keyRisks" :key="i">{{ r }}</li>
+              </ul>
+            </div>
+
+            <!-- 사전 가치평가 -->
+            <div class="rpt-section">
+              <div class="rpt-section__head">
+                <p class="rpt-section__title">사전 가치평가</p>
+                <span v-if="evaluationResult.valueGrade" class="rpt-badge">{{ getValueGradeLabel(evaluationResult.valueGrade) }}</span>
+              </div>
+              <p v-if="evaluationResult.valueSummary" class="rpt-section__body">{{ evaluationResult.valueSummary }}</p>
+              <div v-if="evaluationResult.positiveValueDrivers.length || evaluationResult.valueConstraints.length" class="rpt-two-col">
+                <div v-if="evaluationResult.positiveValueDrivers.length">
+                  <p class="rpt-col__label">가치 상승 요소</p>
+                  <ul class="rpt-list rpt-list--pos">
+                    <li v-for="(v, i) in evaluationResult.positiveValueDrivers" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
+                <div v-if="evaluationResult.valueConstraints.length">
+                  <p class="rpt-col__label">가치 제한 요소</p>
+                  <ul class="rpt-list rpt-list--neg">
+                    <li v-for="(v, i) in evaluationResult.valueConstraints" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
+              </div>
+              <div v-if="evaluationResult.evidenceNeeded.length">
+                <p class="rpt-col__label">추가 근거 필요</p>
+                <ul class="rpt-list">
+                  <li v-for="(v, i) in evaluationResult.evidenceNeeded" :key="i">{{ v }}</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- 사업화 가치 -->
+            <div class="rpt-section">
+              <p class="rpt-section__title">사업화 가치</p>
+              <p v-if="evaluationResult.targetMarket" class="rpt-kv">
+                <span>주요 시장</span>{{ evaluationResult.targetMarket }}
+              </p>
+              <div v-if="evaluationResult.expectedUseCases.length">
+                <p class="rpt-col__label">예상 활용 사례</p>
+                <ul class="rpt-list">
+                  <li v-for="(v, i) in evaluationResult.expectedUseCases" :key="i">{{ v }}</li>
+                </ul>
+              </div>
+              <div v-if="evaluationResult.monetizationPaths.length">
+                <p class="rpt-col__label">수익화 경로</p>
+                <ul class="rpt-list">
+                  <li v-for="(v, i) in evaluationResult.monetizationPaths" :key="i">{{ v }}</li>
+                </ul>
+              </div>
+              <div v-if="evaluationResult.marketValidationGaps.length">
+                <p class="rpt-col__label">시장 검증 필요사항</p>
+                <ul class="rpt-list rpt-list--warn">
+                  <li v-for="(v, i) in evaluationResult.marketValidationGaps" :key="i">{{ v }}</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- 출원 준비도 -->
+            <div class="rpt-section">
+              <div class="rpt-section__head">
+                <p class="rpt-section__title">출원 준비도</p>
+                <span v-if="evaluationResult.readinessLevel" class="rpt-badge rpt-badge--readiness">{{ getReadinessLabel(evaluationResult.readinessLevel) }}</span>
+              </div>
+              <p v-if="evaluationResult.readinessDecision" class="rpt-section__body">{{ evaluationResult.readinessDecision }}</p>
+              <div v-if="evaluationResult.requiredBeforeFiling.length">
+                <p class="rpt-col__label">출원 전 필수 보완</p>
+                <ul class="rpt-list rpt-list--warn">
+                  <li v-for="(v, i) in evaluationResult.requiredBeforeFiling" :key="i">{{ v }}</li>
+                </ul>
+              </div>
+              <div v-if="evaluationResult.diagnosticGaps.length">
+                <p class="rpt-col__label">진단 부족 항목</p>
+                <ul class="rpt-list rpt-list--muted">
+                  <li v-for="(v, i) in evaluationResult.diagnosticGaps" :key="i">{{ v }}</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- 평가 기준별 상세 -->
+            <div class="rpt-section">
+              <p class="rpt-section__title">평가 기준별 상세</p>
+              <div class="dim-accordion">
+                <div v-for="dim in evaluationResult.dimensions" :key="dim.key" class="dim-item">
+                  <button class="dim-item__header" type="button" @click="toggleDimension(dim.key)">
+                    <span class="dim-item__label">{{ dim.label }}</span>
+                    <span class="dim-item__meta">
+                      <span v-if="dim.grade" class="dim-item__grade">{{ dim.grade }}</span>
+                      <span class="dim-item__score">{{ dim.score }}점</span>
+                      <svg class="dim-item__chevron" :class="{ 'dim-item__chevron--open': expandedDimensions[dim.key] }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
                   </button>
+                  <ul v-if="expandedDimensions[dim.key] && dim.items.length" class="dim-item__list">
+                    <li v-for="(item, ii) in dim.items" :key="ii">{{ item }}</li>
+                  </ul>
                 </div>
-                <p class="comment-item__text">{{ metric.comment }}</p>
-
-                <!-- 세부 항목 아코디언 -->
-                <div v-if="expandedDimensions[metric.key]" class="item-list">
-                  <div v-for="item in metric.items" :key="item.key" class="item-row">
-                    <div class="item-row__meta">
-                      <span class="item-row__label">{{ item.label }}</span>
-                      <span class="item-row__score">{{ item.score }}<span class="item-row__max">/{{ item.maxScore }}</span></span>
-                    </div>
-                    <div class="item-row__track">
-                      <div class="item-row__fill" :style="{ width: (item.score / item.maxScore * 100) + '%' }"/>
-                    </div>
-                    <p v-if="item.basis" class="item-row__basis">{{ item.basis }}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="comment-item comment-item--overall">
-                <p class="comment-item__label">종합 코멘트</p>
-                <p class="comment-item__text">{{ evaluationResult.overallComment }}</p>
-              </div>
-              <div v-if="evaluationResult.readinessDecision" class="comment-item comment-item--decision">
-                <p class="comment-item__label">출원 준비도 판정</p>
-                <p class="comment-item__text">{{ evaluationResult.readinessDecision }}</p>
               </div>
             </div>
 
-            <!-- 강점 -->
-            <div v-if="evaluationResult.strengths.length" class="strengths-section">
-              <p class="strengths-section__title">강점</p>
-              <ul class="strengths-list">
-                <li v-for="(s, i) in evaluationResult.strengths" :key="i" class="strength-item">{{ s }}</li>
-              </ul>
+            <!-- 권리화 전략 -->
+            <div class="rpt-section">
+              <p class="rpt-section__title">권리화 전략</p>
+              <p v-if="evaluationResult.claimIndependentDirection" class="rpt-section__body">{{ evaluationResult.claimIndependentDirection }}</p>
+              <div v-if="evaluationResult.claimDependentIdeas.length">
+                <p class="rpt-col__label">종속항 아이디어</p>
+                <ul class="rpt-list">
+                  <li v-for="(v, i) in evaluationResult.claimDependentIdeas" :key="i">{{ v }}</li>
+                </ul>
+              </div>
+              <div v-if="evaluationResult.claimAvoidanceNotes.length">
+                <p class="rpt-col__label">회피설계 방지 메모</p>
+                <ul class="rpt-list">
+                  <li v-for="(v, i) in evaluationResult.claimAvoidanceNotes" :key="i">{{ v }}</li>
+                </ul>
+              </div>
             </div>
 
-            <!-- 주요 리스크 -->
-            <div v-if="evaluationResult.keyRisks.length" class="risk-section">
-              <p class="risk-section__title">주요 리스크</p>
-              <ul class="risk-list">
-                <li v-for="(risk, i) in evaluationResult.keyRisks" :key="i" class="risk-item">{{ risk }}</li>
-              </ul>
+            <!-- 선행기술 조사 계획 -->
+            <div v-if="evaluationResult.priorArtPurpose || evaluationResult.priorArtQueries.length" class="rpt-section">
+              <p class="rpt-section__title">선행기술 조사 계획</p>
+              <p v-if="evaluationResult.priorArtPurpose" class="rpt-section__body">{{ evaluationResult.priorArtPurpose }}</p>
+              <div v-if="evaluationResult.priorArtQueries.length">
+                <p class="rpt-col__label">추천 검색어</p>
+                <ul class="rpt-list">
+                  <li v-for="(v, i) in evaluationResult.priorArtQueries" :key="i">{{ v }}</li>
+                </ul>
+              </div>
+              <div v-if="evaluationResult.priorArtFocusItems.length">
+                <p class="rpt-col__label">중점 조사 항목</p>
+                <ul class="rpt-list">
+                  <li v-for="(f, i) in evaluationResult.priorArtFocusItems" :key="i">{{ f.item }}</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- 출원 전략 -->
+            <div class="rpt-section">
+              <p class="rpt-section__title">출원 전략</p>
+              <p v-if="evaluationResult.filingRoute" class="rpt-kv">
+                <span>추천 경로</span>{{ evaluationResult.filingRoute }}
+              </p>
+              <p v-if="evaluationResult.filingTargetCount" class="rpt-kv">
+                <span>출원 예정 국가</span>{{ evaluationResult.filingTargetCount }}개국 (해외 {{ evaluationResult.filingHasOverseas ? '포함' : '미포함' }})
+              </p>
+              <div v-if="evaluationResult.filingCountryNotes.length">
+                <p class="rpt-col__label">국가별 메모</p>
+                <ul class="rpt-list">
+                  <li v-for="(v, i) in evaluationResult.filingCountryNotes" :key="i">{{ v }}</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- 출원 투자 판단 -->
+            <div class="rpt-section rpt-section--decision">
+              <div class="rpt-section__head">
+                <p class="rpt-section__title">출원 투자 판단</p>
+                <span v-if="evaluationResult.investmentDecision" class="rpt-badge rpt-badge--decision">{{ getInvestmentLabel(evaluationResult.investmentDecision) }}</span>
+              </div>
+              <p v-if="evaluationResult.investmentRationale" class="rpt-section__body">{{ evaluationResult.investmentRationale }}</p>
+              <div v-if="evaluationResult.investmentGoConditions.length">
+                <p class="rpt-col__label">진행 조건</p>
+                <ul class="rpt-list rpt-list--pos">
+                  <li v-for="(v, i) in evaluationResult.investmentGoConditions" :key="i">{{ v }}</li>
+                </ul>
+              </div>
+              <div v-if="evaluationResult.investmentStopConditions.length">
+                <p class="rpt-col__label">보류 / 중단 조건</p>
+                <ul class="rpt-list rpt-list--neg">
+                  <li v-for="(v, i) in evaluationResult.investmentStopConditions" :key="i">{{ v }}</li>
+                </ul>
+              </div>
+              <div v-if="evaluationResult.investmentNextSprint.length">
+                <p class="rpt-col__label">단기 보완 작업</p>
+                <ul class="rpt-list">
+                  <li v-for="(v, i) in evaluationResult.investmentNextSprint" :key="i">{{ v }}</li>
+                </ul>
+              </div>
             </div>
 
             <!-- 보완 액션 -->
-            <div v-if="evaluationResult.nextActions.length" class="action-section">
-              <p class="action-section__title">보완 액션</p>
+            <div v-if="evaluationResult.nextActions.length" class="rpt-section">
+              <p class="rpt-section__title">보완 액션</p>
               <ul class="action-list">
                 <li
-                  v-for="(item, i) in evaluationResult.nextActions"
+                  v-for="(a, i) in evaluationResult.nextActions"
                   :key="i"
                   class="action-item"
-                  :class="`action-item--${item.priority}`"
+                  :class="`action-item--${a.priority}`"
                 >
-                  {{ item.action }}
+                  <div class="action-item__head">
+                    <span class="action-item__priority">{{ getPriorityLabel(a.priority) }}</span>
+                    <span class="action-item__text">{{ a.action }}</span>
+                  </div>
+                  <p v-if="a.reason" class="action-item__reason">{{ a.reason }}</p>
                 </li>
+              </ul>
+            </div>
+
+            <!-- 평가 한계 -->
+            <div v-if="evaluationResult.limitations.length" class="rpt-section rpt-section--limitations">
+              <p class="rpt-section__title">평가 한계</p>
+              <ul class="rpt-list rpt-list--muted">
+                <li v-for="(l, i) in evaluationResult.limitations" :key="i">{{ l }}</li>
               </ul>
             </div>
           </template>
@@ -1205,6 +1395,9 @@ onBeforeUnmount(() => {
   font-size: 13px; font-weight: 600; color: #6366f1;
   margin: 6px 0 0; opacity: 0.75;
 }
+.grade-card__meta {
+  font-size: 12px; color: #6366f1; margin: 4px 0 0; opacity: 0.7;
+}
 
 .metrics-strip {
   display: flex;
@@ -1219,100 +1412,104 @@ onBeforeUnmount(() => {
 .metric-col__track { height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden; }
 .metric-col__fill  { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s ease; }
 
-.comment-list { display: flex; flex-direction: column; gap: 14px; }
-.comment-item__top {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;
+/* ── 보고서 섹션 공통 ─────────────────────────────── */
+.rpt-section {
+  margin-bottom: 16px; padding: 16px 18px;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+  display: flex; flex-direction: column; gap: 10px;
 }
-.comment-item__label {
+.rpt-section--decision { border-color: #a5b4fc; background: #eef2ff; }
+.rpt-section--limitations { background: #f8fafc; }
+.rpt-section__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rpt-section__title {
   font-size: 11.5px; font-weight: 700; color: #94a3b8;
-  text-transform: uppercase; letter-spacing: 0.04em; margin: 0;
+  text-transform: uppercase; letter-spacing: 0.05em; margin: 0;
 }
-.comment-item__text { font-size: 13.5px; color: #374151; line-height: 1.7; margin: 0; white-space: pre-line; }
+.rpt-section__body { font-size: 13.5px; color: #374151; line-height: 1.72; margin: 0; white-space: pre-line; }
 
-/* 세부 항목 토글 버튼 */
-.expand-btn {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11.5px; font-weight: 600; color: #94a3b8;
-  background: none; border: none; cursor: pointer; padding: 2px 4px;
-  border-radius: 4px; transition: color 0.15s;
+/* 뱃지 */
+.rpt-badge {
+  font-size: 11.5px; font-weight: 700; padding: 3px 10px;
+  border-radius: 20px; background: #e0e7ff; color: #4338ca;
+  white-space: nowrap; flex-shrink: 0;
 }
-.expand-btn:hover { color: var(--accent); }
-.expand-btn svg { transition: transform 0.2s; }
-.expand-btn--open { color: var(--accent); }
-.expand-btn--open svg { transform: rotate(180deg); }
+.rpt-badge--readiness { background: #dcfce7; color: #15803d; }
+.rpt-badge--decision  { background: #c7d2fe; color: #3730a3; }
 
-/* 세부 항목 리스트 */
-.item-list {
-  margin-top: 12px; display: flex; flex-direction: column; gap: 10px;
-  padding: 12px 14px;
-  background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;
+/* key-value 행 */
+.rpt-kv {
+  display: flex; gap: 8px; font-size: 13.5px; color: #374151; margin: 0; flex-wrap: wrap;
 }
-.item-row__meta {
-  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;
-}
-.item-row__label { font-size: 12.5px; font-weight: 600; color: #475569; }
-.item-row__score { font-size: 13px; font-weight: 800; color: var(--accent); }
-.item-row__max   { font-size: 11px; font-weight: 400; color: #94a3b8; }
-.item-row__track {
-  height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-bottom: 5px;
-}
-.item-row__fill  {
-  height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s ease;
-  opacity: 0.75;
-}
-.item-row__basis { font-size: 12px; color: #6b7280; line-height: 1.6; margin: 0; }
-.comment-item--overall {
-  padding: 14px 16px;
-  background: #eef2ff;
-  border-left: 3px solid var(--accent);
-  border-radius: 0 10px 10px 0;
-}
-.comment-item--overall .comment-item__label { color: var(--accent); }
-.comment-item--decision {
-  padding: 14px 16px;
-  background: #f0fdf4;
-  border-left: 3px solid #22c55e;
-  border-radius: 0 10px 10px 0;
-}
-.comment-item--decision .comment-item__label { color: #15803d; }
+.rpt-kv span { font-weight: 700; color: #64748b; flex-shrink: 0; }
 
-/* ── 리스크 & 액션 섹션 ─────────────────────────────── */
-.strengths-section,
-.risk-section,
-.action-section {
-  margin-top: 16px;
-  padding: 16px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
+/* 2열 레이아웃 */
+.rpt-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 900px) { .rpt-two-col { grid-template-columns: 1fr; } }
+
+.rpt-col__label {
+  font-size: 11px; font-weight: 700; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 6px;
 }
-.strengths-section { background: #f0fdf4; border-color: #bbf7d0; }
-.strengths-section__title,
-.risk-section__title,
-.action-section__title {
-  font-size: 11.5px; font-weight: 700; color: #94a3b8;
-  text-transform: uppercase; letter-spacing: 0.04em;
-  margin: 0 0 10px;
+
+/* 범용 리스트 */
+.rpt-list {
+  margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 5px;
 }
-.strengths-section__title { color: #15803d; }
-.strengths-list,
-.risk-list,
-.action-list {
-  margin: 0; padding-left: 18px;
-  display: flex; flex-direction: column; gap: 6px;
+.rpt-list li {
+  font-size: 13px; color: #374151; line-height: 1.65;
+  padding-left: 14px; position: relative;
 }
-.strength-item {
-  font-size: 13px; color: #166534; line-height: 1.6;
+.rpt-list li::before { content: '·'; position: absolute; left: 2px; color: #94a3b8; }
+.rpt-list--pos li::before { color: #22c55e; }
+.rpt-list--pos li { color: #166534; }
+.rpt-list--neg li::before { color: #f87171; }
+.rpt-list--neg li { color: #b91c1c; }
+.rpt-list--risk li::before { color: #f87171; }
+.rpt-list--risk li { color: #b91c1c; }
+.rpt-list--warn li::before { color: #f59e0b; }
+.rpt-list--warn li { color: #92400e; }
+.rpt-list--muted li { color: #64748b; }
+
+/* ── 평가 영역 아코디언 ────────────────────────────── */
+.dim-accordion { display: flex; flex-direction: column; gap: 6px; }
+.dim-item { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.dim-item__header {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; background: none; border: none; cursor: pointer;
+  font-family: inherit; text-align: left;
+  transition: background 0.13s;
 }
-.risk-item {
-  font-size: 13px; color: #b91c1c; line-height: 1.6;
+.dim-item__header:hover { background: #f8fafc; }
+.dim-item__label { font-size: 13.5px; font-weight: 600; color: #374151; }
+.dim-item__meta  { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.dim-item__grade { font-size: 12px; font-weight: 700; color: var(--accent); }
+.dim-item__score { font-size: 13px; font-weight: 800; color: var(--accent); }
+.dim-item__chevron { width: 16px; height: 16px; transition: transform 0.2s; }
+.dim-item__chevron--open { transform: rotate(180deg); }
+.dim-item__list {
+  margin: 0; padding: 10px 16px 12px 24px; list-style: disc;
+  display: flex; flex-direction: column; gap: 5px;
+  background: #f8fafc; border-top: 1px solid #e2e8f0;
 }
+.dim-item__list li { font-size: 12.5px; color: #475569; line-height: 1.65; }
+
+/* ── 보완 액션 ─────────────────────────────────────── */
+.action-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .action-item {
-  font-size: 13px; color: #374151; line-height: 1.6;
+  padding: 10px 14px; border-radius: 10px;
+  background: #f8fafc; border: 1px solid #e2e8f0;
 }
-.action-item--high   { color: #b45309; }
-.action-item--medium { color: #374151; }
-.action-item--low    { color: #6b7280; }
+.action-item__head { display: flex; align-items: baseline; gap: 8px; }
+.action-item__priority {
+  font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
+}
+.action-item--high   .action-item__priority { background: #fee2e2; color: #b91c1c; }
+.action-item--medium .action-item__priority { background: #fef3c7; color: #b45309; }
+.action-item--low    .action-item__priority { background: #f1f5f9; color: #64748b; }
+.action-item__text   { font-size: 13px; color: #374151; line-height: 1.65; font-weight: 600; }
+.action-item__reason { font-size: 12px; color: #6b7280; line-height: 1.6; margin: 4px 0 0; }
 
 /* ── 챗봇 FAB ─────────────────────────────────────── */
 .chat-fab {
