@@ -270,7 +270,38 @@
 
         <div class="section-divider"></div>
 
-        <!-- ── 섹션 4: 사내 프로젝트 연관 정보 ── -->
+        <!-- ── 섹션 4: 연차납부이력 ── -->
+        <section id="section-fee" data-section="fee" class="content-section">
+          <div class="section-header">
+            <h2 class="section-heading">등록료 납부 내역</h2>
+          </div>
+          <div v-if="!feeRecords.length" class="empty-section">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+            <p>등록된 연차료 납부 내역이 없습니다.</p>
+          </div>
+          <table v-else class="fee-table">
+            <thead>
+              <tr>
+                <th>분기</th>
+                <th>금액</th>
+                <th>납부일</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in feeRecords" :key="row.quarter">
+                <td>{{ row.quarter }}</td>
+                <td>{{ row.amount.toLocaleString() }} 원</td>
+                <td>{{ formatDate(row.paid) }}</td>
+                <td>납입</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- ── 섹션 6: 사내 프로젝트 연관 정보 ── -->
         <section id="section-projects" data-section="projects" class="content-section">
           <div class="section-header">
             <h2 class="section-heading">사내 프로젝트 연관 정보</h2>
@@ -299,7 +330,7 @@
 
         <div class="section-divider"></div>
 
-        <!-- ── 섹션 5: 제출 의견 ── -->
+        <!-- ── 섹션 7: 제출 의견 ── -->
         <section id="section-opinion" data-section="opinion" class="content-section">
           <div class="section-header">
             <h2 class="section-heading">제출 의견</h2>
@@ -404,6 +435,14 @@ const patentCountry = computed(() => {
 const inventor  = computed(() => patent.value?.inventor ?? '—')
 const ipcCode   = computed(() => patent.value?.ipcCodes[0] ?? '—')
 const summary   = computed(() => patent.value?.summary ?? '')
+
+const feeRecords = computed(() =>
+  annuityData.value.map(a => ({
+    quarter: `제 ${a.startYear} - ${a.endYear} 년분`,
+    amount: a.amount,
+    paid: a.paidDate ?? a.dueDate,
+  }))
+)
 // TODO: AI 서버 연동 후 교체 필요 — 청구항 데이터는 AI 서버에서 제공
 const claims    = computed<string[]>(() => [])
 
@@ -478,6 +517,7 @@ const tabs = [
   { key: 'info',     label: '특허 원문' },
   { key: 'report',   label: 'AI 평가 보고서' },
   { key: 'similar',  label: '유사 특허 분석' },
+  { key: 'fee',      label: '등록료 납부 내역' },
   { key: 'projects', label: '사내 프로젝트 연관 정보' },
   { key: 'opinion',  label: '제출 의견' },
 ]
@@ -983,4 +1023,10 @@ function relevanceClass(r: '상' | '중' | '하') {
   gap: 10px; padding: 48px 24px; text-align: center; color: #94a3b8;
 }
 .empty-section p { font-size: 14px; font-weight: 500; margin: 0; }
+
+/* ── 연차납부이력 테이블 ───────────────────────── */
+.fee-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.fee-table thead th { padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: #64748b; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.fee-table tbody td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; color: #374151; }
+.fee-table tbody tr:hover td { background: #f8fafc; }
 </style>

@@ -98,7 +98,7 @@ export const reportsApi = {
     return apiClient.get(`/patents/${patentId}/reports/${reportId}/status`)
   },
 
-  createReport: async (patentId: number): Promise<ReportDetailResponse> => {
+  createReport: async (patentId: number): Promise<{ id: number; patentId: number; status: string; createdAt: string; updatedAt: string }> => {
     return apiClient.post(`/patents/${patentId}/reports`)
   },
 
