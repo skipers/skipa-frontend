@@ -41,21 +41,21 @@
 
         <!-- PDF 업로드 -->
         <div class="upload-panel">
-          <label class="upload-drop" for="biz-pdf">
+          <label class="upload-drop" :class="{ 'upload-drop--loading': isExtracting }" for="biz-pdf">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/>
               <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
-            <span>{{ uploadedFile ? uploadedFile.name : '특허 PDF 업로드 · 클릭하거나 파일을 여기에 끌어다 놓으세요' }}</span>
+            <span>{{ isExtracting ? 'AI 분석 중...' : uploadedFile ? uploadedFile.name : '특허 PDF 업로드 · 클릭하거나 파일을 여기에 끌어다 놓으세요' }}</span>
           </label>
-          <input id="biz-pdf" class="visually-hidden" type="file" accept=".pdf" ref="fileInputRef" @change="handleFileSelect" />
-          <button class="btn-extract" @click="fileInputRef?.click()">
+          <input id="biz-pdf" class="visually-hidden" type="file" accept=".pdf" ref="fileInputRef" @change="handleFileSelect" :disabled="isExtracting" />
+          <button class="btn-extract" :disabled="isExtracting" @click="fileInputRef?.click()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/>
               <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
             </svg>
-            PDF에서 항목 추출
+            {{ isExtracting ? '분석 중...' : 'PDF에서 항목 추출' }}
           </button>
         </div>
 
@@ -469,6 +469,8 @@ const myApplications = computed(() =>
 // ── 폼 ──────────────────────────────────────────────
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const uploadedFile = ref<File | null>(null)
+const isExtracting = ref(false)
+const currentExtractJobId = ref<number | null>(null)
 const showSuccessModal = ref(false)
 const resubmitTargetId = ref<number | null>(null)
 const resubmitTargetTitle = ref('')
@@ -492,7 +494,55 @@ const form = reactive({
 
 function handleFileSelect(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
-  if (file) uploadedFile.value = file
+  if (file) {
+    uploadedFile.value = file
+    handleExtract(file)
+  }
+}
+
+async function handleExtract(file: File) {
+  isExtracting.value = true
+  currentExtractJobId.value = null
+  try {
+    const { extractJobId, uploadUrl } = await patentsApi.createExtractUploadUrl()
+    await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': 'application/pdf' } })
+    await patentsApi.completeExtractUpload(extractJobId)
+    let attempts = 0
+    while (attempts < 30) {
+      await new Promise(r => setTimeout(r, 2000))
+      const status = await patentsApi.getExtractJobStatus(extractJobId)
+      if (status.status === 'COMPLETED') break
+      if (status.status === 'FAILED') throw new Error('PDF 분석에 실패했습니다. 다시 시도해주세요.')
+      attempts++
+    }
+    const result = await patentsApi.getExtractJobResult(extractJobId)
+    if (result.result) {
+      fillFormFromResult(result.result)
+      currentExtractJobId.value = extractJobId
+    }
+  } catch (err: any) {
+    alert(err?.message ?? 'PDF 추출 중 오류가 발생했습니다.')
+  } finally {
+    isExtracting.value = false
+  }
+}
+
+function fillFormFromResult(r: Partial<PatentCreateRequest>) {
+  if (r.title)              form.finalTitle = r.title
+  if (r.applicationNumber)  form.applicationNumber = r.applicationNumber
+  if (r.registrationNumber) form.registrationNumber = r.registrationNumber ?? ''
+  if (r.managementNumber)   form.managementNumber   = r.managementNumber ?? ''
+  if (r.applicant)          form.applicant = r.applicant ?? ''
+  if (r.inventor)           form.inventors = r.inventor ?? ''
+  if (r.applicationDate)    form.applicationDate = r.applicationDate ?? ''
+  if (r.registrationDate)   form.registrationDate = r.registrationDate ?? ''
+  if (r.ipcCodes)           form.ipc = r.ipcCodes
+  if (r.cpcCodes)           form.cpc = r.cpcCodes ?? []
+  if (r.expiryDate)         form.expiryDate = r.expiryDate ?? ''
+  if (r.businessField)      form.bizField = r.businessField ?? ''
+  if (r.techField)          form.techField = r.techField ?? ''
+  if (r.keywords)           form.keywords = r.keywords
+  if (r.summary)            form.summary = r.summary ?? ''
 }
 
 function resetForm() {
@@ -509,6 +559,7 @@ function resetForm() {
   adminHistory.value = []
   resubmitTargetId.value = null
   resubmitTargetTitle.value = ''
+  currentExtractJobId.value = null
 }
 
 function startResubmit(app: PatentApplication) {
@@ -547,12 +598,17 @@ function startResubmit(app: PatentApplication) {
 }
 
 async function handleSubmit() {
-  if (resubmitTargetId.value !== null) {
-    resubmit(resubmitTargetId.value, { ...form })
-  } else {
-    submit({ ...form }, myDept.value)
+  try {
+    if (resubmitTargetId.value !== null) {
+      await resubmit(resubmitTargetId.value, { ...form })
+    } else {
+      await submit({ ...form }, myDept.value)
+    }
+    showSuccessModal.value = true
+  } catch (err) {
+    console.error('특허 신청 오류:', err)
+    alert('신청 중 오류가 발생했습니다. 다시 시도해주세요.')
   }
-  showSuccessModal.value = true
 }
 
 function confirmSuccess() {
@@ -665,13 +721,15 @@ function appStatusLabel(s: string) {
   font-size: 13.5px; color: var(--color-text-muted); cursor: pointer;
 }
 .upload-drop svg { color: var(--c-green-500, #22c55e); flex-shrink: 0; }
+.upload-drop--loading { pointer-events: none; opacity: 0.6; }
 .btn-extract {
   display: flex; align-items: center; gap: 7px; padding: 8px 16px;
   background: var(--color-surface); border: 1.5px solid var(--color-border);
   border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit;
   color: var(--color-text-secondary); cursor: pointer; white-space: nowrap;
 }
-.btn-extract:hover { background: var(--color-surface-hover); }
+.btn-extract:hover:not(:disabled) { background: var(--color-surface-hover); }
+.btn-extract:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* ── 섹션/그리드 ── */
 .form-section { display: flex; flex-direction: column; gap: 12px; }

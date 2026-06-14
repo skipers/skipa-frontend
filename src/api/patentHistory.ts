@@ -36,7 +36,7 @@ export interface PayAnnuityRequest {
 // ── API ──────────────────────────────────────────────
 
 export const patentHistoryApi = {
-  getLegalStatusHistory: async (patentId: number): Promise<PatentLegalStatusResponse[]> => {
+  getLegalStatusHistory: async (patentId: number): Promise<PageResponse<PatentLegalStatusResponse>> => {
     return apiClient.get(`/patents/${patentId}/legal-status`)
   },
 

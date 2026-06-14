@@ -168,6 +168,7 @@
             </div>
           </div>
         </div>
+
       </div>
 
       <!-- 연도별 출원·소멸/포기 추이 -->
@@ -293,7 +294,7 @@ const patentStatItems = computed(() => {
   const inactive = dashboardData.value?.patentStatus.inactive ?? 0
   const total    = active + inactive
   return [
-    { label: '유지',      count: active,   color: '#67E2AB', pct: total ? Math.round((active   / total) * 100) : 0 },
+    { label: '등록',      count: active,   color: '#67E2AB', pct: total ? Math.round((active   / total) * 100) : 0 },
     { label: '소멸/포기', count: inactive, color: '#E88989', pct: total ? Math.round((inactive / total) * 100) : 0 },
   ]
 })
@@ -340,10 +341,10 @@ const filedPoints   = computed(() => bizTrendData.value.map((d, i) => `${tX(i)},
 const expiredPoints = computed(() => bizTrendData.value.map((d, i) => `${tX(i)},${tY(d.expired)}`).join(' '))
 
 function decisionLabel(d: string) {
-  return ({ KEEP: '유지', MAINTAIN: '유지', DISPOSE: '포기', ABANDON: '포기', SELL: '매각' } as Record<string, string>)[d] ?? d
+  return ({ MAINTAIN: '등록', DISPOSE: '포기', ABANDON: '포기'} as Record<string, string>)[d] ?? d
 }
 function decisionIcon(d: string) {
-  return ({ KEEP: '✅', MAINTAIN: '✅', DISPOSE: '🗑', ABANDON: '🗑', SELL: '💰' } as Record<string, string>)[d] ?? '—'
+  return ({MAINTAIN: '✅', DISPOSE: '🗑', ABANDON: '🗑'} as Record<string, string>)[d] ?? '—'
 }
 function formatDate(d?: string) {
   if (!d) return '—'
@@ -737,12 +738,10 @@ onMounted(fetchDashboard)
 /* ── 담당 특허 도넛 ──────────────────────────────────── */
 .donut-wrap {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  align-content: center;
   gap: 16px;
-  flex-wrap: wrap;
   flex: 1;
-  justify-content: center;
 }
 
 .patent-donut {
@@ -757,20 +756,21 @@ onMounted(fetchDashboard)
 
 .patent-legend {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1;
+  flex-direction: row;
+  gap: 20px;
+  justify-content: center;
+  width: 100%;
 }
 .patent-legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 12.5px;
 }
 .patent-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.patent-legend-label { flex: 1; color: #374151; font-weight: 500; }
+.patent-legend-label { color: #374151; font-weight: 500; }
 .patent-legend-count { font-weight: 700; }
-.patent-legend-pct { color: #94a3b8; min-width: 30px; text-align: right; }
+.patent-legend-pct { color: #94a3b8; }
 
 /* ── 연도별 추이 꺾은선 ──────────────────────────────── */
 .trend-body {

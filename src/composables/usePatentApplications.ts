@@ -99,13 +99,40 @@ export function usePatentApplications() {
     }
   }
 
-  function submit(
+  async function submit(
     form: Omit<PatentApplication, 'id' | 'appStatus' | 'submittedAt' | 'submittedBy' | 'reviewedAt' | 'rejectionReason'>,
     deptName: string,
-  ): PatentApplication {
+  ): Promise<PatentApplication> {
+    const created = await patentsApi.createPatent({
+      title: form.finalTitle || form.title,
+      applicationNumber: form.applicationNumber,
+      registrationNumber: form.registrationNumber || undefined,
+      publicationNumber: form.publicationNumber || undefined,
+      announcementNumber: form.announcementNumber || undefined,
+      managementNumber: form.managementNumber || undefined,
+      applicant: form.applicant || undefined,
+      inventor: form.inventors || undefined,
+      applicationDate: form.applicationDate || undefined,
+      registrationDate: form.registrationDate || undefined,
+      publicationDate: form.publicationDate || undefined,
+      announcementDate: form.announcementDate || undefined,
+      ipcCodes: form.ipc?.length ? form.ipc : undefined,
+      cpcCodes: form.cpc?.length ? form.cpc : undefined,
+      expiryDate: form.expiryDate || undefined,
+      examinationClaimCount: form.examinationClaimCount ? Number(form.examinationClaimCount) : undefined,
+      citationCount: form.citationCount ? Number(form.citationCount) : undefined,
+      businessField: form.bizField || undefined,
+      techField: form.techField || undefined,
+      relatedProducts: Array.isArray(form.relatedProducts) && form.relatedProducts.length ? form.relatedProducts : undefined,
+      keywords: form.keywords?.length ? form.keywords : undefined,
+      summary: form.summary || undefined,
+      filingCountry: form.country || undefined,
+      isJointApplication: form.coApplicant === '예',
+      jointApplicant: form.coApplicant === '예' ? form.coApplicantName || undefined : undefined,
+    })
     const app: PatentApplication = {
       ...form,
-      id: nextId++,
+      id: created.id,
       appStatus: 'pending',
       submittedAt: new Date().toISOString().slice(0, 10),
       submittedBy: deptName,
@@ -114,7 +141,32 @@ export function usePatentApplications() {
     return app
   }
 
-  function resubmit(id: number, form: Partial<PatentApplication>) {
+  async function resubmit(id: number, form: Partial<PatentApplication>) {
+    await patentsApi.updatePatent(id, {
+      title: form.finalTitle || form.title || undefined,
+      applicationNumber: form.applicationNumber || undefined,
+      registrationNumber: form.registrationNumber || undefined,
+      publicationNumber: form.publicationNumber || undefined,
+      announcementNumber: form.announcementNumber || undefined,
+      managementNumber: form.managementNumber || undefined,
+      applicant: form.applicant || undefined,
+      inventor: form.inventors || undefined,
+      applicationDate: form.applicationDate || undefined,
+      registrationDate: form.registrationDate || undefined,
+      publicationDate: form.publicationDate || undefined,
+      announcementDate: form.announcementDate || undefined,
+      ipcCodes: form.ipc?.length ? form.ipc : undefined,
+      cpcCodes: form.cpc?.length ? form.cpc : undefined,
+      expiryDate: form.expiryDate || undefined,
+      businessField: form.bizField || undefined,
+      techField: form.techField || undefined,
+      relatedProducts: Array.isArray(form.relatedProducts) && form.relatedProducts.length ? form.relatedProducts : undefined,
+      keywords: form.keywords?.length ? form.keywords : undefined,
+      summary: form.summary || undefined,
+      filingCountry: form.country || undefined,
+      isJointApplication: form.coApplicant === '예',
+      jointApplicant: form.coApplicant === '예' ? form.coApplicantName || undefined : undefined,
+    })
     const app = applications.value.find(a => a.id === id)
     if (!app) return
     Object.assign(app, form, {
@@ -126,11 +178,13 @@ export function usePatentApplications() {
     })
   }
 
-  function approve(id: number) {
+  async function approve(id: number) {
+    await patentsApi.approveApplication(id)
     const app = applications.value.find(a => a.id === id)
-    if (!app) return
-    app.appStatus = 'approved'
-    app.reviewedAt = new Date().toISOString().slice(0, 10)
+    if (app) {
+      app.appStatus = 'approved'
+      app.reviewedAt = new Date().toISOString().slice(0, 10)
+    }
   }
 
   async function reject(id: number, reason: string) {
