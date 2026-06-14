@@ -97,7 +97,7 @@
           </div>
 
           <div class="list-rows">
-            <div v-for="p in filteredPatents" :key="p.id" class="list-row">
+            <div v-for="p in filteredPatents" :key="p.id" class="list-row list-row--clickable" @click="startEdit(p)">
               <div class="list-row__cell list-row__title">{{ p.title }}</div>
               <div class="list-row__cell list-row__mono">{{ p.applicationNumber }}</div>
               <div class="list-row__cell">
@@ -109,14 +109,7 @@
               </div>
               <div class="list-row__cell list-row__mono">{{ p.applicationDate }}</div>
               <div class="list-row__cell list-row__actions">
-                <button class="btn-action btn-action--edit" @click="startEdit(p)">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                  수정
-                </button>
-                <button class="btn-action btn-action--delete" @click="confirmDelete(p)">
+                <button class="btn-action btn-action--delete" @click.stop="confirmDelete(p)">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <polyline points="3 6 5 6 21 6"/>
                     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
@@ -138,8 +131,27 @@
         <div v-if="showRegisterModal" class="reg-overlay" @click.self="closeRegisterModal">
           <div class="reg-panel">
 
-            <!-- 모달 헤더 -->
-            <div class="reg-panel__head">
+            <!-- 모달 헤더 - 뷰 모드 -->
+            <div v-if="editMode && isViewMode" class="reg-panel__head reg-panel__head--view">
+              <h2 class="view-patent-title">{{ editTargetTitle }}</h2>
+              <div class="head-btn-group">
+                <button class="btn-edit-toggle" type="button" @click="isViewMode = false">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                  수정
+                </button>
+                <button class="reg-panel__close" @click="closeRegisterModal">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- 모달 헤더 - 수정/신규 모드 -->
+            <div v-else class="reg-panel__head">
               <div>
                 <h3 class="reg-panel__title">{{ editMode ? '특허 수정' : '신규 특허 등록' }}</h3>
                 <p class="reg-panel__sub">{{ editMode ? editTargetTitle : '새 특허 정보를 입력하세요.' }}</p>
@@ -151,8 +163,148 @@
               </button>
             </div>
 
-            <!-- 모달 바디 -->
-            <div class="reg-panel__body">
+            <!-- 모달 바디 - 뷰 모드 -->
+            <div v-if="editMode && isViewMode" class="reg-panel__body">
+              <div class="form-section">
+                <div class="form-section__title">기본 정보</div>
+                <div class="form-grid">
+                  <label class="form-field full">
+                    <span class="form-label">특허 제목</span>
+                    <div class="form-input form-input--view">{{ form.title || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">관리번호</span>
+                    <div class="form-input form-input--view">{{ form.managementNumber || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">발명자</span>
+                    <div class="form-input form-input--view">{{ form.inventors || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">출원인명</span>
+                    <div class="form-input form-input--view">{{ form.applicant || '-' }}</div>
+                  </label>
+                </div>
+              </div>
+              <div class="form-section">
+                <div class="form-section__title">분류 및 제품</div>
+                <div class="form-grid">
+                  <label class="form-field">
+                    <span class="form-label">관련사업 분야</span>
+                    <div class="form-input form-input--view">{{ form.bizField || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">관련기술 분야</span>
+                    <div class="form-input form-input--view">{{ form.techField || '-' }}</div>
+                  </label>
+                  <label class="form-field full">
+                    <span class="form-label">관련제품</span>
+                    <div class="form-input form-input--view">{{ form.relatedProducts || '-' }}</div>
+                  </label>
+                </div>
+              </div>
+              <div class="form-section">
+                <div class="form-section__title">출원 및 등록</div>
+                <div class="form-grid">
+                  <label class="form-field">
+                    <span class="form-label">출원국</span>
+                    <div class="form-input form-input--view">{{ form.country || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">상태</span>
+                    <div class="form-input form-input--view">{{ form.status || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">공동출원여부</span>
+                    <div class="form-input form-input--view">{{ form.coApplicant }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">공동출원인명</span>
+                    <div class="form-input form-input--view">{{ form.coApplicantName || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">출원일</span>
+                    <div class="form-input form-input--view">{{ form.applicationDate || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">등록일</span>
+                    <div class="form-input form-input--view">{{ form.registrationDate || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">공개일</span>
+                    <div class="form-input form-input--view">{{ form.publicationDate || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">공고일</span>
+                    <div class="form-input form-input--view">{{ form.announcementDate || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">출원번호</span>
+                    <div class="form-input form-input--view">{{ form.applicationNumber || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">등록번호</span>
+                    <div class="form-input form-input--view">{{ form.registrationNumber || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">공개번호</span>
+                    <div class="form-input form-input--view">{{ form.publicationNumber || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">공고번호</span>
+                    <div class="form-input form-input--view">{{ form.announcementNumber || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">IPC 코드</span>
+                    <div class="form-input form-input--view">{{ form.ipc.join(', ') || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">CPC 코드</span>
+                    <div class="form-input form-input--view">{{ form.cpc.join(', ') || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">심사청구항수</span>
+                    <div class="form-input form-input--view">{{ form.examinationClaimCount || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">피인용 수</span>
+                    <div class="form-input form-input--view">{{ form.citationCount || '-' }}</div>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-label">예상 소멸일</span>
+                    <div class="form-input form-input--view">{{ form.expiryDate || '-' }}</div>
+                  </label>
+                </div>
+              </div>
+              <div class="form-section">
+                <div class="form-section__title">내용 요약</div>
+                <div class="form-grid">
+                  <label class="form-field full">
+                    <span class="form-label">키워드</span>
+                    <div class="form-input form-input--view">{{ form.keywords.join(', ') || '-' }}</div>
+                  </label>
+                  <label class="form-field full">
+                    <span class="form-label">발명의 요약</span>
+                    <div class="form-textarea form-input--view">{{ form.summary || '-' }}</div>
+                  </label>
+                </div>
+              </div>
+              <div class="form-section">
+                <div class="form-section__title">행정 상태</div>
+                <div v-if="adminHistory.length > 0" class="ah-stack">
+                  <div v-for="entry in adminHistory" :key="entry.type + entry.date" class="ah-row ah-row--readonly">
+                    <span :class="['ah-type-select', `ah-type-select--${entry.type}`, 'ah-type-readonly']">
+                      {{ AH_LABELS[entry.type] ?? entry.type }}
+                    </span>
+                    <span class="ah-date-readonly">{{ entry.date || '-' }}</span>
+                  </div>
+                </div>
+                <p v-else class="ah-empty">등록된 행정 상태가 없습니다.</p>
+              </div>
+            </div>
+
+            <!-- 모달 바디 - 수정/신규 모드 -->
+            <div v-else class="reg-panel__body">
 
               <!-- PDF 업로드 (신규 등록 시만) -->
               <div v-if="!editMode" class="upload-panel">
@@ -356,8 +508,13 @@
 
             </div>
 
-            <!-- 모달 푸터 -->
-            <div class="reg-panel__foot">
+            <!-- 모달 푸터 - 뷰 모드 -->
+            <div v-if="editMode && isViewMode" class="reg-panel__foot">
+              <button class="btn-reset" type="button" @click="closeRegisterModal">닫기</button>
+            </div>
+
+            <!-- 모달 푸터 - 수정/신규 모드 -->
+            <div v-else class="reg-panel__foot">
               <button class="btn-reset" type="button" @click="closeRegisterModal">취소</button>
               <button class="btn-submit" type="button" :disabled="!form.title.trim()" @click="handleSave">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -466,6 +623,7 @@ const AH_LABELS: Record<string, string> = {
 const adminHistory = ref<{ type: string; date: string }[]>([])
 
 const showRegisterModal = ref(false)
+const isViewMode = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const uploadedFile = ref<File | null>(null)
 const editMode = ref(false)
@@ -553,6 +711,7 @@ function openRegisterModal() {
 
 function closeRegisterModal() {
   showRegisterModal.value = false
+  isViewMode.value = false
   clearForm()
 }
 
@@ -592,12 +751,20 @@ async function handleSave() {
         title: form.finalTitle || form.title,
         applicationNumber: form.applicationNumber,
         registrationNumber: form.registrationNumber || undefined,
+        publicationNumber: form.publicationNumber || undefined,
+        announcementNumber: form.announcementNumber || undefined,
         managementNumber: form.managementNumber || undefined,
+        applicant: form.applicant || undefined,
         inventor: form.inventors || undefined,
         applicationDate: form.applicationDate || undefined,
         registrationDate: form.registrationDate || undefined,
+        publicationDate: form.publicationDate || undefined,
+        announcementDate: form.announcementDate || undefined,
         ipcCodes: form.ipc ? form.ipc.map(s => s.trim()).filter(Boolean) : undefined,
+        cpcCodes: form.cpc ? form.cpc.map(s => s.trim()).filter(Boolean) : undefined,
         expiryDate: form.expiryDate || undefined,
+        examinationClaimCount: form.examinationClaimCount ? Number(form.examinationClaimCount) : undefined,
+        citationCount: form.citationCount ? Number(form.citationCount) : undefined,
         businessField: form.bizField || undefined,
         techField: form.techField || undefined,
         relatedProducts: form.relatedProducts
@@ -605,6 +772,9 @@ async function handleSave() {
           : undefined,
         summary: form.summary || undefined,
         filingCountry: form.country || undefined,
+        isJointApplication: form.coApplicant === '예',
+        jointApplicant: form.coApplicant === '예' ? (form.coApplicantName || undefined) : undefined,
+        keywords: form.keywords?.length ? form.keywords : undefined,
       })
       await fetchPatents()
       closeRegisterModal()
@@ -643,6 +813,7 @@ const LEGAL_TYPE_MAP: Record<string, string> = {
 
 async function startEdit(p: PatentListItem) {
   editMode.value = true
+  isViewMode.value = true
   editTargetId.value = p.id
   editTargetTitle.value = p.title
   adminHistory.value = []
@@ -845,7 +1016,7 @@ async function handleDelete() {
 
 .list-header {
   display: grid;
-  grid-template-columns: 2.5fr 1.3fr 1.4fr 80px 110px 160px;
+  grid-template-columns: 2.5fr 1.3fr 1.4fr 80px 110px 80px;
   gap: 16px;
   padding: 8px 20px;
   background: var(--color-surface-muted);
@@ -861,7 +1032,7 @@ async function handleDelete() {
 .list-rows { display: flex; flex-direction: column; }
 .list-row {
   display: grid;
-  grid-template-columns: 2.5fr 1.3fr 1.4fr 80px 110px 160px;
+  grid-template-columns: 2.5fr 1.3fr 1.4fr 80px 110px 80px;
   gap: 16px; align-items: center;
   padding: 13px 20px;
   border-bottom: 1px solid var(--color-surface-hover);
@@ -869,6 +1040,7 @@ async function handleDelete() {
 }
 .list-row:last-child { border-bottom: none; }
 .list-row:hover { background: var(--color-surface-hover); }
+.list-row--clickable { cursor: pointer; }
 
 .list-row__cell { font-size: 13.5px; color: var(--color-text-secondary); min-width: 0; }
 .list-row__title { font-weight: 600; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -933,6 +1105,35 @@ async function handleDelete() {
 .app-status--approved  { background: #dcfce7; color: #166534; }
 .app-status--rejected  { background: #fef9c3; color: #854d0e; }
 .app-status--withdrawn{ background: #f1f5f9; color: #475569; }
+
+/* ── 뷰 모드 ── */
+.reg-panel__head--view { align-items: center; }
+.view-patent-title {
+  font-size: 20px; font-weight: 700; color: var(--color-text);
+  margin: 0; line-height: 1.4; flex: 1; min-width: 0;
+}
+.head-btn-group { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.btn-edit-toggle {
+  display: flex; align-items: center; gap: 6px; padding: 7px 16px;
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: #fff; border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  cursor: pointer; transition: opacity .15s;
+}
+.btn-edit-toggle:hover { opacity: .88; }
+
+.view-section { display: flex; flex-direction: column; gap: 10px; }
+.view-section__title {
+  font-size: 12px; font-weight: 700; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  padding-bottom: 8px; border-bottom: 1px solid var(--color-surface-muted);
+}
+.view-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
+.view-row { display: flex; flex-direction: column; gap: 3px; }
+.view-row.full { grid-column: 1 / -1; }
+.view-label { font-size: 11.5px; font-weight: 600; color: var(--color-text-muted); }
+.view-val { font-size: 13.5px; color: var(--color-text); line-height: 1.5; word-break: break-word; }
+.view-val--summary { white-space: pre-wrap; }
 
 /* ── 신규 등록 / 수정 모달 ── */
 .reg-overlay {
@@ -1030,6 +1231,7 @@ async function handleDelete() {
   width: 100%; box-sizing: border-box; transition: border-color .15s, background .15s;
 }
 .form-input:focus, .form-select:focus { border-color: var(--color-primary); background: var(--color-surface); }
+.form-input--view { cursor: default; user-select: text; pointer-events: none; }
 .form-input::placeholder { color: var(--color-text-subtle); }
 .form-select { appearance: none; cursor: pointer; }
 
