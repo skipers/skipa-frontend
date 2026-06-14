@@ -96,7 +96,7 @@
             </label>
             <label class="form-field full">
               <span class="form-label">관련제품</span>
-              <input class="form-input" type="text" v-model="form.relatedProducts" />
+              <TagInput v-model="form.relatedProducts" placeholder="제품명 입력 후 쉼표(,) 또는 엔터(Enter)를 입력하세요" />
             </label>
           </div>
         </div>
@@ -182,7 +182,13 @@
 
         <!-- 내용 요약 -->
         <div class="form-section">
-          <div class="form-section__title">내용 요약</div>
+          <div class="form-section__title">
+            내용 요약
+            <span class="ai-generated-badge">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              AI 자동 생성 · 내용을 검토 후 제출하세요
+            </span>
+          </div>
           <div class="form-grid">
             <label class="form-field full">
               <span class="form-label">키워드</span>
@@ -191,114 +197,6 @@
             <label class="form-field full">
               <span class="form-label">발명의 요약</span>
               <textarea class="form-textarea" v-model="form.summary" placeholder="특허의 핵심 기술 내용을 요약해 주세요." />
-            </label>
-          </div>
-        </div>
-
-        <!-- 행정 상태 -->
-        <div class="form-section">
-          <div class="form-section__title">행정 상태</div>
-          <div class="ah-stack">
-            <div v-for="(entry, idx) in adminHistory" :key="idx" class="ah-row">
-              <select :class="['ah-type-select', `ah-type-select--${entry.type}`]" v-model="entry.type">
-                <option value="file">출원</option>
-                <option value="pub">공개</option>
-                <option value="reg">등록</option>
-                <option value="rejected">거절</option>
-                <option value="invalid">무효</option>
-                <option value="expired">소멸</option>
-                <option value="withdraw">취하</option>
-                <option value="abandon">포기</option>
-              </select>
-              <input class="form-input ah-date" type="date" v-model="entry.date" />
-              <button class="btn-ah-del" type="button" @click="adminHistory.splice(idx, 1)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <button class="btn-ah-add" type="button" @click="adminHistory.push({ type: 'file', date: '' })">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            상태 추가
-          </button>
-        </div>
-
-        <!-- 하단 버튼 -->
-        <div class="form-footer">
-          <button class="btn-reset" type="button" @click="resetForm">초기화</button>
-          <button class="btn-submit" type="button" :disabled="!form.title.trim()" @click="handleSubmit">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/>
-            </svg>
-            {{ resubmitTargetId ? '재신청' : '등록 신청' }}
-          </button>
-        </div>
-
-        <!-- 출원 및 등록 -->
-        <div class="form-section">
-          <div class="form-section__title">출원 및 등록</div>
-          <div class="form-grid">
-            <label class="form-field">
-              <span class="form-label">출원국</span>
-              <input class="form-input" type="text" v-model="form.country" />
-            </label>
-            <label class="form-field">
-              <span class="form-label">상태</span>
-              <select class="form-select" v-model="form.patentStatus">
-                <option>등록</option><option>출원</option><option>검토 중</option><option>포기</option>
-              </select>
-            </label>
-            <label class="form-field">
-              <span class="form-label">공동출원여부</span>
-              <select class="form-select" v-model="form.coApplicant">
-                <option>아니오</option><option>예</option>
-              </select>
-            </label>
-            <label class="form-field">
-              <span class="form-label">공동출원인명</span>
-              <input class="form-input" type="text" v-model="form.coApplicantName" />
-            </label>
-            <label class="form-field">
-              <span class="form-label">출원일</span>
-              <input class="form-input" type="date" v-model="form.applicationDate" />
-            </label>
-            <label class="form-field">
-              <span class="form-label">등록일</span>
-              <input class="form-input" type="date" v-model="form.registrationDate" />
-            </label>
-            <label class="form-field">
-              <span class="form-label">출원번호</span>
-              <input class="form-input" type="text" v-model="form.applicationNumber" placeholder="10-2026-0000000" />
-            </label>
-            <label class="form-field">
-              <span class="form-label">등록번호</span>
-              <input class="form-input" type="text" v-model="form.registrationNumber" placeholder="10-0000000" />
-            </label>
-            <label class="form-field">
-              <span class="form-label">IPC</span>
-              <input class="form-input" type="text" v-model="form.ipc" />
-            </label>
-            <label class="form-field">
-              <span class="form-label">예상 소멸일</span>
-              <input class="form-input" type="date" v-model="form.expiryDate" />
-            </label>
-          </div>
-        </div>
-
-        <!-- 내용 요약 -->
-        <div class="form-section">
-          <div class="form-section__title">내용 요약</div>
-          <div class="form-grid">
-            <label class="form-field full">
-              <span class="form-label">특허 개요</span>
-              <textarea class="form-textarea" v-model="form.summary" placeholder="특허의 핵심 기술 내용을 요약해 주세요." />
-            </label>
-            <label class="form-field full">
-              <span class="form-label">핵심 내용</span>
-              <textarea class="form-textarea" v-model="form.coreContent" />
             </label>
           </div>
         </div>
@@ -528,7 +426,7 @@ async function handleExtract(file: File) {
 }
 
 function fillFormFromResult(r: Partial<PatentCreateRequest>) {
-  if (r.title)              form.finalTitle = r.title
+  if (r.title)              { form.title = r.title; form.finalTitle = r.title }
   if (r.applicationNumber)  form.applicationNumber = r.applicationNumber
   if (r.registrationNumber) form.registrationNumber = r.registrationNumber ?? ''
   if (r.managementNumber)   form.managementNumber   = r.managementNumber ?? ''
@@ -541,6 +439,7 @@ function fillFormFromResult(r: Partial<PatentCreateRequest>) {
   if (r.expiryDate)         form.expiryDate = r.expiryDate ?? ''
   if (r.businessField)      form.bizField = r.businessField ?? ''
   if (r.techField)          form.techField = r.techField ?? ''
+  if (r.relatedProducts)    form.relatedProducts = r.relatedProducts
   if (r.keywords)           form.keywords = r.keywords
   if (r.summary)            form.summary = r.summary ?? ''
 }
@@ -602,7 +501,7 @@ async function handleSubmit() {
     if (resubmitTargetId.value !== null) {
       await resubmit(resubmitTargetId.value, { ...form })
     } else {
-      await submit({ ...form }, myDept.value)
+      await submit({ ...form }, myDept.value, currentExtractJobId.value ?? undefined)
     }
     showSuccessModal.value = true
   } catch (err) {
@@ -734,9 +633,17 @@ function appStatusLabel(s: string) {
 /* ── 섹션/그리드 ── */
 .form-section { display: flex; flex-direction: column; gap: 12px; }
 .form-section__title {
+  display: flex; align-items: center; gap: 8px;
   font-size: 12px; font-weight: 700; color: var(--color-text-muted);
   text-transform: uppercase; letter-spacing: .06em;
   padding-bottom: 8px; border-bottom: 1px solid var(--color-surface-muted);
+}
+.ai-generated-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0;
+  text-transform: none; color: #059669;
+  background: #ecfdf5; border: 1px solid #a7f3d0;
+  border-radius: 20px; padding: 2px 8px;
 }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
 .form-field { display: flex; flex-direction: column; gap: 5px; }

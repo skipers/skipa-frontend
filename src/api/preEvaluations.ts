@@ -1,4 +1,5 @@
 import apiClient from './axios'
+import type { PageResponse } from './patents'
 import type { ChatSourceCard } from './reports'
 
 export interface PreEvaluationCreateRequest {
@@ -68,7 +69,7 @@ export const preEvaluationsApi = {
     return apiClient.post('/pre-evaluations', body)
   },
 
-  getList: async (params?: { page?: number; size?: number }): Promise<{ items: PreEvaluationListItem[] }> => {
+  getList: async (params?: { page?: number; size?: number }): Promise<PageResponse<PreEvaluationListItem>> => {
     const p = params ? { ...params, page: params.page != null ? params.page - 1 : 0 } : { page: 0 }
     return apiClient.get('/pre-evaluations', { params: p })
   },
