@@ -15,7 +15,7 @@ export const authApi = {
     return apiClient.post('/auth/login', { loginId, password })
   },
 
-  register: async (body: RegisterRequest): Promise<{ userId: string }> => {
+  register: async (body: RegisterRequest): Promise<{ id: number; loginId: string; name: string; email: string; role: string; status: string }> => {
     return apiClient.post('/auth/register', body)
   },
 
