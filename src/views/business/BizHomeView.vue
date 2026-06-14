@@ -47,12 +47,15 @@
       <!-- 미제출 특허 -->
       <div class="card">
         <div class="card__header">
-          <h3 class="card__title">미제출 특허</h3>
+          <div class="card__header-left">
+            <h3 class="card__title">미제출 특허</h3>
+            <span class="card__badge">전체 {{ pendingItems.length }}건</span>
+          </div>
           <RouterLink to="/biz/review?filter=pending" class="card__link">전체 보기</RouterLink>
         </div>
         <div v-if="pendingItems.length" class="pending-list">
           <div
-            v-for="item in pendingItems"
+            v-for="item in pendingItems.slice(0, 5)"
             :key="item.id"
             class="pending-item"
             @click="router.push(`/biz/review/${item.id}`)"
@@ -76,14 +79,17 @@
       <!-- 최근 제출 이력 -->
       <div class="card">
         <div class="card__header">
-          <h3 class="card__title">최근 제출 이력</h3>
+          <div class="card__header-left">
+            <h3 class="card__title">최근 제출 이력</h3>
+            <span class="card__badge">전체 {{ recentSubmissions.length }}건</span>
+          </div>
           <RouterLink to="/biz/history" class="card__link">전체 보기</RouterLink>
         </div>
         <div v-if="loading" class="card__skel">
           <div class="skel-row" v-for="n in 4" :key="n" />
         </div>
         <div v-else-if="recentSubmissions.length" class="submission-list">
-          <div v-for="s in recentSubmissions" :key="s.id" class="submission-item">
+          <div v-for="s in recentSubmissions.slice(0, 5)" :key="s.id" class="submission-item">
             <div class="submission-item__left">
               <div class="submission-item__icon" :class="`sub-icon--${s.decision.toLowerCase()}`">
                 {{ decisionIcon(s.decision) }}
@@ -111,7 +117,10 @@
       <!-- 신규 특허 신청 현황 -->
       <div class="card">
         <div class="card__header">
-          <h3 class="card__title">신규 특허 신청 현황</h3>
+          <div class="card__header-left">
+            <h3 class="card__title">신규 특허 신청 현황</h3>
+            <span class="card__badge">전체 {{ applications.length }}건</span>
+          </div>
           <RouterLink to="/biz/register?tab=history" class="card__link">전체 보기</RouterLink>
         </div>
         <div v-if="recentApplications.length" class="app-list">
@@ -271,7 +280,7 @@ const { applications } = usePatentApplications()
 const recentApplications = computed(() =>
   [...applications.value]
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
-    .slice(0, 4)
+    .slice(0, 5)
 )
 
 function appStatusLabel(s: string) {
@@ -526,9 +535,19 @@ onMounted(fetchDashboard)
   align-items: center;
   justify-content: space-between;
 }
+.card__header-left { display: flex; align-items: center; gap: 8px; }
 .card__title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
 .card__link  { font-size: 12.5px; font-weight: 500; color: #6366f1; text-decoration: none; }
 .card__link:hover { color: #4338ca; }
+
+.card__badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
 
 .card__count-badge {
   font-size: 11.5px;

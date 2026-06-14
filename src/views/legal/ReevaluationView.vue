@@ -185,7 +185,7 @@
 
           <!-- 출원번호 -->
           <div class="item-appnum" @click="goDetail(item.id)">
-            <span class="mono">{{ item.applicationNumber }}</span>
+            {{ item.applicationNumber }}
           </div>
 
           <!-- 기술 분야 -->

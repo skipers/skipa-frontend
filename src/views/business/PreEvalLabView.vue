@@ -159,11 +159,14 @@ let   _msgId       = 1000
 let   _isStarting  = false  // non-reactive guard against double-submission
 
 const pollingTimer = ref<number | null>(null)
+let embeddingPollTimer: ReturnType<typeof setTimeout> | null = null
 
 // ── computed ──────────────────────────────────────────
 const isStartEnabled = computed(() =>
   Boolean(patentName.value.trim() && techDescription.value.trim()) && !isEvaluating.value
 )
+
+const isEmbeddingReady = computed(() => selectedDetail.value?.status === 'COMPLETED')
 
 const chatPanelWidth = computed(() => {
   if (!chatbotOpen.value) return '0px'
@@ -328,10 +331,13 @@ async function selectHistory(id: number) {
     const detail = await preEvaluationsApi.getDetail(id)
     selectedDetail.value = detail
 
-    if (detail.status === 'REPORT_COMPLETED' && detail.reportUrl) {
+    if ((detail.status === 'REPORT_COMPLETED' || detail.status === 'COMPLETED') && detail.reportUrl) {
       const result = await parseReportUrl(detail.reportUrl)
       evaluationResult.value = result
       if (result) gradeCache.value[id] = result.grade
+      if (detail.status === 'REPORT_COMPLETED') {
+        pollEmbeddingStatus(id)
+      }
     }
 
     await loadChatHistory(id)
@@ -396,7 +402,7 @@ async function pollStatus(id: number) {
   try {
     const detail = await preEvaluationsApi.getDetail(id)
 
-    if (detail.status === 'REPORT_COMPLETED') {
+    if (detail.status === 'REPORT_COMPLETED' || detail.status === 'COMPLETED') {
       selectedDetail.value = detail
       selectedHistoryId.value = id
       await fetchHistory()
@@ -407,6 +413,9 @@ async function pollStatus(id: number) {
       }
       await loadChatHistory(id)
       isEvaluating.value = false
+      if (detail.status === 'REPORT_COMPLETED') {
+        pollEmbeddingStatus(id)
+      }
     } else if (['FAILED', 'REPORT_FAILED'].includes(detail.status)) {
       isEvaluating.value = false
     } else {
@@ -415,6 +424,24 @@ async function pollStatus(id: number) {
   } catch {
     pollingTimer.value = window.setTimeout(() => void pollStatus(id), 5000)
   }
+}
+
+function pollEmbeddingStatus(id: number) {
+  if (embeddingPollTimer) clearTimeout(embeddingPollTimer)
+  embeddingPollTimer = setTimeout(async () => {
+    try {
+      const status = await preEvaluationsApi.getStatus(id)
+      if (status.status === 'COMPLETED') {
+        if (selectedDetail.value && selectedDetail.value.id === id) {
+          selectedDetail.value = { ...selectedDetail.value, status: 'COMPLETED' }
+        }
+      } else if (!['FAILED', 'REPORT_FAILED'].includes(status.status)) {
+        pollEmbeddingStatus(id)
+      }
+    } catch {
+      pollEmbeddingStatus(id)
+    }
+  }, 5000)
 }
 
 // ── 새 평가 초기화 ────────────────────────────────────
@@ -530,6 +557,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (pollingTimer.value) window.clearTimeout(pollingTimer.value)
+  if (embeddingPollTimer) clearTimeout(embeddingPollTimer)
 })
 </script>
 
@@ -1029,9 +1057,15 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
+        <div v-if="selectedHistoryId !== null && !isEmbeddingReady" class="chat-embed-notice">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+          </svg>
+          임베딩 처리 중입니다. 완료 후 챗봇을 사용할 수 있습니다.
+        </div>
         <form class="chat-composer" @submit.prevent="sendChatMessage">
-          <textarea ref="chatInputEl" v-model="chatInput" rows="1" placeholder="평가 결과에 대해 질문해 보세요." @keydown="handleChatKeydown" @input="autoResizeChatInput"></textarea>
-          <button type="submit" :disabled="chatSending || selectedHistoryId === null">전송</button>
+          <textarea ref="chatInputEl" v-model="chatInput" rows="1" placeholder="평가 결과에 대해 질문해 보세요." :disabled="!isEmbeddingReady" @keydown="handleChatKeydown" @input="autoResizeChatInput"></textarea>
+          <button type="submit" :disabled="chatSending || selectedHistoryId === null || !isEmbeddingReady">전송</button>
         </form>
       </div>
     </aside>
@@ -1677,6 +1711,12 @@ onBeforeUnmount(() => {
 .chat-composer button:hover:not(:disabled) { background: #1e293b; }
 .chat-composer button:disabled { background: #94a3b8; cursor: not-allowed; }
 
+.chat-embed-notice {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  background: #fff7ed; border-top: 1px solid #fed7aa;
+  font-size: 12px; color: #92400e; line-height: 1.4;
+}
 
 @keyframes bounce {
   0%, 80%, 100% { transform: translateY(0); opacity: 0.55; }

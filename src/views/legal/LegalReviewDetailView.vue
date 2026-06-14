@@ -145,8 +145,13 @@
               <tr><th>특허 상태</th><td>{{ app.patentStatus ? patentStatusLabel(app.patentStatus) : '—' }}</td></tr>
               <tr><th>출원번호</th><td>{{ app.applicationNumber || '—' }}</td></tr>
               <tr><th>등록번호</th><td>{{ app.registrationNumber || '—' }}</td></tr>
+              <tr><th>공개번호</th><td>{{ app.publicationNumber || '—' }}</td></tr>
+              <tr><th>공고번호</th><td>{{ app.announcementNumber || '—' }}</td></tr>
               <tr><th>출원일</th><td>{{ app.applicationDate || '—' }}</td></tr>
               <tr><th>등록일</th><td>{{ app.registrationDate || '—' }}</td></tr>
+              <tr><th>공개일</th><td>{{ app.publicationDate || '—' }}</td></tr>
+              <tr><th>공고일</th><td>{{ app.announcementDate || '—' }}</td></tr>
+              <tr><th>심사청구항수</th><td>{{ app.examinationClaimCount || '—' }}</td></tr>
               <tr><th>IPC</th><td>{{ joinArray(app.ipc) }}</td></tr>
               <tr><th>예상 소멸일</th><td>{{ app.expiryDate || '—' }}</td></tr>
               <tr><th>공동출원여부</th><td>{{ app.coApplicant }}</td></tr>
@@ -198,6 +203,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePatentApplications } from '@/composables/usePatentApplications'
 import { usePatentDatabase } from '@/composables/usePatentDatabase'
+import { patentsApi } from '@/api/patents'
 
 const props = defineProps<{ appId: number }>()
 const router = useRouter()
@@ -205,7 +211,28 @@ const router = useRouter()
 const { applications, approve, reject, fetchApplications } = usePatentApplications()
 const { addApprovedPatent } = usePatentDatabase()
 
-onMounted(() => fetchApplications())
+onMounted(async () => {
+  await fetchApplications()
+  try {
+    const detail = await patentsApi.getPatent(props.appId)
+    const target = applications.value.find(a => a.id === props.appId)
+    if (target) {
+      target.managementNumber     = detail.managementNumber     ?? target.managementNumber
+      target.relatedProducts      = detail.relatedProducts      ?? target.relatedProducts
+      target.coApplicant          = detail.isJointApplication != null ? (detail.isJointApplication ? '예' : '아니오') : target.coApplicant
+      target.coApplicantName      = detail.jointApplicant       ?? target.coApplicantName
+      target.registrationDate     = detail.registrationDate     ?? target.registrationDate
+      target.publicationDate      = detail.publicationDate      ?? target.publicationDate
+      target.announcementDate     = detail.announcementDate     ?? target.announcementDate
+      target.registrationNumber   = detail.registrationNumber   ?? target.registrationNumber
+      target.publicationNumber    = detail.publicationNumber    ?? target.publicationNumber
+      target.announcementNumber   = detail.announcementNumber   ?? target.announcementNumber
+      target.examinationClaimCount = detail.examinationClaimCount?.toString() ?? target.examinationClaimCount
+    }
+  } catch (err) {
+    console.error('특허 상세 조회 오류:', err)
+  }
+})
 
 const app = computed(() => applications.value.find(a => a.id === props.appId) ?? null)
 
@@ -230,8 +257,8 @@ function countryLabel(code: string) {
 
 function patentStatusLabel(s: string) {
   return ({
-    REGISTERED: '등록', ABANDONED: '포기', EXPIRED: '소멸',
-    PENDING: '출원', REJECTED: '거절', INVALID: '무효', WITHDRAW: '취하',
+    REGISTERED: '등록', ABANDONED: '포기', EXPIRED: '소멸', PUBLISHED: '공개',
+    PENDING: '출원', APPLIED: '출원', REJECTED: '거절', INVALID: '무효', WITHDRAW: '취하', WITHDRAWN: '취하',
     등록: '등록', 포기: '포기', 소멸: '소멸', 출원: '출원',
     거절: '거절', 무효: '무효', 취하: '취하', 공개: '공개',
   } as Record<string, string>)[s] ?? s

@@ -71,7 +71,10 @@
       <!-- 미확인 회신 -->
       <div class="card">
         <div class="card__header">
-          <h3 class="card__title">미확인 회신</h3>
+          <div class="card__header-left">
+            <h3 class="card__title">미확인 회신</h3>
+            <span class="card__badge">전체 {{ recentReplies.length }}건</span>
+          </div>
           <RouterLink to="/legal/reevaluation?tab=unread" class="card__link">전체 보기</RouterLink>
         </div>
         <div v-if="loadingSummary" class="card__skeleton">
@@ -80,7 +83,7 @@
         <div v-else class="reply-list">
           <TransitionGroup v-if="recentReplies.length" tag="div" name="reply-fade" class="reply-items">
             <div
-              v-for="r in recentReplies" :key="r.id"
+              v-for="r in recentReplies.slice(0, 5)" :key="r.id"
               class="reply-item"
               @click="openReply(r.id)"
             >
@@ -103,7 +106,10 @@
       <!-- 사업부별 처리 현황 -->
       <div class="card card--wide">
         <div class="card__header">
-          <h3 class="card__title">사업부별 처리 현황</h3>
+          <div class="card__header-left">
+            <h3 class="card__title">사업부별 처리 현황</h3>
+            <span class="card__badge">전체 {{ deptItems.length }}건</span>
+          </div>
           <RouterLink to="/legal/reevaluation" class="card__link">전체 보기</RouterLink>
         </div>
         <div v-if="loadingDepts" class="card__skeleton">
@@ -117,7 +123,7 @@
             <span>진행률</span>
           </div>
           <RouterLink
-            v-for="d in deptItems"
+            v-for="d in deptItems.slice(0, 5)"
             :key="d.departmentId"
             :to="`/legal/reevaluation?dept=${d.departmentId}`"
             class="dept-row dept-row--link"
@@ -186,11 +192,14 @@
       <!-- 신규 특허 등록 신청 내역 -->
       <div class="card">
         <div class="card__header">
-          <h3 class="card__title">신규 특허 등록 신청 내역</h3>
+          <div class="card__header-left">
+            <h3 class="card__title">신규 특허 등록 신청 내역</h3>
+            <span class="card__badge">전체 {{ applications.length }}건</span>
+          </div>
           <RouterLink to="/legal/patent-manage" class="card__link">전체 보기</RouterLink>
         </div>
         <div v-if="applications.length" class="app-list">
-          <div v-for="a in applications" :key="a.id" class="app-item" @click="router.push({ name: 'LegalReviewDetail', params: { appId: a.id } })">
+          <div v-for="a in applications.slice(0, 5)" :key="a.id" class="app-item" @click="router.push({ name: 'LegalReviewDetail', params: { appId: a.id } })">
             <div class="app-item__top">
               <span class="app-status-badge" :class="a.appStatus === 'pending' && a.isResubmit ? 'app-status--resubmit' : `app-status--${a.appStatus}`">
                 {{ a.appStatus === 'pending' && a.isResubmit ? '재신청' : appStatusLabel(a.appStatus) }}
@@ -198,7 +207,7 @@
               <span class="app-item__dept">{{ a.submittedBy }}</span>
             </div>
             <p class="app-item__title">{{ a.title }}</p>
-            <p class="app-item__date">{{ a.submittedAt }}</p>
+            <p class="app-item__date">{{ a.submittedAt ? a.submittedAt.slice(0, 10) : '' }}</p>
           </div>
         </div>
         <div v-else class="card__empty">신청 내역이 없습니다.</div>
@@ -416,10 +425,18 @@ const DONUT_C = 314  // 2π × r=50
 const donutTotal = computed(() => techFieldItems.value.reduce((s, i) => s + i.count, 0))
 
 const donutSegments = computed(() => {
+  const items = techFieldItems.value
   const total = donutTotal.value
   if (!total) return []
+  let displayItems: { name: string; count: number }[]
+  if (items.length <= 5) {
+    displayItems = items
+  } else {
+    const etcCount = items.slice(4).reduce((s, i) => s + i.count, 0)
+    displayItems = [...items.slice(0, 4), { name: '기타', count: etcCount }]
+  }
   let offset = -DONUT_C / 4
-  return techFieldItems.value.map((item, i) => {
+  return displayItems.map(item => {
     const dash = Math.round((item.count / total) * DONUT_C)
     const seg = { dash, offset, name: item.name, count: item.count, pct: Math.round((item.count / total) * 100) }
     offset -= dash
@@ -683,6 +700,9 @@ onMounted(loadAll)
   margin: 0;
   letter-spacing: -0.01em;
 }
+
+.card__header-left  { display: flex; align-items: center; gap: 8px; }
+.card__header-right { display: flex; align-items: center; gap: 8px; }
 
 .card__link {
   font-size: 12.5px;
