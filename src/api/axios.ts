@@ -6,6 +6,7 @@ import axios, {
 
 const TOKEN_KEY = 'skipa_access_token'
 const REFRESH_KEY = 'skipa_refresh_token'
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh']
 
 export const tokenStorage = {
   getAccess: () => localStorage.getItem(TOKEN_KEY),
@@ -58,6 +59,30 @@ function processQueue(error: unknown, token: string | null) {
   failedQueue = []
 }
 
+function isAuthEndpoint(config?: AxiosRequestConfig) {
+  const url = config?.url
+  if (!url) return false
+
+  try {
+    const pathname = new URL(url, config?.baseURL ?? import.meta.env.VITE_API_BASE_URL).pathname
+    return AUTH_ENDPOINTS.includes(pathname)
+  } catch {
+    return AUTH_ENDPOINTS.some(endpoint => url.startsWith(endpoint) || url.endsWith(endpoint))
+  }
+}
+
+function normalizeApiError(error: unknown) {
+  if (axios.isAxiosError(error)) {
+    const serverError = error.response?.data?.error
+    return serverError ?? {
+      code: 'UNKNOWN_ERROR',
+      message: error.message ?? '알 수 없는 오류가 발생했습니다.',
+    }
+  }
+
+  return error
+}
+
 apiClient.interceptors.response.use(
   (response) => {
     if (response.data?.success === false) {
@@ -68,6 +93,11 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
+    const normalizedError = normalizeApiError(error)
+
+    if (error.response?.status === 401 && isAuthEndpoint(originalRequest)) {
+      return Promise.reject(normalizedError)
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       const refreshToken = tokenStorage.getRefresh()
@@ -75,7 +105,7 @@ apiClient.interceptors.response.use(
       if (!refreshToken) {
         tokenStorage.clear()
         window.location.href = '/login'
-        return Promise.reject(error)
+        return Promise.reject(normalizedError)
       }
 
       if (isRefreshing) {
@@ -106,10 +136,11 @@ apiClient.interceptors.response.use(
         }
         return apiClient(originalRequest)
       } catch (refreshError) {
-        processQueue(refreshError, null)
+        const normalizedRefreshError = normalizeApiError(refreshError)
+        processQueue(normalizedRefreshError, null)
         tokenStorage.clear()
         window.location.href = '/login'
-        return Promise.reject(refreshError)
+        return Promise.reject(normalizedRefreshError)
       } finally {
         isRefreshing = false
       }
@@ -122,11 +153,10 @@ apiClient.interceptors.response.use(
       })
     }
 
-    const serverError = error.response?.data?.error
     return Promise.reject(
-      serverError ?? {
+      normalizedError ?? {
         code: 'UNKNOWN_ERROR',
-        message: error.message ?? '알 수 없는 오류가 발생했습니다.',
+        message: '알 수 없는 오류가 발생했습니다.',
       },
     )
   },

@@ -233,6 +233,10 @@ router.beforeEach(async (to) => {
     await auth.init()
   }
 
+  if (!tokenStorage.getAccess() || !auth.user) {
+    return { name: 'Login', query: { redirect: to.fullPath } }
+  }
+
   // 4. 역할 체크
   if (allowedRoles && auth.user && !allowedRoles.includes(auth.user.role)) {
     return { name: 'Forbidden' }

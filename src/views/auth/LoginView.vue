@@ -199,6 +199,23 @@ function validate() {
   return valid
 }
 
+function getLoginErrorMessage(err: unknown) {
+  if (typeof err === 'object' && err !== null) {
+    const error = err as {
+      message?: string
+      response?: { data?: { error?: { message?: string } } }
+      error?: { message?: string }
+    }
+
+    return error.response?.data?.error?.message
+      ?? error.error?.message
+      ?? error.message
+      ?? '로그인에 실패했습니다. 다시 시도해주세요.'
+  }
+
+  return '로그인에 실패했습니다. 다시 시도해주세요.'
+}
+
 async function handleSubmit() {
   if (!validate()) return
   loading.value = true
@@ -211,8 +228,8 @@ async function handleSubmit() {
     } else {
       router.push(redirect || '/biz/home')
     }
-  } catch (err: any) {
-    serverError.value = err?.message ?? '로그인에 실패했습니다. 다시 시도해주세요.'
+  } catch (err) {
+    serverError.value = getLoginErrorMessage(err)
   } finally {
     loading.value = false
   }
