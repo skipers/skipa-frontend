@@ -426,6 +426,12 @@ async function handleExtract(file: File) {
 }
 
 function fillFormFromResult(r: Partial<PatentCreateRequest>) {
+  form.title = ''; form.finalTitle = ''; form.applicationNumber = ''
+  form.registrationNumber = ''; form.managementNumber = ''; form.applicant = ''
+  form.inventors = ''; form.applicationDate = ''; form.registrationDate = ''
+  form.ipc = []; form.cpc = []; form.expiryDate = ''; form.bizField = ''
+  form.techField = ''; form.relatedProducts = []; form.keywords = []; form.summary = ''
+
   if (r.title)              { form.title = r.title; form.finalTitle = r.title }
   if (r.applicationNumber)  form.applicationNumber = r.applicationNumber
   if (r.registrationNumber) form.registrationNumber = r.registrationNumber ?? ''
