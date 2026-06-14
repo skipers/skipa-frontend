@@ -416,94 +416,97 @@
         <section id="section-fee" data-section="fee" class="content-section">
           <div class="section-header">
             <h2 class="section-heading">등록료 납부 내역</h2>
-            <div v-if="isLegal" class="fee-edit-actions">
-              <template v-if="!feeEditMode">
-                <button class="btn-fee-edit" @click="startFeeEdit">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                  수정
-                </button>
-              </template>
-              <template v-else>
-                <button class="btn-fee-cancel" @click="cancelFeeEdit">취소</button>
-                <button class="btn-fee-save" @click="saveFeeEdit">저장</button>
-              </template>
-            </div>
-          </div>
-
-          <!-- 일반 보기 -->
-          <table v-if="!feeEditMode" class="fee-table">
-            <thead>
-              <tr>
-                <th>분기</th>
-                <th>금액</th>
-                <th>납부일</th>
-                <th>상태</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in feeRecords" :key="row.quarter">
-                <td>{{ row.quarter }}</td>
-                <td>{{ row.amount.toLocaleString() }} 원</td>
-                <td>{{ formatDate(row.paid) }}</td>
-                <td>납입</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <!-- 편집 모드 (legal 전용) -->
-          <template v-else>
-            <table class="fee-table fee-table--edit">
-              <thead>
-                <tr>
-                  <th>시작 년분</th>
-                  <th>종료 년분</th>
-                  <th>금액 (원)</th>
-                  <th>납부일</th>
-                  <th>상태</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(row, idx) in feeEditDraft" :key="idx">
-                  <td>
-                    <div class="fee-year-input-wrap">
-                      <span class="fee-year-prefix">제</span>
-                      <input class="fee-input fee-input--year" type="number" v-model.number="row.yearStart" min="1" placeholder="1" />
-                      <span class="fee-year-suffix">년분</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="fee-year-input-wrap">
-                      <span class="fee-year-prefix">제</span>
-                      <input class="fee-input fee-input--year" type="number" v-model.number="row.yearEnd" min="1" placeholder="3" />
-                      <span class="fee-year-suffix">년분</span>
-                    </div>
-                  </td>
-                  <td><input class="fee-input fee-input--num" type="number" v-model.number="row.amount" min="0" step="1000" /></td>
-                  <td><input class="fee-input fee-input--date" type="date" v-model="row.paid" /></td>
-                  <td><span class="fee-status-tag">납입</span></td>
-                  <td>
-                    <button class="btn-fee-row-del" @click="feeEditDraft.splice(idx, 1)" title="삭제">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                        <path d="M10 11v6"/><path d="M14 11v6"/>
-                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <button class="btn-fee-add" @click="feeEditDraft.push({ yearStart: 0, yearEnd: 0, amount: 0, paid: '' })">
+            <button v-if="isLegal && !isAddingAnnuity" class="btn-fee-edit" @click="startAddAnnuity">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
-              행 추가
+              납부 등록
             </button>
-          </template>
+          </div>
+
+          <div v-if="!annuityData.length && !isAddingAnnuity" class="empty-section">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+            <p>등록된 연차료 납부 내역이 없습니다.</p>
+          </div>
+
+          <table v-else class="fee-table">
+            <thead>
+              <tr>
+                <th>분기</th>
+                <th>납부 년수</th>
+                <th>금액</th>
+                <th>납부일</th>
+                <th>상태</th>
+                <th v-if="isLegal"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- 기존 행 -->
+              <template v-for="a in annuityData" :key="a.id">
+                <!-- 일반 표시 -->
+                <tr v-if="editingAnnuityId !== a.id">
+                  <td>제 {{ a.startYear }} - {{ a.endYear }} 년분</td>
+                  <td>{{ a.endYear - a.startYear + 1 }}년</td>
+                  <td>{{ a.amount.toLocaleString() }} 원</td>
+                  <td>{{ formatDate(a.paidDate ?? a.dueDate) }}</td>
+                  <td>납입</td>
+                  <td v-if="isLegal">
+                    <div class="fee-row-actions">
+                      <button class="btn-fee-row-icon" :disabled="annuityRowLoading === a.id" @click="startEditAnnuity(a)" title="수정">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
+                      <button class="btn-fee-row-icon btn-fee-row-icon--del" :disabled="annuityRowLoading === a.id" @click="deleteAnnuityRow(a.id)" title="삭제">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <!-- 인라인 편집 행 -->
+                <tr v-else class="fee-row--editing">
+                  <td>제 {{ a.startYear }} - {{ a.endYear }} 년분</td>
+                  <td>
+                    <div class="fee-year-input-wrap">
+                      <input class="fee-input fee-input--year" type="number" v-model.number="editAnnuityDraft!.paymentYears" min="1" />
+                      <span class="fee-year-suffix">년</span>
+                    </div>
+                  </td>
+                  <td><input class="fee-input fee-input--num" type="number" v-model.number="editAnnuityDraft!.amount" min="0" step="1000" /></td>
+                  <td><input class="fee-input fee-input--date" type="date" v-model="editAnnuityDraft!.paidDate" /></td>
+                  <td></td>
+                  <td v-if="isLegal">
+                    <div class="fee-row-actions">
+                      <button class="btn-fee-save" :disabled="annuityRowLoading === a.id" @click="confirmEditAnnuity(a.id)">
+                        {{ annuityRowLoading === a.id ? '...' : '확인' }}
+                      </button>
+                      <button class="btn-fee-cancel" :disabled="annuityRowLoading === a.id" @click="cancelEditAnnuity">취소</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+
+              <!-- 신규 납부 입력 행 -->
+              <tr v-if="isAddingAnnuity" class="fee-row--adding">
+                <td><span class="text-muted-sm">신규</span></td>
+                <td>
+                  <div class="fee-year-input-wrap">
+                    <input class="fee-input fee-input--year" type="number" v-model.number="addAnnuityDraft.paymentYears" min="1" />
+                    <span class="fee-year-suffix">년</span>
+                  </div>
+                </td>
+                <td><input class="fee-input fee-input--num" type="number" v-model.number="addAnnuityDraft.amount" min="0" step="1000" /></td>
+                <td><span class="text-muted-sm">—</span></td>
+                <td></td>
+                <td v-if="isLegal">
+                  <div class="fee-row-actions">
+                    <button class="btn-fee-save" :disabled="addAnnuityLoading" @click="confirmAddAnnuity">
+                      {{ addAnnuityLoading ? '...' : '등록' }}
+                    </button>
+                    <button class="btn-fee-cancel" :disabled="addAnnuityLoading" @click="cancelAddAnnuity">취소</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
         </section>
 
@@ -1051,7 +1054,7 @@ import type { ReviewResponse } from '@/api/reviews'
 import { reportsApi } from '@/api/reports'
 import { businessReviewsApi } from '@/api/businessReviews'
 import type { BusinessReviewDetailResponse } from '@/api/businessReviews'
-import { patentHistoryApi, type PatentAnnuityResponse } from '@/api/patentHistory'
+import { patentHistoryApi, type PatentAnnuityResponse, type PatentLegalStatusResponse } from '@/api/patentHistory'
 
 type ChatRole = 'assistant' | 'user'
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
@@ -1191,63 +1194,127 @@ const patentCountry = computed(() => {
 })
 
 type FeeRecord  = { quarter: string; amount: number; paid: string }
-type FeeEditRow = { yearStart: number; yearEnd: number; amount: number; paid: string }
 
 function formatQuarter(start: number, end: number): string {
   const fmt = (n: number) => n < 10 ? ` ${n}` : `${n}`
   return `제 ${fmt(start)} - ${fmt(end)} 년분`
 }
 
-function parseQuarter(q: string): { yearStart: number; yearEnd: number } {
-  const m = q.match(/(\d+)[^0-9]+(\d+)/)
-  return m ? { yearStart: Number(m[1]), yearEnd: Number(m[2]) } : { yearStart: 0, yearEnd: 0 }
-}
 
-const annuityData      = ref<PatentAnnuityResponse[]>([])
-const customFeeRecords = ref<FeeRecord[] | null>(null)
-const feeEditMode      = ref(false)
-const feeEditDraft     = ref<FeeEditRow[]>([])
+const annuityData        = ref<PatentAnnuityResponse[]>([])
+const legalStatusHistory = ref<PatentLegalStatusResponse[]>([])
 
-const feeRecords = computed(() => {
-  if (customFeeRecords.value) return customFeeRecords.value
-  return annuityData.value.map(a => ({
+const feeRecords = computed(() =>
+  annuityData.value.map(a => ({
     quarter: `제 ${a.startYear} - ${a.endYear} 년분`,
     amount: a.amount,
     paid: a.paidDate ?? a.dueDate,
   }))
-})
+)
 
-function startFeeEdit() {
-  feeEditDraft.value = feeRecords.value.map(r => ({
-    ...parseQuarter(r.quarter),
-    amount: r.amount,
-    paid: r.paid,
-  }))
-  feeEditMode.value = true
+// 행별 인라인 편집
+const editingAnnuityId  = ref<number | null>(null)
+const editAnnuityDraft  = ref<{ paymentYears: number; amount: number; paidDate: string } | null>(null)
+const annuityRowLoading = ref<number | null>(null)
+
+// 신규 납부 추가
+const isAddingAnnuity  = ref(false)
+const addAnnuityDraft  = ref<{ paymentYears: number; amount: number }>({ paymentYears: 1, amount: 0 })
+const addAnnuityLoading = ref(false)
+
+function startEditAnnuity(a: PatentAnnuityResponse) {
+  editingAnnuityId.value = a.id
+  editAnnuityDraft.value = {
+    paymentYears: a.endYear - a.startYear + 1,
+    amount: a.amount,
+    paidDate: a.paidDate ?? a.dueDate ?? '',
+  }
 }
 
-function cancelFeeEdit() {
-  feeEditMode.value = false
-  feeEditDraft.value = []
+function cancelEditAnnuity() {
+  editingAnnuityId.value = null
+  editAnnuityDraft.value = null
 }
 
-function saveFeeEdit() {
-  customFeeRecords.value = feeEditDraft.value
-    .filter(r => r.yearStart > 0)
-    .map(r => ({
-      quarter: formatQuarter(r.yearStart, r.yearEnd),
-      amount: r.amount,
-      paid: r.paid,
-    }))
-  feeEditMode.value = false
-  feeEditDraft.value = []
+async function confirmEditAnnuity(annuityId: number) {
+  if (!editAnnuityDraft.value) return
+  annuityRowLoading.value = annuityId
+  try {
+    await patentHistoryApi.updateAnnuity(props.patentId, annuityId, editAnnuityDraft.value)
+    await fetchAnnuityHistory()
+    editingAnnuityId.value = null
+    editAnnuityDraft.value = null
+  } catch (e) {
+    console.error('연차료 수정 실패:', e)
+  } finally {
+    annuityRowLoading.value = null
+  }
+}
+
+async function deleteAnnuityRow(annuityId: number) {
+  annuityRowLoading.value = annuityId
+  try {
+    await patentHistoryApi.deleteAnnuity(props.patentId, annuityId)
+    await fetchAnnuityHistory()
+  } catch (e) {
+    console.error('연차료 삭제 실패:', e)
+  } finally {
+    annuityRowLoading.value = null
+  }
+}
+
+function startAddAnnuity() {
+  addAnnuityDraft.value = { paymentYears: 1, amount: 0 }
+  isAddingAnnuity.value = true
+}
+
+function cancelAddAnnuity() {
+  isAddingAnnuity.value = false
+}
+
+async function confirmAddAnnuity() {
+  addAnnuityLoading.value = true
+  try {
+    await patentHistoryApi.payAnnuity(props.patentId, addAnnuityDraft.value)
+    await fetchAnnuityHistory()
+    isAddingAnnuity.value = false
+    addAnnuityDraft.value = { paymentYears: 1, amount: 0 }
+  } catch (e) {
+    console.error('연차료 등록 실패:', e)
+  } finally {
+    addAnnuityLoading.value = false
+  }
 }
 
 type HistoryVariant = 'file' | 'pub' | 'reg' | 'rejected' | 'invalid' | 'expired' | 'withdraw' | 'abandon'
+
+const LEGAL_STATUS_VARIANT: Record<string, HistoryVariant> = {
+  APPLIED: 'file', PUBLISHED: 'pub', REGISTERED: 'reg',
+  EXPIRED: 'expired', WITHDRAWN: 'withdraw', REJECTED: 'rejected',
+  INVALID: 'invalid', ABANDONED: 'abandon',
+}
+const LEGAL_STATUS_LABEL: Record<string, string> = {
+  APPLIED: '출원', PUBLISHED: '공개', REGISTERED: '등록',
+  EXPIRED: '소멸', WITHDRAWN: '취하', REJECTED: '거절',
+  INVALID: '무효', ABANDONED: '포기',
+}
+
 const patentHistory = computed(() => {
+  type Event = { date: string; label: string; desc: string; variant: HistoryVariant }
+
+  if (legalStatusHistory.value.length > 0) {
+    return legalStatusHistory.value
+      .map((s): Event => ({
+        date: s.changedAt,
+        label: LEGAL_STATUS_LABEL[s.status] ?? s.status,
+        desc: LEGAL_STATUS_LABEL[s.status] ?? s.status,
+        variant: LEGAL_STATUS_VARIANT[s.status] ?? 'file',
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+  }
+
   const p = patent.value
   if (!p) return []
-  type Event = { date: string; label: string; desc: string; variant: HistoryVariant }
   const events: Event[] = []
 
   events.push({ date: p.applicationDate, label: '출원', desc: `${p.title} 특허 출원`, variant: 'file' })
@@ -1683,8 +1750,17 @@ async function fetchAnnuityHistory() {
   }
 }
 
+async function fetchLegalStatusHistory() {
+  try {
+    const res = await patentHistoryApi.getLegalStatusHistory(props.patentId)
+    legalStatusHistory.value = res.items
+  } catch (e) {
+    console.error('권리상태 이력 조회 실패:', e)
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([fetchPatent(), fetchReviewData(), fetchEvalHistory(), fetchLatestReport(), fetchAnnuityHistory()])
+  await Promise.all([fetchPatent(), fetchReviewData(), fetchEvalHistory(), fetchLatestReport(), fetchAnnuityHistory(), fetchLegalStatusHistory()])
   await fetchChatHistory()
   await nextTick()
 
@@ -2445,6 +2521,24 @@ async function openHistoryReport(reportId: number) {
 .btn-fee-save:hover { background: var(--color-primary-darker); }
 
 .fee-table--edit tbody td { padding: 6px 8px; }
+.fee-row--editing td, .fee-row--adding td { background: #f8fafc; padding: 6px 8px; }
+
+.fee-row-actions { display: flex; align-items: center; gap: 4px; }
+
+.btn-fee-row-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-subtle);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 5px;
+  transition: color .13s, background .13s;
+}
+.btn-fee-row-icon:hover { color: var(--color-primary); background: var(--color-primary-bg, #eff6ff); }
+.btn-fee-row-icon--del:hover { color: var(--color-danger); background: var(--color-danger-bg); }
+.btn-fee-row-icon:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .fee-input {
   width: 100%;

@@ -26,6 +26,8 @@ export interface PatentAnnuityResponse {
   dueDate: string
   paidDate: string
   status?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface PayAnnuityRequest {
@@ -33,11 +35,17 @@ export interface PayAnnuityRequest {
   amount: number
 }
 
+export interface UpdateAnnuityRequest {
+  paymentYears: number
+  amount: number
+  paidDate: string
+}
+
 // ── API ──────────────────────────────────────────────
 
 export const patentHistoryApi = {
-  getLegalStatusHistory: async (patentId: number): Promise<PageResponse<PatentLegalStatusResponse>> => {
-    return apiClient.get(`/patents/${patentId}/legal-status`)
+  getLegalStatusHistory: async (patentId: number, page = 0, size = 50): Promise<PageResponse<PatentLegalStatusResponse>> => {
+    return apiClient.get(`/patents/${patentId}/legal-status`, { params: { page, size } })
   },
 
   createLegalStatus: async (
@@ -47,8 +55,8 @@ export const patentHistoryApi = {
     return apiClient.post(`/patents/${patentId}/legal-status`, data)
   },
 
-  getAnnuityHistory: async (patentId: number): Promise<PageResponse<PatentAnnuityResponse>> => {
-    return apiClient.get(`/patents/${patentId}/annuities`)
+  getAnnuityHistory: async (patentId: number, page = 0, size = 50): Promise<PageResponse<PatentAnnuityResponse>> => {
+    return apiClient.get(`/patents/${patentId}/annuities`, { params: { page, size } })
   },
 
   payAnnuity: async (
@@ -56,5 +64,17 @@ export const patentHistoryApi = {
     data: PayAnnuityRequest,
   ): Promise<PatentAnnuityResponse> => {
     return apiClient.post(`/patents/${patentId}/annuities`, data)
+  },
+
+  updateAnnuity: async (
+    patentId: number,
+    annuityId: number,
+    data: UpdateAnnuityRequest,
+  ): Promise<PatentAnnuityResponse> => {
+    return apiClient.put(`/patents/${patentId}/annuities/${annuityId}`, data)
+  },
+
+  deleteAnnuity: async (patentId: number, annuityId: number): Promise<void> => {
+    return apiClient.delete(`/patents/${patentId}/annuities/${annuityId}`)
   },
 }

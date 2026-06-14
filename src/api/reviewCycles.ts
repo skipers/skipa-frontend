@@ -1,4 +1,5 @@
 import apiClient from './axios'
+import type { PageResponse } from './patents'
 
 export interface ReviewCycleResponse {
   id: number
@@ -30,7 +31,7 @@ export const reviewCyclesApi = {
     return apiClient.get('/review-cycles/current')
   },
 
-  getList: async (): Promise<{ items: ReviewCycleResponse[]; totalItems: number }> => {
+  getList: async (): Promise<PageResponse<ReviewCycleResponse>> => {
     return apiClient.get('/review-cycles')
   },
 

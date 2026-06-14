@@ -663,7 +663,7 @@ const isSubmitting = ref(false)
 const currentExtractJobId = ref<number | null>(null)
 
 function fillFormFromResult(r: Partial<PatentCreateRequest>) {
-  if (r.title)              form.finalTitle = r.title
+  if (r.title)              { form.title = r.title; form.finalTitle = r.title }
   if (r.applicationNumber)  form.applicationNumber = r.applicationNumber
   if (r.registrationNumber) form.registrationNumber = r.registrationNumber ?? ''
   if (r.managementNumber)   form.managementNumber   = r.managementNumber ?? ''
@@ -676,6 +676,7 @@ function fillFormFromResult(r: Partial<PatentCreateRequest>) {
   if (r.expiryDate)         form.expiryDate = r.expiryDate ?? ''
   if (r.businessField)      form.bizField = r.businessField ?? ''
   if (r.techField)          form.techField = r.techField ?? ''
+  if (r.relatedProducts)    form.relatedProducts = r.relatedProducts.join(', ')
   if (r.keywords)           form.keywords = r.keywords
   if (r.summary)            form.summary = r.summary ?? ''
 }

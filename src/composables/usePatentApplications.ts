@@ -102,6 +102,7 @@ export function usePatentApplications() {
   async function submit(
     form: Omit<PatentApplication, 'id' | 'appStatus' | 'submittedAt' | 'submittedBy' | 'reviewedAt' | 'rejectionReason'>,
     deptName: string,
+    extractJobId?: number,
   ): Promise<PatentApplication> {
     const created = await patentsApi.createPatent({
       title: form.finalTitle || form.title,
@@ -129,6 +130,7 @@ export function usePatentApplications() {
       filingCountry: form.country || undefined,
       isJointApplication: form.coApplicant === '예',
       jointApplicant: form.coApplicant === '예' ? form.coApplicantName || undefined : undefined,
+      extractJobId: extractJobId ?? undefined,
     })
     const app: PatentApplication = {
       ...form,

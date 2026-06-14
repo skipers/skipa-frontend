@@ -51,6 +51,7 @@ export interface PatentDetail {
   citationCount?: number
   examinationClaimCount?: number
   originalPdfKey?: string
+  parsedJsonKey?: string
   managementNumber?: string
   businessField?: string
   techField?: string
