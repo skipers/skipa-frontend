@@ -81,7 +81,7 @@
 
             <!-- 출원번호 -->
             <td class="col-number">
-              <span class="mono">{{ patent.applicationNumber }}</span>
+              {{ patent.applicationNumber }}
             </td>
 
             <!-- 출원일 -->

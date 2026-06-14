@@ -96,20 +96,31 @@ export interface PatentCreateRequest {
   title: string
   applicationNumber: string
   registrationNumber?: string
+  publicationNumber?: string
+  announcementNumber?: string
   managementNumber?: string
   applicant?: string
   inventor?: string
   applicationDate?: string
   registrationDate?: string
+  publicationDate?: string
+  announcementDate?: string
   ipcCodes?: string[]
   cpcCodes?: string[]
   expiryDate?: string
+  citationCount?: number
+  examinationClaimCount?: number
+  originalPdfKey?: string
+  extractJobId?: number
   businessField?: string
   techField?: string
   keywords?: string[]
   relatedProducts?: string[]
   summary?: string
   filingCountry?: string
+  isJointApplication?: boolean
+  jointApplicant?: string
+  initialDepartment?: string
 }
 
 export type PatentUpdateRequest = Partial<PatentCreateRequest>

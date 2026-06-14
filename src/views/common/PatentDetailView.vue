@@ -535,20 +535,29 @@
           <div class="section-header">
             <h2 class="section-heading">평가 이력</h2>
           </div>
-          <div class="eval-history-list">
+
+          <div v-if="!evalHistory.length" class="empty-section">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+            </svg>
+            <p>이전 평가 이력이 없습니다.</p>
+          </div>
+
+          <div v-else class="eval-history-list">
             <div v-for="(item, idx) in evalHistory" :key="idx" class="eval-history-item">
               <div class="eval-history-item__top">
                 <div class="eval-history-item__left">
                   <span class="eval-history-item__date">{{ item.date }}</span>
                   <div :class="['eval-grade-badge', `eval-grade-badge--${item.grade.toLowerCase()}`]">{{ item.grade }}</div>
-<span :class="['eval-decision-badge', item.decision === '유지' ? 'eval-decision-badge--keep' : 'eval-decision-badge--dispose']">{{ item.decision }}</span>
+                  <span class="eval-history-item__score">{{ item.score }}<span class="eval-score-denom"> / 100</span></span>
+                  <span v-if="item.decision !== '—'" :class="['eval-decision-badge', item.decision === '유지' ? 'eval-decision-badge--keep' : 'eval-decision-badge--dispose']">{{ item.decision }}</span>
                 </div>
-                <button v-if="item.report" class="eval-report-btn" @click="openEvalReport(item.report)" type="button">
+                <button class="eval-report-btn" :disabled="historyReportLoading" @click="openHistoryReport(item.reportId)" type="button">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  보고서 보기
+                  {{ historyReportLoading ? '불러오는 중...' : '보고서 보기' }}
                 </button>
               </div>
-              <p class="eval-history-item__opinion">{{ item.opinion }}</p>
+              <p v-if="item.opinion" class="eval-history-item__opinion">{{ item.opinion }}</p>
             </div>
           </div>
         </section>
@@ -1013,9 +1022,15 @@
           </div>
         </div>
 
+        <div v-if="latestReportId && !isEmbeddingReady" class="chat-embed-notice">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+          </svg>
+          임베딩 처리 중입니다. 완료 후 챗봇을 사용할 수 있습니다.
+        </div>
         <form class="chat-composer" @submit.prevent="sendChatMessage">
-          <textarea ref="chatInputEl" v-model="chatInput" rows="1" placeholder="특허에 대해 질문해 보세요." :disabled="chatSending" @keydown="handleChatKeydown" @input="autoResizeChatInput"></textarea>
-          <button type="submit" :disabled="chatSending || !latestReportId">{{ chatSending ? '...' : '전송' }}</button>
+          <textarea ref="chatInputEl" v-model="chatInput" rows="1" placeholder="특허에 대해 질문해 보세요." :disabled="chatSending || !isEmbeddingReady" @keydown="handleChatKeydown" @input="autoResizeChatInput"></textarea>
+          <button type="submit" :disabled="chatSending || !latestReportId || !isEmbeddingReady">{{ chatSending ? '...' : '전송' }}</button>
         </form>
       </div>
     </aside>
@@ -1142,9 +1157,9 @@ async function fetchEvalHistory() {
       date: r.evaluatedAt ? formatDate(r.evaluatedAt) : '—',
       grade: ((r.valueGrade ?? 'C') as EvalHistoryItem['grade']),
       score: r.totalScore ?? 0,
-      decision: (['KEEP','MAINTAIN'].includes(r.opinion ?? '') ? '유지' : ['DISPOSE','ABANDON'].includes(r.opinion ?? '') ? '포기' : '—') as '유지' | '포기',
+      decision: (['KEEP','MAINTAIN'].includes(r.opinion ?? '') ? '유지' : ['DISPOSE','ABANDON'].includes(r.opinion ?? '') ? '포기' : '—') as '유지' | '포기' | '—',
       opinion: r.comment ?? '',
-      report: null,
+      reportId: r.id,
     }))
   } catch (e) {
     console.error('평가이력 조회 실패:', e)
@@ -1604,6 +1619,23 @@ const opinionOptions = [
 const latestReportId = ref<number | null>(null)
 const latestReport = ref<import('@/api/reports').ReportDetailResponse | null>(null)
 
+const isEmbeddingReady = computed(() => latestReport.value?.status === 'COMPLETED')
+
+let embeddingPollTimer: ReturnType<typeof setTimeout> | null = null
+
+async function pollEmbeddingStatus(reportId: number) {
+  try {
+    const s = await reportsApi.getReportStatus(props.patentId, reportId)
+    if (s.status === 'COMPLETED') {
+      if (latestReport.value) latestReport.value = { ...latestReport.value, status: 'COMPLETED' }
+    } else if (!['FAILED', 'REPORT_FAILED'].includes(s.status)) {
+      embeddingPollTimer = setTimeout(() => void pollEmbeddingStatus(reportId), 5000)
+    }
+  } catch {
+    embeddingPollTimer = setTimeout(() => void pollEmbeddingStatus(reportId), 8000)
+  }
+}
+
 async function fetchLatestReport() {
   try {
     const report = await reportsApi.getLatestReport(props.patentId)
@@ -1612,6 +1644,9 @@ async function fetchLatestReport() {
     if (report.url) {
       const res = await fetch(report.url)
       reportJson.value = await res.json()
+    }
+    if (report.status === 'REPORT_COMPLETED') {
+      embeddingPollTimer = setTimeout(() => void pollEmbeddingStatus(report.id), 5000)
     }
   } catch (e) {
     console.error('AI 보고서 조회 실패:', e)
@@ -1667,6 +1702,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   observer?.disconnect()
+  if (embeddingPollTimer) clearTimeout(embeddingPollTimer)
 })
 
 async function submitOpinion() {
@@ -1891,11 +1927,12 @@ interface EvalHistoryItem {
   score: number
   decision: '유지' | '포기' | '—'
   opinion: string
-  report: EvalReport | null
+  reportId: number
 }
 
 const evalReportOpen = ref(false)
 const selectedEvalReport = ref<EvalReport | null>(null)
+const historyReportLoading = ref(false)
 
 const evalPanelTotal = computed(() => {
   if (!selectedEvalReport.value) return 0
@@ -1910,6 +1947,114 @@ function openEvalReport(report: EvalReport) {
 
 function closeEvalReport() {
   evalReportOpen.value = false
+}
+
+function buildEvalReportFromJson(json: any): EvalReport {
+  const dims: any[] = json?.report?.evaluation?.dimensions ?? []
+
+  const mapItems = (items: any[], blockKey: string) =>
+    (items ?? []).map((item: any, i: number) => ({
+      id: `${blockKey}-${i}`,
+      name: item.name,
+      score: item.score,
+      method: item.method ?? '',
+      summary: (item.judgment_summary ?? '').slice(0, 50),
+      grounds: item.judgment_basis ?? '',
+      sources: (item.sources ?? [])
+        .filter((src: any) => src.title || src.url)
+        .map((src: any) => ({ title: src.title ?? src.url, url: src.url ?? '' })),
+    }))
+
+  const seen = new Set<string>()
+  const evalBlocks: RptBlock[] = []
+  for (const dim of dims) {
+    const key: string = dim.key
+    if (seen.has(key)) continue
+    if (key === '시장성' || key === '사업성') {
+      const sibling = dims.find((d: any) => d.key === (key === '시장성' ? '사업성' : '시장성'))
+      const sibScore = sibling?.score_out_of_100 ?? 0
+      const avgScore = sibScore ? Math.round((dim.score_out_of_100 + sibScore) / 2) : dim.score_out_of_100
+      seen.add('시장성'); seen.add('사업성')
+      evalBlocks.push({ key: 'market', title: '시장성 및 사업성', score: avgScore, summary: dim.summary ?? sibling?.summary ?? '', items: mapItems([...(dim.items ?? []), ...(sibling?.items ?? [])], 'market') })
+    } else {
+      seen.add(key)
+      evalBlocks.push({ key: DIM_KEY_MAP[key] ?? key, title: DIM_TITLE_MAP[key] ?? key, score: dim.score_out_of_100, summary: dim.summary ?? '', items: mapItems(dim.items ?? [], DIM_KEY_MAP[key] ?? key) })
+    }
+  }
+
+  const getDimScore = (k: string) => dims.find((d: any) => d.key === k)?.score_out_of_100 ?? 0
+  const bizScores = [getDimScore('시장성'), getDimScore('사업성')].filter(v => v > 0)
+
+  const proj = json?.report?.project_association ?? null
+  const simData = json?.report?.similar_patents ?? null
+  const simPatents: MockSimilarPatent[] = (simData?.patents ?? []).map((p: any, i: number) => ({
+    id: i, title: p.title ?? '', applicant: p.applicant ?? '',
+    applicationNumber: p.application_number ?? '', year: p.application_year ?? '',
+    similarityScore: p.kipris_similarity_score ?? 0, citations: p.citation_count ?? 0,
+    status: mapSimilarLegalStatus(p.legal_status ?? ''),
+    applicationDate: p.application_year ? `${p.application_year}-01-01` : '',
+    desc: p.summary ?? '',
+  }))
+  const simSt = simData?.summary ?? {}
+
+  return {
+    title: patent.value?.title ?? '',
+    grade: (json?.report?.summary?.overall_grade ?? 'C') as 'S' | 'A' | 'B' | 'C',
+    scores: {
+      tech: getDimScore('기술성'),
+      rights: getDimScore('권리성'),
+      biz: bizScores.length ? Math.round(bizScores.reduce((a: number, b: number) => a + b, 0) / bizScores.length) : 0,
+    },
+    comments: {
+      tech:   dims.find((d: any) => d.key === '기술성')?.summary ?? '',
+      rights: dims.find((d: any) => d.key === '권리성')?.summary ?? '',
+      biz:    dims.find((d: any) => d.key === '시장성')?.summary ?? dims.find((d: any) => d.key === '사업성')?.summary ?? '',
+    },
+    evalBlocks,
+    project: {
+      commercialized: proj?.commercialization_status ?? '—',
+      service:  proj?.applied_services ?? '—',
+      history:  proj?.application_history ?? '—',
+      customer: proj?.customers_partners ?? '—',
+      signal:   proj?.market_outlook ?? null,
+      summary:  proj?.summary ?? '',
+      evidence: (proj?.sources ?? []).map((s: any) => ({ title: s.title ?? '', url: s.url ?? '#' })),
+    },
+    similarPatents: simPatents,
+    similarStats: {
+      total:           simSt.total_similar_patents ?? simPatents.length,
+      registered:      simSt.active_count ?? 0,
+      pending:         simSt.published_or_pending_count ?? 0,
+      rejectedExpired: simSt.rejected_or_expired_count ?? 0,
+      avgCitations:    simSt.avg_citation_count ?? 0,
+    },
+    similarSummary: simData?.competitive_analysis?.analysis_summary ?? '',
+    confirmItems: (json?.report?.risks?.items ?? []).map((item: any) => ({
+      title: item.name,
+      meta:  ` · ${item.dimension ?? ''} · ${item.name}`,
+      desc:  item.judgment_basis ?? '',
+    })),
+    refs: (json?.report?.references?.sources?.tech_market ?? []).map((r: any) => ({ title: r.title ?? r.url ?? '', url: r.url ?? '' })),
+    feeRecords: feeRecords.value,
+    history: patentHistory.value,
+  }
+}
+
+async function openHistoryReport(reportId: number) {
+  if (historyReportLoading.value) return
+  historyReportLoading.value = true
+  try {
+    const report = await reportsApi.getReport(props.patentId, reportId)
+    if (!report.url) return
+    const res = await fetch(report.url)
+    const json = await res.json()
+    selectedEvalReport.value = buildEvalReportFromJson(json)
+    evalReportOpen.value = true
+  } catch (e) {
+    console.error('평가 보고서 조회 실패:', e)
+  } finally {
+    historyReportLoading.value = false
+  }
 }
 </script>
 
@@ -2822,6 +2967,13 @@ function closeEvalReport() {
 }
 .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
 .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+.chat-embed-notice {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  background: #fff7ed; border-top: 1px solid #fed7aa;
+  font-size: 12px; color: #92400e; line-height: 1.4;
+}
 
 .chat-composer {
   display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end;

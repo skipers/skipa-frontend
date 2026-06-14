@@ -109,7 +109,7 @@
             >
               <!-- 특허번호 -->
               <td class="col-appno">
-                <span class="mono">{{ item.applicationNumber }}</span>
+                {{ item.applicationNumber }}
               </td>
 
               <!-- 특허명 -->
@@ -671,7 +671,6 @@ onMounted(async () => {
 .col-date   { width: 13%; white-space: nowrap; }
 
 .mono {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 12px; color: #475569;
 }
 

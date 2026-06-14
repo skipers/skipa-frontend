@@ -18,7 +18,7 @@
       <div class="portfolio-stat__bar">
         <div class="portfolio-stat__seg portfolio-stat__seg--active"
           :style="{ width: activePct + '%' }"
-          :title="`유지 ${activeTotalItems}건`"
+          :title="`등록${activeTotalItems}건`"
         />
         <div class="portfolio-stat__seg portfolio-stat__seg--expired"
           :style="{ width: (100 - activePct) + '%' }"
@@ -28,7 +28,7 @@
       <div class="portfolio-stat__legend">
         <div class="portfolio-stat__legend-item">
           <span class="portfolio-stat__dot portfolio-stat__dot--active" />
-          <span class="portfolio-stat__label">유지</span>
+          <span class="portfolio-stat__label">등록</span>
           <strong class="portfolio-stat__count">{{ activeTotalItems }}건</strong>
           <span class="portfolio-stat__pct">({{ activePct }}%)</span>
         </div>
@@ -55,7 +55,7 @@
       </button>
     </div>
 
-    <!-- ── 유지중인 특허 ── -->
+    <!-- ── 등록 특허 ── -->
     <template v-if="activeTab === 'active'">
       <div class="table-card">
         <!-- 툴바 -->
@@ -86,7 +86,7 @@
               <polyline points="14 2 14 8 20 8"/>
             </svg>
           </div>
-          <p>유지 중인 특허가 없습니다.</p>
+          <p>등록된 특허가 없습니다.</p>
         </div>
         <table v-else class="patent-table">
           <thead>
@@ -115,7 +115,7 @@
               class="patent-row"
               @click="router.push(`/biz/patents/${p.id}`)"
             >
-              <td><span class="mono">{{ p.applicationNumber }}</span></td>
+              <td>{{ p.applicationNumber }}</td>
               <td>
                 <div class="patent-title-cell">
                   <span class="patent-title">{{ p.title }}</span>
@@ -211,7 +211,7 @@
               class="patent-row patent-row--expired"
               @click="router.push(`/biz/patents/${p.id}?from=management`)"
             >
-              <td><span class="mono">{{ p.applicationNumber }}</span></td>
+              <td>{{ p.applicationNumber }}</td>
               <td>
                 <div class="patent-title-cell">
                   <span class="patent-title">{{ p.title }}</span>
@@ -338,7 +338,7 @@ const filteredExpiredPatents = computed(() => {
 
 // ── 탭별 카운트 ──────────────────────────────────────
 const tabs = computed(() => [
-  { value: 'active',  label: '유지중인 특허',  count: activeTotalItems.value },
+  { value: 'active',  label: '등록 특허',  count: activeTotalItems.value },
   { value: 'expired', label: '소멸/포기 특허', count: expiredPatents.value.length },
 ])
 
