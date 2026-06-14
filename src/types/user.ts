@@ -5,7 +5,8 @@
 export type UserRole = 'ADMIN' | 'LEGAL' | 'BUSINESS'
 
 export interface User {
-  id: string
+  id: number
+  loginId?: string
   departmentId?: number
   departmentName?: string
   name: string
@@ -29,7 +30,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   accessToken: string
   refreshToken: string
-  user: Pick<User, 'id' | 'role'> & { deptId?: string }
+  user: Pick<User, 'id' | 'role' | 'departmentId'>
 }
 
 export interface RefreshResponse {

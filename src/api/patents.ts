@@ -1,5 +1,4 @@
 import apiClient from './axios'
-import type { Report, ReportWithUrl, PatentLegalStatus, Annuity } from '@/types'
 
 // ── List / Detail Types ─────────────────────────────────────
 
@@ -127,6 +126,8 @@ export type PatentUpdateRequest = Partial<PatentCreateRequest>
 
 export interface ApplicationListParams {
   approvalStatus?: ApprovalStatus | 'PENDING'
+  keyword?: string
+  sort?: string
   page?: number
   size?: number
 }
@@ -191,54 +192,21 @@ export const patentsApi = {
     return apiClient.get('/patents/applications', { params: p })
   },
 
+  getPendingApproval: async (params?: { keyword?: string; sort?: string; page?: number; size?: number }): Promise<PageResponse<PatentApplicationItem>> => {
+    const p = params ? { ...params, page: params.page != null ? params.page - 1 : 0 } : {}
+    return apiClient.get('/patents/pending-approval', { params: p })
+  },
+
+  approveApplication: async (patentId: number): Promise<void> => {
+    return apiClient.patch(`/patents/${patentId}/approve`)
+  },
+
   rejectApplication: async (patentId: number, reason: string): Promise<void> => {
     return apiClient.patch(`/patents/${patentId}/reject`, { reason })
   },
 
   withdrawApplication: async (patentId: number): Promise<void> => {
     return apiClient.patch(`/patents/${patentId}/withdraw`)
-  },
-
-  // ── Legal Status ───────────────────────────────────────
-
-  getLegalStatus: async (patentId: number): Promise<{ items: PatentLegalStatus[] }> => {
-    return apiClient.get(`/patents/${patentId}/legal-status`)
-  },
-
-  addLegalStatus: async (patentId: number, body: { status: string; changedAt: string }): Promise<{ id: number }> => {
-    return apiClient.post(`/patents/${patentId}/legal-status`, body)
-  },
-
-  // ── Annuities ──────────────────────────────────────────
-
-  getAnnuities: async (patentId: number): Promise<{ items: Annuity[] }> => {
-    return apiClient.get(`/patents/${patentId}/annuities`)
-  },
-
-  addAnnuity: async (patentId: number, body: Omit<Annuity, 'id' | 'patentId'>): Promise<{ id: number }> => {
-    return apiClient.post(`/patents/${patentId}/annuities`, body)
-  },
-
-  updateAnnuity: async (patentId: number, annuityId: number, body: Partial<Annuity>): Promise<{ id: number }> => {
-    return apiClient.patch(`/patents/${patentId}/annuities/${annuityId}`, body)
-  },
-
-  // ── Evaluation Reports ─────────────────────────────────
-
-  getReports: async (patentId: number): Promise<{ items: Report[] }> => {
-    return apiClient.get(`/patents/${patentId}/reports`)
-  },
-
-  generateReport: async (patentId: number): Promise<{ id: number; patentId: number; status: string; createdAt: string; updatedAt: string }> => {
-    return apiClient.post(`/patents/${patentId}/reports`)
-  },
-
-  getReport: async (patentId: number, reportId: number): Promise<ReportWithUrl> => {
-    return apiClient.get(`/patents/${patentId}/reports/${reportId}`)
-  },
-
-  getReportStatus: async (patentId: number, reportId: number): Promise<{ id: number; status: string }> => {
-    return apiClient.get(`/patents/${patentId}/reports/${reportId}/status`)
   },
 
   // ── Extract Jobs ───────────────────────────────────────
