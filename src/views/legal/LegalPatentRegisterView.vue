@@ -632,7 +632,7 @@ const editTargetTitle = ref('')
 
 const form = reactive({
   title: '', finalTitle: '', managementNumber: '', inventors: '', applicant: '',
-  bizField: '', techField: '', relatedProducts: '', country: 'KR',
+  bizField: '', techField: '', relatedProducts: '', country: '한국',
   status: '등록', coApplicant: '아니오', coApplicantName: '',
   applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
   applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
@@ -643,7 +643,7 @@ const form = reactive({
 function clearForm() {
   Object.assign(form, {
     title: '', finalTitle: '', managementNumber: '', inventors: '', applicant: '',
-    bizField: '', techField: '', relatedProducts: '', country: 'KR',
+    bizField: '', techField: '', relatedProducts: '', country: '한국',
     status: '등록', coApplicant: '아니오', coApplicantName: '',
     applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
     applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
@@ -825,7 +825,7 @@ async function startEdit(p: PatentListItem) {
     status: statusLabel(p.latestLegalStatus ?? ''),
     managementNumber: '', inventors: p.inventor ? p.inventor.replace(/\s*;\s*/g, ', ') : '',
     applicant: p.applicant ?? '',
-    bizField: p.businessField ?? '', relatedProducts: '', country: p.filingCountry ?? 'KR',
+    bizField: p.businessField ?? '', relatedProducts: '', country: (p.filingCountry === 'KR' ? '한국' : p.filingCountry) ?? '한국',
     coApplicant: '아니오', coApplicantName: '',
     registrationDate: '', publicationDate: '', announcementDate: '',
     registrationNumber: p.registrationNumber ?? '', publicationNumber: '', announcementNumber: '',

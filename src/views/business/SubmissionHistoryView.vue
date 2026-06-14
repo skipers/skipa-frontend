@@ -359,7 +359,7 @@ onMounted(() => fetchHistory())
   font-size: 13.5px; font-weight: 600; color: #0f172a; margin: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.history-item__appno { font-size: 11.5px; color: #94a3b8; }
+.history-item__appno { font-size: 11.5px; color: #94a3b8; font-family: 'Pretendard', sans-serif; }
 
 .decision-badge {
   padding: 3px 10px; border-radius: 6px;
@@ -377,7 +377,6 @@ onMounted(() => fetchHistory())
 
 .row-arrow { color: #cbd5e1; opacity: 0; transition: opacity .12s, color .12s; }
 
-.mono { font-family: 'JetBrains Mono', monospace; }
 
 /* ── 스켈레톤 ────────────────────────────────────────── */
 .skel-rows { display: flex; flex-direction: column; }

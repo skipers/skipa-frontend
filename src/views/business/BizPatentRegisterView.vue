@@ -482,7 +482,7 @@ const adminHistory = ref<{ type: string; date: string }[]>([])
 
 const form = reactive({
   title: '', finalTitle: '', managementNumber: '', inventors: '', applicant: '',
-  bizField: '', techField: '', relatedProducts: [] as string[], country: 'KR',
+  bizField: '', techField: '', relatedProducts: [] as string[], country: '한국',
   patentStatus: '출원', coApplicant: '아니오', coApplicantName: '',
   applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
   applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
@@ -498,7 +498,7 @@ function handleFileSelect(e: Event) {
 function resetForm() {
   Object.assign(form, {
     title: '', finalTitle: '', managementNumber: '', inventors: '', applicant: '',
-    bizField: '', techField: '', relatedProducts: [], country: 'KR',
+    bizField: '', techField: '', relatedProducts: [], country: '한국',
     patentStatus: '출원', coApplicant: '아니오', coApplicantName: '',
     applicationDate: '', registrationDate: '', publicationDate: '', announcementDate: '',
     applicationNumber: '', registrationNumber: '', publicationNumber: '', announcementNumber: '',
@@ -522,7 +522,7 @@ function startResubmit(app: PatentApplication) {
     bizField: app.bizField,
     techField: app.techField,
     relatedProducts: Array.isArray(app.relatedProducts) ? app.relatedProducts : (app.relatedProducts ? [app.relatedProducts] : []),
-    country: app.country,
+    country: app.country === 'KR' ? '한국' : (app.country || '한국'),
     patentStatus: app.patentStatus,
     coApplicant: app.coApplicant,
     coApplicantName: app.coApplicantName,
