@@ -99,7 +99,7 @@
           <div class="list-rows">
             <div v-for="p in filteredPatents" :key="p.id" class="list-row list-row--clickable" @click="startEdit(p)">
               <div class="list-row__cell list-row__title">{{ p.title }}</div>
-              <div class="list-row__cell list-row__mono">{{ p.applicationNumber }}</div>
+              <div class="list-row__cell">{{ p.applicationNumber }}</div>
               <div class="list-row__cell">
                 <span v-if="p.techField" class="field-tag">{{ p.techField }}</span>
                 <span v-else class="text-muted">—</span>
@@ -107,7 +107,7 @@
               <div class="list-row__cell">
                 <span class="status-badge" :class="statusClass(p.latestLegalStatus ?? '')">{{ statusLabel(p.latestLegalStatus ?? '') }}</span>
               </div>
-              <div class="list-row__cell list-row__mono">{{ p.applicationDate }}</div>
+              <div class="list-row__cell">{{ p.applicationDate }}</div>
               <div class="list-row__cell list-row__actions">
                 <button class="btn-action btn-action--delete" @click.stop="confirmDelete(p)">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">

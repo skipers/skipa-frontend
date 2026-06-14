@@ -81,7 +81,7 @@
             </div>
             <div class="history-item__info">
               <p class="history-item__title">{{ h.patentTitle }}</p>
-              <span class="mono history-item__appno">{{ h.applicationNumber }}</span>
+              <span class="history-item__appno">{{ h.applicationNumber }}</span>
             </div>
             <span class="decision-badge" :class="`decision-badge--${h.decision.toLowerCase()}`">
               {{ decisionLabel(h.decision) }}
