@@ -1686,7 +1686,7 @@ const opinionOptions = [
 const latestReportId = ref<number | null>(null)
 const latestReport = ref<import('@/api/reports').ReportDetailResponse | null>(null)
 
-const isEmbeddingReady = computed(() => latestReport.value?.status === 'COMPLETED')
+const isEmbeddingReady = computed(() => latestReport.value?.status === 'EMBEDDING_COMPLETED')
 
 let embeddingPollTimer: ReturnType<typeof setTimeout> | null = null
 
