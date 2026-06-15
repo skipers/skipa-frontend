@@ -166,7 +166,7 @@ const isStartEnabled = computed(() =>
   Boolean(patentName.value.trim() && techDescription.value.trim()) && !isEvaluating.value
 )
 
-const isEmbeddingReady = computed(() => selectedDetail.value?.status === 'COMPLETED')
+const isEmbeddingReady = computed(() => selectedDetail.value?.status === 'EMBEDDING_COMPLETED')
 
 const chatPanelWidth = computed(() => {
   if (!chatbotOpen.value) return '0px'
