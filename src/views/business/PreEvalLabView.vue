@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, computed } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { preEvaluationsApi } from '@/api/preEvaluations'
 import type { PreEvaluationListItem, PreEvaluationDetailResponse } from '@/api/preEvaluations'
 
@@ -76,9 +78,15 @@ interface ChatMessage {
   role: ChatRole
   text: string
   typing?: boolean
+  error?: boolean
 }
 
 const GREETING = '안녕하세요! 평가 결과에 대해 궁금한 점을 질문해주세요.'
+
+function renderMarkdown(text: string): string {
+  const html = marked.parse(text, { breaks: true }) as string
+  return DOMPurify.sanitize(html)
+}
 
 
 const priorityLabel: Record<string, string> = { high: '높음', medium: '중간', low: '낮음' }
@@ -103,10 +111,11 @@ const valueGradeLabel: Record<string, string> = {
 function getValueGradeLabel(v: string) { return valueGradeLabel[v.toLowerCase()] ?? v }
 
 const readinessLabel: Record<string, string> = {
-  ready:                          '출원 준비 완료',
+  ready:                             '출원 준비 완료',
   promising_with_targeted_revisions: '보완 후 출원 가능',
-  needs_significant_work:         '상당한 보완 필요',
-  not_ready:                      '출원 불가',
+  needs_significant_work:            '상당한 보완 필요',
+  needs_substantial_preparation:     '상당한 보완 필요',
+  not_ready:                         '출원 불가',
 }
 function getReadinessLabel(v: string) { return readinessLabel[v.toLowerCase()] ?? v }
 
@@ -136,6 +145,8 @@ const evaluationResult    = ref<EvaluationResult | null>(null)
 const historyDropdownOpen = ref(false)
 const isEvaluating        = ref(false)
 
+const evalError       = ref(false)
+
 const chatbotOpen     = ref(false)
 const chatbotExpanded = ref(false)
 const chatWidth       = ref(480)
@@ -160,13 +171,47 @@ let   _isStarting  = false  // non-reactive guard against double-submission
 
 const pollingTimer = ref<number | null>(null)
 let embeddingPollTimer: ReturnType<typeof setTimeout> | null = null
+const historyPollTimers = ref<Record<number, ReturnType<typeof setTimeout>>>({})
+
+function stopHistoryPoll(id: number) {
+  if (historyPollTimers.value[id]) {
+    clearTimeout(historyPollTimers.value[id])
+    delete historyPollTimers.value[id]
+  }
+}
+
+function startHistoryPoll(id: number) {
+  stopHistoryPoll(id)
+  historyPollTimers.value[id] = setTimeout(async () => {
+    try {
+      const status = await preEvaluationsApi.getStatus(id)
+      const done = ['REPORT_COMPLETED', 'EMBEDDING_COMPLETED', 'COMPLETED'].includes(status.status)
+      const failed = ['FAILED', 'REPORT_FAILED'].includes(status.status)
+
+      const idx = historyList.value.findIndex(h => h.id === id)
+      if (idx !== -1) {
+        historyList.value[idx] = { ...historyList.value[idx], status: status.status }
+      }
+
+      if (done) {
+        await fetchGradesEagerly(historyList.value.filter(h => h.id === id))
+      } else if (!failed) {
+        startHistoryPoll(id)
+      }
+    } catch {
+      startHistoryPoll(id)
+    }
+  }, 3000)
+}
 
 // ── computed ──────────────────────────────────────────
 const isStartEnabled = computed(() =>
   Boolean(patentName.value.trim() && techDescription.value.trim()) && !isEvaluating.value
 )
 
-const isEmbeddingReady = computed(() => selectedDetail.value?.status === 'EMBEDDING_COMPLETED')
+const isEmbeddingReady = computed(() =>
+  ['REPORT_COMPLETED', 'EMBEDDING_COMPLETED', 'COMPLETED'].includes(selectedDetail.value?.status ?? ''),
+)
 
 const chatPanelWidth = computed(() => {
   if (!chatbotOpen.value) return '0px'
@@ -196,7 +241,7 @@ function scrollChatToBottom() {
 // ── 이력 ─────────────────────────────────────────────
 async function fetchGradesEagerly(items: PreEvaluationListItem[]) {
   const targets = items.filter(
-    item => item.status === 'REPORT_COMPLETED' && item.reportUrl && !gradeCache.value[item.id],
+    item => (item.status === 'REPORT_COMPLETED' || item.status === 'EMBEDDING_COMPLETED' || item.status === 'COMPLETED') && item.reportUrl && !gradeCache.value[item.id],
   )
   await Promise.all(
     targets.map(async item => {
@@ -218,22 +263,13 @@ async function fetchHistory() {
     const res = await preEvaluationsApi.getList({ size: 100 })
     historyList.value = res.items ?? []
     fetchGradesEagerly(historyList.value)
+
+    const pending = historyList.value.filter(
+      item => !['REPORT_COMPLETED', 'EMBEDDING_COMPLETED', 'COMPLETED', 'FAILED', 'REPORT_FAILED'].includes(item.status),
+    )
+    pending.forEach(item => startHistoryPoll(item.id))
   } catch {
     historyList.value = []
-  }
-}
-
-async function deleteHistory(id: number) {
-  try {
-    await preEvaluationsApi.delete(id)
-    historyList.value = historyList.value.filter(h => h.id !== id)
-    if (selectedHistoryId.value === id) {
-      selectedHistoryId.value = null
-      selectedDetail.value = null
-      evaluationResult.value = null
-    }
-  } catch {
-    // 삭제 실패 시 무시
   }
 }
 
@@ -345,7 +381,7 @@ async function selectHistory(id: number) {
     const detail = await preEvaluationsApi.getDetail(id)
     selectedDetail.value = detail
 
-    if ((detail.status === 'REPORT_COMPLETED' || detail.status === 'COMPLETED') && detail.reportUrl) {
+    if ((detail.status === 'REPORT_COMPLETED' || detail.status === 'COMPLETED' || detail.status === 'EMBEDDING_COMPLETED') && detail.reportUrl) {
       const result = await parseReportUrl(detail.reportUrl)
       evaluationResult.value = result
       if (result) gradeCache.value[id] = result.grade
@@ -391,6 +427,7 @@ async function startEvaluation() {
   if (!isStartEnabled.value || _isStarting) return
   _isStarting = true
   isEvaluating.value = true
+  evalError.value = false
   evaluationResult.value = null
   selectedDetail.value = null
   selectedHistoryId.value = null
@@ -414,9 +451,10 @@ async function startEvaluation() {
 
 async function pollStatus(id: number) {
   try {
-    const detail = await preEvaluationsApi.getDetail(id)
+    const statusRes = await preEvaluationsApi.getStatus(id)
 
-    if (detail.status === 'REPORT_COMPLETED' || detail.status === 'COMPLETED') {
+    if (statusRes.status === 'REPORT_COMPLETED' || statusRes.status === 'COMPLETED' || statusRes.status === 'EMBEDDING_COMPLETED') {
+      const detail = await preEvaluationsApi.getDetail(id)
       selectedDetail.value = detail
       selectedHistoryId.value = id
       await fetchHistory()
@@ -427,11 +465,13 @@ async function pollStatus(id: number) {
       }
       await loadChatHistory(id)
       isEvaluating.value = false
-      if (detail.status === 'REPORT_COMPLETED') {
+      if (statusRes.status === 'REPORT_COMPLETED') {
         pollEmbeddingStatus(id)
       }
-    } else if (['FAILED', 'REPORT_FAILED'].includes(detail.status)) {
+    } else if (['FAILED', 'REPORT_FAILED'].includes(statusRes.status)) {
       isEvaluating.value = false
+      evalError.value = true
+      await fetchHistory()
     } else {
       pollingTimer.value = window.setTimeout(() => void pollStatus(id), 3000)
     }
@@ -445,7 +485,7 @@ function pollEmbeddingStatus(id: number) {
   embeddingPollTimer = setTimeout(async () => {
     try {
       const status = await preEvaluationsApi.getStatus(id)
-      if (status.status === 'COMPLETED') {
+      if (status.status === 'COMPLETED' || status.status === 'EMBEDDING_COMPLETED') {
         if (selectedDetail.value && selectedDetail.value.id === id) {
           selectedDetail.value = { ...selectedDetail.value, status: 'COMPLETED' }
         }
@@ -458,6 +498,37 @@ function pollEmbeddingStatus(id: number) {
   }, 5000)
 }
 
+// ── 이력 삭제 ─────────────────────────────────────────
+async function deleteHistory(id: number) {
+  try {
+    await preEvaluationsApi.delete(id)
+    if (selectedHistoryId.value === id) {
+      selectedDetail.value   = null
+      selectedHistoryId.value = null
+      evaluationResult.value  = null
+      evalError.value         = false
+      chatMessages.value = [{ id: nextMsgId(), role: 'assistant', text: GREETING }]
+    }
+    await fetchHistory()
+  } catch { /* silent */ }
+}
+
+// ── 실패 이력에서 재시도 ──────────────────────────────
+function retryFromHistory() {
+  if (!selectedDetail.value) return
+  const d = selectedDetail.value
+  patentName.value      = d.title ?? ''
+  techDescription.value = d.technicalDescription ?? ''
+  claimInputs.value     = d.claims?.length ? [...d.claims] : ['']
+  relatedBusiness.value = d.relatedBusiness ?? ''
+  targetCountries.value = d.targetCountries ?? ''
+  selectedDetail.value     = null
+  selectedHistoryId.value  = null
+  evaluationResult.value   = null
+  evalError.value          = false
+  void startEvaluation()
+}
+
 // ── 새 평가 초기화 ────────────────────────────────────
 function resetAssessment() {
   patentName.value = ''
@@ -465,6 +536,7 @@ function resetAssessment() {
   claimInputs.value = ['']
   relatedBusiness.value = ''
   targetCountries.value = ''
+  evalError.value = false
   evaluationResult.value = null
   selectedDetail.value = null
   selectedHistoryId.value = null
@@ -552,6 +624,7 @@ async function sendChatMessage() {
         id: nextMsgId(),
         role: 'assistant',
         text: '답변을 불러오는 데 실패했습니다. 다시 시도해주세요.',
+        error: true,
       })
     }
   } finally {
@@ -572,6 +645,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (pollingTimer.value) window.clearTimeout(pollingTimer.value)
   if (embeddingPollTimer) clearTimeout(embeddingPollTimer)
+  Object.keys(historyPollTimers.value).forEach(id => stopHistoryPoll(Number(id)))
 })
 </script>
 
@@ -625,6 +699,19 @@ onBeforeUnmount(() => {
                 <p class="dropdown-item__name">{{ item.title }}</p>
                 <div class="dropdown-item__meta">
                   <span class="dropdown-item__date">{{ formatDate(item.completedAt ?? item.createdAt) }}</span>
+                  <span
+                    v-if="gradeCache[item.id]"
+                    class="grade-pill"
+                    :class="`grade-pill--${gradeCache[item.id].toLowerCase()}`"
+                  >{{ gradeCache[item.id] }}</span>
+                  <span
+                    v-else-if="['FAILED', 'REPORT_FAILED'].includes(item.status)"
+                    class="status-pill status-pill--failed"
+                  >오류</span>
+                  <span
+                    v-else-if="!['REPORT_COMPLETED', 'EMBEDDING_COMPLETED', 'COMPLETED'].includes(item.status)"
+                    class="status-pill status-pill--pending"
+                  >처리 중</span>
                   <button
                     class="btn-delete-history"
                     @click.stop="deleteHistory(item.id)"
@@ -658,7 +745,15 @@ onBeforeUnmount(() => {
           <template v-if="selectedDetail">
             <div class="readonly-header">
               <h2 class="panel-title readonly-panel-title">{{ selectedDetail.title }}</h2>
-              <p class="readonly-date">평가일 {{ evaluationResult ? formatDateTime(evaluationResult.evaluatedAt) || formatDate(selectedDetail.completedAt ?? selectedDetail.createdAt) : formatDate(selectedDetail.completedAt ?? selectedDetail.createdAt) }}</p>
+              <p class="readonly-date">평가일 {{ evaluationResult ? formatDateTime(evaluationResult.evaluatedAt) || formatDateTime(selectedDetail.completedAt ?? selectedDetail.createdAt) : formatDateTime(selectedDetail.completedAt ?? selectedDetail.createdAt) }}</p>
+              <button
+                v-if="['FAILED', 'REPORT_FAILED'].includes(selectedDetail.status)"
+                class="btn-retry-history"
+                type="button"
+                @click="retryFromHistory"
+              >
+                다시 평가하기
+              </button>
             </div>
 
             <div class="readonly-fields">
@@ -701,6 +796,13 @@ onBeforeUnmount(() => {
 
           <!-- 입력 폼 -->
           <template v-else>
+            <div v-if="evalError" class="eval-error-banner">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span class="eval-error-banner__text">평가 중 오류가 발생했습니다.</span>
+              <button class="btn-retry" type="button" :disabled="!isStartEnabled" @click="startEvaluation">다시 평가하기</button>
+            </div>
             <h2 class="panel-title">발명 정보 입력</h2>
 
             <form class="form-stack" @submit.prevent="startEvaluation">
@@ -1069,10 +1171,11 @@ onBeforeUnmount(() => {
 
         <div ref="chatViewport" class="chat-body">
           <div v-for="message in chatMessages" :key="message.id" class="chat-row" :class="message.role">
-            <div class="chat-bubble" :class="message.role">
+            <div class="chat-bubble" :class="[message.role, { 'chat-bubble--error': message.error }]">
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
               </template>
+              <div v-else-if="message.role === 'assistant'" class="md-content" v-html="renderMarkdown(message.text)"/>
               <template v-else>{{ message.text }}</template>
             </div>
           </div>
@@ -1086,7 +1189,7 @@ onBeforeUnmount(() => {
         </div>
         <form class="chat-composer" @submit.prevent="sendChatMessage">
           <textarea ref="chatInputEl" v-model="chatInput" rows="1" placeholder="평가 결과에 대해 질문해 보세요." :disabled="!isEmbeddingReady" @keydown="handleChatKeydown" @input="autoResizeChatInput"></textarea>
-          <button type="submit" :disabled="chatSending || selectedHistoryId === null || !isEmbeddingReady">전송</button>
+          <button type="submit" :disabled="chatSending || selectedHistoryId === null || !isEmbeddingReady">{{ chatSending ? '...' : '전송' }}</button>
         </form>
       </div>
     </aside>
@@ -1261,6 +1364,21 @@ onBeforeUnmount(() => {
   justify-content: space-between; gap: 8px;
 }
 .dropdown-item__date { font-size: 11.5px; color: #94a3b8; }
+.btn-delete-history {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.btn-delete-history:hover { background: #fef2f2; color: #ef4444; }
 
 .btn-delete-history {
   display: flex; align-items: center; justify-content: center;
@@ -1376,6 +1494,22 @@ onBeforeUnmount(() => {
 
 /* ── 읽기 전용 뷰 ─────────────────────────────────── */
 .readonly-header { margin-bottom: 24px; }
+.btn-retry-history {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  border: 1.5px solid #f87171;
+  border-radius: 8px;
+  background: #fff;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.13s;
+}
+.btn-retry-history:hover { background: #fef2f2; }
 
 .btn-back {
   display: inline-flex;
@@ -1445,6 +1579,37 @@ onBeforeUnmount(() => {
   color: #374151;
   line-height: 1.65;
 }
+
+/* ── 에러 배너 ────────────────────────────────────── */
+.eval-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #b91c1c;
+}
+.eval-error-banner__text { flex: 1; }
+.btn-retry {
+  padding: 5px 12px;
+  border: 1.5px solid #f87171;
+  border-radius: 7px;
+  background: #fff;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.13s;
+}
+.btn-retry:hover:not(:disabled) { background: #fef2f2; }
+.btn-retry:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── 평가 진행 중 ─────────────────────────────────── */
 .evaluating-info {
@@ -1706,6 +1871,36 @@ onBeforeUnmount(() => {
 }
 .chat-bubble.assistant { background: #fff; color: #102033; border-top-left-radius: 4px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
 .chat-bubble.user      { background: var(--navy); color: #fff; border-top-right-radius: 4px; }
+.chat-bubble--error    { background: #fef2f2; color: #991b1b; box-shadow: none; border: 1px solid #fecaca; }
+
+.md-content { white-space: normal; }
+.md-content :deep(p)  { margin: 0 0 8px; }
+.md-content :deep(p:last-child) { margin-bottom: 0; }
+.md-content :deep(h1),
+.md-content :deep(h2),
+.md-content :deep(h3) { font-weight: 700; margin: 14px 0 6px; line-height: 1.4; }
+.md-content :deep(h2) { font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+.md-content :deep(h3) { font-size: 13.5px; }
+.md-content :deep(ul),
+.md-content :deep(ol) { margin: 4px 0 8px; padding-left: 20px; }
+.md-content :deep(li) { margin-bottom: 3px; }
+.md-content :deep(hr) { border: none; border-top: 1px solid #e2e8f0; margin: 12px 0; }
+.md-content :deep(strong) { font-weight: 700; }
+.md-content :deep(code) {
+  background: rgba(0,0,0,0.07); border-radius: 4px;
+  padding: 1px 5px; font-size: 12px; font-family: monospace;
+}
+.md-content :deep(table) {
+  border-collapse: collapse; font-size: 12.5px; line-height: 1.5;
+  margin: 8px 0 12px; display: block; overflow-x: auto; max-width: 100%;
+}
+.md-content :deep(th),
+.md-content :deep(td) {
+  padding: 7px 12px; border: 1px solid #d1d5db;
+  text-align: left; vertical-align: top; white-space: normal; min-width: 80px;
+}
+.md-content :deep(th) { background: #f1f5f9; font-weight: 600; white-space: nowrap; }
+.md-content :deep(tr:nth-child(even) td) { background: #f8fafc; }
 
 .typing-dots { display: inline-flex; align-items: center; gap: 4px; min-height: 18px; }
 .typing-dots span {
