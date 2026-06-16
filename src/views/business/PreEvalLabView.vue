@@ -103,10 +103,11 @@ const valueGradeLabel: Record<string, string> = {
 function getValueGradeLabel(v: string) { return valueGradeLabel[v.toLowerCase()] ?? v }
 
 const readinessLabel: Record<string, string> = {
-  ready:                          '출원 준비 완료',
+  ready:                             '출원 준비 완료',
   promising_with_targeted_revisions: '보완 후 출원 가능',
-  needs_significant_work:         '상당한 보완 필요',
-  not_ready:                      '출원 불가',
+  needs_significant_work:            '상당한 보완 필요',
+  needs_substantial_preparation:     '상당한 보완 필요',
+  not_ready:                         '출원 불가',
 }
 function getReadinessLabel(v: string) { return readinessLabel[v.toLowerCase()] ?? v }
 
@@ -403,9 +404,10 @@ async function startEvaluation() {
 
 async function pollStatus(id: number) {
   try {
-    const detail = await preEvaluationsApi.getDetail(id)
+    const statusRes = await preEvaluationsApi.getStatus(id)
 
-    if (detail.status === 'REPORT_COMPLETED' || detail.status === 'COMPLETED' || detail.status === 'EMBEDDING_COMPLETED') {
+    if (statusRes.status === 'REPORT_COMPLETED' || statusRes.status === 'COMPLETED' || statusRes.status === 'EMBEDDING_COMPLETED') {
+      const detail = await preEvaluationsApi.getDetail(id)
       selectedDetail.value = detail
       selectedHistoryId.value = id
       await fetchHistory()
@@ -416,10 +418,10 @@ async function pollStatus(id: number) {
       }
       await loadChatHistory(id)
       isEvaluating.value = false
-      if (detail.status === 'REPORT_COMPLETED') {
+      if (statusRes.status === 'REPORT_COMPLETED') {
         pollEmbeddingStatus(id)
       }
-    } else if (['FAILED', 'REPORT_FAILED'].includes(detail.status)) {
+    } else if (['FAILED', 'REPORT_FAILED'].includes(statusRes.status)) {
       isEvaluating.value = false
       evalError.value = true
       await fetchHistory()
