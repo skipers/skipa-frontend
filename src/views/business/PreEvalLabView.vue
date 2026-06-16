@@ -228,20 +228,6 @@ async function fetchHistory() {
   }
 }
 
-async function deleteHistory(id: number) {
-  try {
-    await preEvaluationsApi.delete(id)
-    historyList.value = historyList.value.filter(h => h.id !== id)
-    if (selectedHistoryId.value === id) {
-      selectedHistoryId.value = null
-      selectedDetail.value = null
-      evaluationResult.value = null
-    }
-  } catch {
-    // 삭제 실패 시 무시
-  }
-}
-
 // ── 보고서 URL 파싱 (v3) ──────────────────────────────
 async function parseReportUrl(reportUrl: string): Promise<EvaluationResult | null> {
   try {

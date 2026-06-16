@@ -183,12 +183,12 @@
           </div>
 
           <!-- 출원번호 -->
-          <div class="item-appnum" @click="goDetail(item.id)">
+          <div class="item-appnum" @click="goDetail(item)">
             {{ item.applicationNumber }}
           </div>
 
           <!-- 기술 분야 -->
-          <div class="item-field" @click="goDetail(item.id)">
+          <div class="item-field" @click="goDetail(item)">
             <span v-if="item.techField" class="field-tag">{{ item.techField }}</span>
             <span v-else class="text-muted">—</span>
           </div>
@@ -223,7 +223,7 @@
           </div>
 
           <!-- 화살표 -->
-          <button class="item-arrow" @click="goDetail(item.id)">
+          <button class="item-arrow" @click="goDetail(item)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M9 18l6-6-6-6"/>
             </svg>
