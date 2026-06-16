@@ -4,7 +4,7 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <h2 class="page-header__title">소멸 예정 특허</h2>
+        <h2 class="page-header__title">소멸 예정 관리</h2>
         <p class="page-header__desc">기간별 소멸 예정 특허를 확인하고 유지/포기를 결정하세요</p>
       </div>
       <div class="view-toggle">
@@ -69,7 +69,10 @@
               :style="{ width: fieldStackPct(f) + '%', background: fieldColors[i] }"
               :title="`${f}: ${heatmapData[f]?.[heatmapKey] ?? 0}건 (${fieldStackPct(f)}%)`"
             >
-              <span v-if="fieldStackPct(f) >= 8" class="field-stack-seg__label">{{ fieldStackPct(f) }}%</span>
+              <span v-if="fieldStackPct(f) >= 10" class="field-stack-seg__label">
+                <span class="field-stack-seg__name">{{ f }}</span>
+                <span class="field-stack-seg__pct">{{ fieldStackPct(f) }}%</span>
+              </span>
             </div>
           </div>
         </template>
@@ -292,7 +295,7 @@ const filteredItems = computed(() => {
 })
 
 // ── 기술분야별 스택 바 (allItems로부터 계산) ─────────────
-const FIELD_COLORS = ['#ABACED', '#67E2AB', '#FFBC5E', '#84DBED', '#E88989', '#F9A8D4', '#6EE7B7', '#FCD34D']
+const FIELD_COLORS = ['#6366f1', '#7c7ff3', '#9699f5', '#b0b2f8', '#c9cbfa', '#d8d9fc', '#e6e7fd', '#f0f0fe']
 
 const heatmapFields = computed(() =>
   [...new Set(allItems.value.map(i => i.techField).filter(Boolean))]
@@ -466,7 +469,7 @@ const selectedMonthItems = computed(() =>
 
 .field-stack-bar {
   display: flex;
-  height: 32px;
+  height: 44px;
   border-radius: 8px;
   overflow: hidden;
   margin-top: 8px;
@@ -477,10 +480,28 @@ const selectedMonthItems = computed(() =>
   justify-content: center;
   transition: width 0.4s cubic-bezier(.4,0,.2,1);
   min-width: 0;
+  overflow: hidden;
 }
 .field-stack-seg__label {
-  font-size: 11.5px;
-  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  overflow: hidden;
+  padding: 0 6px;
+}
+.field-stack-seg__name {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.field-stack-seg__pct {
+  font-size: 11px;
+  font-weight: 800;
   color: #fff;
   white-space: nowrap;
 }
