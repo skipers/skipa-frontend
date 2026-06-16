@@ -169,12 +169,12 @@
             <div class="item-main__top">
               <span
                 class="item-status-badge"
-                :class="item.reviewStatus === 'done' && !readIds.has(item.id)
+                :class="item.reviewStatus === 'done' && !item.checked
                   ? 'item-status--unread'
                   : `item-status--${item.reviewStatus}`"
               >
                 <span class="item-status-dot" />
-                {{ item.reviewStatus === 'done' && !readIds.has(item.id) ? '미확인' : reviewStatusLabel(item.reviewStatus) }}
+                {{ item.reviewStatus === 'done' && !item.checked ? '미확인' : reviewStatusLabel(item.reviewStatus) }}
               </span>
 
               <h4 class="item-title">{{ item.title }}</h4>
@@ -183,12 +183,12 @@
           </div>
 
           <!-- 출원번호 -->
-          <div class="item-appnum" @click="goDetail(item.id)">
+          <div class="item-appnum" @click="goDetail(item)">
             {{ item.applicationNumber }}
           </div>
 
           <!-- 기술 분야 -->
-          <div class="item-field" @click="goDetail(item.id)">
+          <div class="item-field" @click="goDetail(item)">
             <span v-if="item.techField" class="field-tag">{{ item.techField }}</span>
             <span v-else class="text-muted">—</span>
           </div>
@@ -223,7 +223,7 @@
           </div>
 
           <!-- 화살표 -->
-          <button class="item-arrow" @click="goDetail(item.id)">
+          <button class="item-arrow" @click="goDetail(item)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M9 18l6-6-6-6"/>
             </svg>
@@ -481,6 +481,7 @@ const sortedDepartments = computed(() =>
 interface ReevalItem {
   id: number
   reviewId: number
+  checked: boolean
   title: string
   applicationNumber: string
   techField?: string
@@ -647,6 +648,7 @@ async function fetchList(p = 1) {
     items.value = res.items.map(r => ({
       id: r.patentId,
       reviewId: r.id,
+      checked: r.checked,
       title: r.title,
       applicationNumber: r.applicationNumber,
       techField: r.techField,
@@ -747,12 +749,13 @@ function handleDueDateChange() {
 function goDetail(item: ReevalItem) {
   markRead(item.id)
   reviewsApi.confirmReview(item.reviewId).then(() => {
+    const target = items.value.find(i => i.id === item.id)
+    if (target) target.checked = true
     if (activeStatus.value === 'unread') {
       items.value = items.value.filter(i => i.id !== item.id)
       statusCounts.value = {
         ...statusCounts.value,
         unread: Math.max(0, statusCounts.value.unread - 1),
-        done:   statusCounts.value.done,
       }
     }
   }).catch(() => { /* 확인 실패 시 무시 */ })
