@@ -120,12 +120,13 @@ const readinessLabel: Record<string, string> = {
 function getReadinessLabel(v: string) { return readinessLabel[v.toLowerCase()] ?? v }
 
 const investmentLabel: Record<string, string> = {
-  go:                      '출원 진행',
-  conditional_go:          '조건부 진행',
-  hold:                    '보류',
-  hold_for_value_validation: '가치 검증 후 보류',
-  revise_then_file:        '보완 후 출원',
-  stop:                    '출원 중단',
+  go:                                    '출원 진행',
+  conditional_go:                        '조건부 진행',
+  hold:                                  '보류',
+  hold_for_value_validation:             '가치 검증 후 보류',
+  revise_then_file:                      '보완 후 출원',
+  stop:                                  '출원 중단',
+  go_to_prior_art_search_and_drafting:   '선행기술 조사 후 출원',
 }
 function getInvestmentLabel(v: string) { return investmentLabel[v.toLowerCase()] ?? v }
 
@@ -698,20 +699,22 @@ onBeforeUnmount(() => {
               >
                 <p class="dropdown-item__name">{{ item.title }}</p>
                 <div class="dropdown-item__meta">
-                  <span class="dropdown-item__date">{{ formatDate(item.completedAt ?? item.createdAt) }}</span>
-                  <span
-                    v-if="gradeCache[item.id]"
-                    class="grade-pill"
-                    :class="`grade-pill--${gradeCache[item.id].toLowerCase()}`"
-                  >{{ gradeCache[item.id] }}</span>
-                  <span
-                    v-else-if="['FAILED', 'REPORT_FAILED'].includes(item.status)"
-                    class="status-pill status-pill--failed"
-                  >오류</span>
-                  <span
-                    v-else-if="!['REPORT_COMPLETED', 'EMBEDDING_COMPLETED', 'COMPLETED'].includes(item.status)"
-                    class="status-pill status-pill--pending"
-                  >처리 중</span>
+                  <div class="dropdown-item__left">
+                    <span class="dropdown-item__date">{{ formatDate(item.completedAt ?? item.createdAt) }}</span>
+                    <span
+                      v-if="gradeCache[item.id]"
+                      class="grade-pill"
+                      :class="`grade-pill--${gradeCache[item.id].toLowerCase()}`"
+                    >{{ gradeCache[item.id] }}</span>
+                    <span
+                      v-else-if="['FAILED', 'REPORT_FAILED'].includes(item.status)"
+                      class="status-pill status-pill--failed"
+                    >오류</span>
+                    <span
+                      v-else-if="!['REPORT_COMPLETED', 'EMBEDDING_COMPLETED', 'COMPLETED'].includes(item.status)"
+                      class="status-pill status-pill--pending"
+                    >처리 중</span>
+                  </div>
                   <button
                     class="btn-delete-history"
                     @click.stop="deleteHistory(item.id)"
@@ -737,7 +740,7 @@ onBeforeUnmount(() => {
       <div v-if="historyDropdownOpen" class="dropdown-backdrop" @click="historyDropdownOpen = false" />
 
       <!-- 2열 그리드 -->
-      <main class="lab-grid">
+      <main class="lab-grid" :class="{ 'lab-grid--has-result': evaluationResult || isEvaluating }">
 
         <!-- 입력폼 -->
         <section class="panel form-panel">
@@ -933,7 +936,7 @@ onBeforeUnmount(() => {
                 <span v-if="evaluationResult.valueGrade" class="rpt-badge">{{ getValueGradeLabel(evaluationResult.valueGrade) }}</span>
               </div>
               <p v-if="evaluationResult.valueSummary" class="rpt-section__body">{{ evaluationResult.valueSummary }}</p>
-              <div v-if="evaluationResult.positiveValueDrivers.length || evaluationResult.valueConstraints.length" class="rpt-two-col">
+              <div class="rpt-three-col-sections">
                 <div v-if="evaluationResult.positiveValueDrivers.length">
                   <p class="rpt-col__label">가치 상승 요소</p>
                   <ul class="rpt-list rpt-list--pos">
@@ -946,12 +949,12 @@ onBeforeUnmount(() => {
                     <li v-for="(v, i) in evaluationResult.valueConstraints" :key="i">{{ v }}</li>
                   </ul>
                 </div>
-              </div>
-              <div v-if="evaluationResult.evidenceNeeded.length">
-                <p class="rpt-col__label">추가 근거 필요</p>
-                <ul class="rpt-list">
-                  <li v-for="(v, i) in evaluationResult.evidenceNeeded" :key="i">{{ v }}</li>
-                </ul>
+                <div v-if="evaluationResult.evidenceNeeded.length">
+                  <p class="rpt-col__label">추가 근거 필요</p>
+                  <ul class="rpt-list">
+                    <li v-for="(v, i) in evaluationResult.evidenceNeeded" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
@@ -961,23 +964,25 @@ onBeforeUnmount(() => {
               <p v-if="evaluationResult.targetMarket" class="rpt-kv">
                 <span>주요 시장</span>{{ evaluationResult.targetMarket }}
               </p>
-              <div v-if="evaluationResult.expectedUseCases.length">
-                <p class="rpt-col__label">예상 활용 사례</p>
-                <ul class="rpt-list">
-                  <li v-for="(v, i) in evaluationResult.expectedUseCases" :key="i">{{ v }}</li>
-                </ul>
-              </div>
-              <div v-if="evaluationResult.monetizationPaths.length">
-                <p class="rpt-col__label">수익화 경로</p>
-                <ul class="rpt-list">
-                  <li v-for="(v, i) in evaluationResult.monetizationPaths" :key="i">{{ v }}</li>
-                </ul>
-              </div>
-              <div v-if="evaluationResult.marketValidationGaps.length">
-                <p class="rpt-col__label">시장 검증 필요사항</p>
-                <ul class="rpt-list rpt-list--warn">
-                  <li v-for="(v, i) in evaluationResult.marketValidationGaps" :key="i">{{ v }}</li>
-                </ul>
+              <div class="rpt-three-col-sections">
+                <div v-if="evaluationResult.expectedUseCases.length">
+                  <p class="rpt-col__label">예상 활용 사례</p>
+                  <ul class="rpt-list">
+                    <li v-for="(v, i) in evaluationResult.expectedUseCases" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
+                <div v-if="evaluationResult.monetizationPaths.length">
+                  <p class="rpt-col__label">수익화 경로</p>
+                  <ul class="rpt-list">
+                    <li v-for="(v, i) in evaluationResult.monetizationPaths" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
+                <div v-if="evaluationResult.marketValidationGaps.length">
+                  <p class="rpt-col__label">시장 검증 필요사항</p>
+                  <ul class="rpt-list rpt-list--warn">
+                    <li v-for="(v, i) in evaluationResult.marketValidationGaps" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
@@ -988,17 +993,19 @@ onBeforeUnmount(() => {
                 <span v-if="evaluationResult.readinessLevel" class="rpt-badge rpt-badge--readiness">{{ getReadinessLabel(evaluationResult.readinessLevel) }}</span>
               </div>
               <p v-if="evaluationResult.readinessDecision" class="rpt-section__body">{{ evaluationResult.readinessDecision }}</p>
-              <div v-if="evaluationResult.requiredBeforeFiling.length">
-                <p class="rpt-col__label">출원 전 필수 보완</p>
-                <ul class="rpt-list rpt-list--warn">
-                  <li v-for="(v, i) in evaluationResult.requiredBeforeFiling" :key="i">{{ v }}</li>
-                </ul>
-              </div>
-              <div v-if="evaluationResult.diagnosticGaps.length">
-                <p class="rpt-col__label">진단 부족 항목</p>
-                <ul class="rpt-list rpt-list--muted">
-                  <li v-for="(v, i) in evaluationResult.diagnosticGaps" :key="i">{{ v }}</li>
-                </ul>
+              <div class="rpt-two-col-sections">
+                <div v-if="evaluationResult.requiredBeforeFiling.length">
+                  <p class="rpt-col__label">출원 전 필수 보완</p>
+                  <ul class="rpt-list rpt-list--warn">
+                    <li v-for="(v, i) in evaluationResult.requiredBeforeFiling" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
+                <div v-if="evaluationResult.diagnosticGaps.length">
+                  <p class="rpt-col__label">진단 부족 항목</p>
+                  <ul class="rpt-list rpt-list--muted">
+                    <li v-for="(v, i) in evaluationResult.diagnosticGaps" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
@@ -1025,17 +1032,19 @@ onBeforeUnmount(() => {
             <div class="rpt-section">
               <p class="rpt-section__title">권리화 전략</p>
               <p v-if="evaluationResult.claimIndependentDirection" class="rpt-section__body">{{ evaluationResult.claimIndependentDirection }}</p>
-              <div v-if="evaluationResult.claimDependentIdeas.length">
-                <p class="rpt-col__label">종속항 아이디어</p>
-                <ul class="rpt-list">
-                  <li v-for="(v, i) in evaluationResult.claimDependentIdeas" :key="i">{{ v }}</li>
-                </ul>
-              </div>
-              <div v-if="evaluationResult.claimAvoidanceNotes.length">
-                <p class="rpt-col__label">회피설계 방지 메모</p>
-                <ul class="rpt-list">
-                  <li v-for="(v, i) in evaluationResult.claimAvoidanceNotes" :key="i">{{ v }}</li>
-                </ul>
+              <div class="rpt-two-col-sections">
+                <div v-if="evaluationResult.claimDependentIdeas.length">
+                  <p class="rpt-col__label">종속항 아이디어</p>
+                  <ul class="rpt-list">
+                    <li v-for="(v, i) in evaluationResult.claimDependentIdeas" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
+                <div v-if="evaluationResult.claimAvoidanceNotes.length">
+                  <p class="rpt-col__label">회피설계 방지 메모</p>
+                  <ul class="rpt-list">
+                    <li v-for="(v, i) in evaluationResult.claimAvoidanceNotes" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
@@ -1043,34 +1052,40 @@ onBeforeUnmount(() => {
             <div v-if="evaluationResult.priorArtPurpose || evaluationResult.priorArtQueries.length" class="rpt-section">
               <p class="rpt-section__title">선행기술 조사 계획</p>
               <p v-if="evaluationResult.priorArtPurpose" class="rpt-section__body">{{ evaluationResult.priorArtPurpose }}</p>
-              <div v-if="evaluationResult.priorArtQueries.length">
-                <p class="rpt-col__label">추천 검색어</p>
-                <ul class="rpt-list">
-                  <li v-for="(v, i) in evaluationResult.priorArtQueries" :key="i">{{ v }}</li>
-                </ul>
-              </div>
-              <div v-if="evaluationResult.priorArtFocusItems.length">
-                <p class="rpt-col__label">중점 조사 항목</p>
-                <ul class="rpt-list">
-                  <li v-for="(f, i) in evaluationResult.priorArtFocusItems" :key="i">{{ f.item }}</li>
-                </ul>
+              <div class="rpt-two-col-sections">
+                <div v-if="evaluationResult.priorArtQueries.length">
+                  <p class="rpt-col__label">추천 검색어</p>
+                  <ul class="rpt-list">
+                    <li v-for="(v, i) in evaluationResult.priorArtQueries" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
+                <div v-if="evaluationResult.priorArtFocusItems.length">
+                  <p class="rpt-col__label">중점 조사 항목</p>
+                  <ul class="rpt-list">
+                    <li v-for="(f, i) in evaluationResult.priorArtFocusItems" :key="i">{{ f.item }}</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
             <!-- 출원 전략 -->
             <div class="rpt-section">
               <p class="rpt-section__title">출원 전략</p>
-              <p v-if="evaluationResult.filingRoute" class="rpt-kv">
-                <span>추천 경로</span>{{ evaluationResult.filingRoute }}
-              </p>
-              <p v-if="evaluationResult.filingTargetCount" class="rpt-kv">
-                <span>출원 예정 국가</span>{{ evaluationResult.filingTargetCount }}개국 (해외 {{ evaluationResult.filingHasOverseas ? '포함' : '미포함' }})
-              </p>
-              <div v-if="evaluationResult.filingCountryNotes.length">
-                <p class="rpt-col__label">국가별 메모</p>
-                <ul class="rpt-list">
-                  <li v-for="(v, i) in evaluationResult.filingCountryNotes" :key="i">{{ v }}</li>
-                </ul>
+              <div class="rpt-two-col-sections">
+                <div>
+                  <p v-if="evaluationResult.filingRoute" class="rpt-kv">
+                    <span>추천 경로</span>{{ evaluationResult.filingRoute }}
+                  </p>
+                  <p v-if="evaluationResult.filingTargetCount" class="rpt-kv">
+                    <span>출원 예정 국가</span>{{ evaluationResult.filingTargetCount }}개국 (해외 {{ evaluationResult.filingHasOverseas ? '포함' : '미포함' }})
+                  </p>
+                </div>
+                <div v-if="evaluationResult.filingCountryNotes.length">
+                  <p class="rpt-col__label">국가별 메모</p>
+                  <ul class="rpt-list">
+                    <li v-for="(v, i) in evaluationResult.filingCountryNotes" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
@@ -1080,41 +1095,48 @@ onBeforeUnmount(() => {
                 <p class="rpt-section__title">출원 투자 판단</p>
                 <span v-if="evaluationResult.investmentDecision" class="rpt-badge rpt-badge--decision">{{ getInvestmentLabel(evaluationResult.investmentDecision) }}</span>
               </div>
-              <p v-if="evaluationResult.investmentRationale" class="rpt-section__body">{{ evaluationResult.investmentRationale }}</p>
-              <div v-if="evaluationResult.investmentGoConditions.length">
-                <p class="rpt-col__label">진행 조건</p>
-                <ul class="rpt-list rpt-list--pos">
-                  <li v-for="(v, i) in evaluationResult.investmentGoConditions" :key="i">{{ v }}</li>
-                </ul>
-              </div>
-              <div v-if="evaluationResult.investmentStopConditions.length">
-                <p class="rpt-col__label">보류 / 중단 조건</p>
-                <ul class="rpt-list rpt-list--neg">
-                  <li v-for="(v, i) in evaluationResult.investmentStopConditions" :key="i">{{ v }}</li>
-                </ul>
-              </div>
-              <div v-if="evaluationResult.investmentNextSprint.length">
-                <p class="rpt-col__label">단기 보완 작업</p>
-                <ul class="rpt-list">
-                  <li v-for="(v, i) in evaluationResult.investmentNextSprint" :key="i">{{ v }}</li>
-                </ul>
+              <div class="rpt-four-col-sections">
+                <div v-if="evaluationResult.investmentRationale">
+                  <p class="rpt-col__label">판단 근거</p>
+                  <p class="rpt-section__body">{{ evaluationResult.investmentRationale }}</p>
+                </div>
+                <div v-if="evaluationResult.investmentGoConditions.length">
+                  <p class="rpt-col__label">진행 조건</p>
+                  <ul class="rpt-list rpt-list--pos">
+                    <li v-for="(v, i) in evaluationResult.investmentGoConditions" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
+                <div v-if="evaluationResult.investmentStopConditions.length">
+                  <p class="rpt-col__label">보류 / 중단 조건</p>
+                  <ul class="rpt-list rpt-list--neg">
+                    <li v-for="(v, i) in evaluationResult.investmentStopConditions" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
+                <div v-if="evaluationResult.investmentNextSprint.length">
+                  <p class="rpt-col__label">단기 보완 작업</p>
+                  <ul class="rpt-list">
+                    <li v-for="(v, i) in evaluationResult.investmentNextSprint" :key="i">{{ v }}</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
             <!-- 보완 액션 -->
             <div v-if="evaluationResult.nextActions.length" class="rpt-section">
               <p class="rpt-section__title">보완 액션</p>
-              <div v-for="group in groupedNextActions" :key="group.priority" class="action-group">
-                <p class="action-group__label" :class="`action-group__label--${group.priority}`">{{ group.label }}</p>
-                <div class="action-grid">
-                  <div
-                    v-for="(a, i) in group.items"
-                    :key="i"
-                    class="action-item"
-                    :class="`action-item--${group.priority}`"
-                  >
-                    <span class="action-item__text">{{ a.action }}</span>
-                    <p v-if="a.reason" class="action-item__reason">{{ a.reason }}</p>
+              <div class="action-priority-row">
+                <div v-for="group in groupedNextActions" :key="group.priority" class="action-priority-col">
+                  <p class="action-group__label" :class="`action-group__label--${group.priority}`">{{ group.label }}</p>
+                  <div class="action-col-items">
+                    <div
+                      v-for="(a, i) in group.items"
+                      :key="i"
+                      class="action-item"
+                      :class="`action-item--${group.priority}`"
+                    >
+                      <span class="action-item__text">{{ a.action }}</span>
+                      <p v-if="a.reason" class="action-item__reason">{{ a.reason }}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1240,7 +1262,7 @@ onBeforeUnmount(() => {
   color: #475569;
 }
 .status-pill--completed { background: #dcfce7; color: #14532d; }
-.status-pill--pending   { background: #fff7ed; color: #92400e; }
+.status-pill--pending   { background: #eff6ff; color: #1d4ed8; }
 .status-pill--failed    { background: #fee2e2; color: #991b1b; }
 
 /* ══════════════════════════════════════════════════
@@ -1363,6 +1385,9 @@ onBeforeUnmount(() => {
   display: flex; align-items: center;
   justify-content: space-between; gap: 8px;
 }
+.dropdown-item__left {
+  display: flex; align-items: center; gap: 6px;
+}
 .dropdown-item__date { font-size: 11.5px; color: #94a3b8; }
 .btn-delete-history {
   display: flex;
@@ -1403,10 +1428,12 @@ onBeforeUnmount(() => {
 
 /* ── 그리드 ───────────────────────────────────────── */
 .lab-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 2fr 3fr;
   gap: 20px;
+  align-items: stretch;
 }
+.lab-grid--has-result { align-items: start; }
 
 /* ── 패널 공통 ────────────────────────────────────── */
 .panel {
@@ -1697,7 +1724,7 @@ onBeforeUnmount(() => {
 .rpt-section--limitations { background: #f8fafc; }
 .rpt-section__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .rpt-section__title {
-  font-size: 11.5px; font-weight: 700; color: #94a3b8;
+  font-size: 14px; font-weight: 700; color: #94a3b8;
   text-transform: uppercase; letter-spacing: 0.05em; margin: 0;
 }
 .rpt-section__body { font-size: 13.5px; color: #374151; line-height: 1.72; margin: 0; white-space: pre-line; }
@@ -1740,6 +1767,10 @@ onBeforeUnmount(() => {
 .rpt-list--pos li { color: #166534; }
 .rpt-list--neg li::before { color: #f87171; }
 .rpt-list--neg li { color: #b91c1c; }
+.rpt-two-col-sections   { display: flex; flex-direction: column; gap: 12px; }
+.rpt-three-col-sections { display: flex; flex-direction: column; gap: 12px; }
+.rpt-four-col-sections  { display: flex; flex-direction: column; gap: 12px; }
+.rpt-list--risk { display: flex; flex-direction: column; gap: 5px; }
 .rpt-list--risk li::before { color: #f87171; }
 .rpt-list--risk li { color: #b91c1c; }
 .rpt-list--warn li::before { color: #f59e0b; }
@@ -1747,8 +1778,8 @@ onBeforeUnmount(() => {
 .rpt-list--muted li { color: #64748b; }
 
 /* ── 평가 영역 아코디언 ────────────────────────────── */
-.dim-accordion { display: flex; flex-direction: column; gap: 6px; }
-.dim-item { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.dim-accordion { display: flex; gap: 6px; }
+.dim-item { flex: 1; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
 .dim-item__header {
   width: 100%; display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; background: none; border: none; cursor: pointer;
@@ -1770,15 +1801,18 @@ onBeforeUnmount(() => {
 .dim-item__list li { font-size: 12.5px; color: #475569; line-height: 1.65; }
 
 /* ── 보완 액션 ─────────────────────────────────────── */
+.action-priority-row { display: flex; flex-direction: column; gap: 16px; }
+.action-priority-col { display: flex; flex-direction: column; gap: 6px; }
+.action-col-items { display: flex; flex-direction: column; gap: 6px; }
 .action-group { margin-bottom: 16px; }
 .action-group__label {
   font-size: 11px; font-weight: 700;
   padding: 2px 8px; border-radius: 4px;
   display: inline-block; margin-bottom: 8px;
 }
-.action-group__label--high   { background: #fee2e2; color: #b91c1c; }
-.action-group__label--medium { background: #fef3c7; color: #b45309; }
-.action-group__label--low    { background: #f1f5f9; color: #64748b; }
+.action-group__label--high   { background: transparent; color: #b91c1c; }
+.action-group__label--medium { background: transparent; color: #b45309; }
+.action-group__label--low    { background: transparent; color: #64748b; }
 .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .action-item {
   padding: 10px 14px; border-radius: 10px;
