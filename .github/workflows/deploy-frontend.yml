@@ -23,7 +23,7 @@ jobs:
       IMAGE_NAME: skipa-frontend
       INFRA_REPO: skipers/skipa-infra
       INFRA_PATH: k8s/frontend
-      VITE_API_BASE_URL: https://api-team8-skipa.skala25a.project.skala-ai.com
+      VITE_API_BASE_URL: https://api-team8-skipa.skala25a.project.skala-ai.com/api/v1
 
     steps:
       - name: Checkout frontend repository
