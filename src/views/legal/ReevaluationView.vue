@@ -1194,7 +1194,7 @@ onMounted(async () => {
 /* ── 열 헤더 ─────────────────────────────────────── */
 .col-header {
   display: grid;
-  grid-template-columns: 36px 1fr 150px 140px 180px 72px 36px;
+  grid-template-columns: 36px 1fr 190px 140px 180px 72px 36px;
   gap: 20px;
   padding: 8px 20px;
   border-bottom: 1.5px solid var(--color-border);
@@ -1220,7 +1220,7 @@ onMounted(async () => {
 
 .reeval-item {
   display: grid;
-  grid-template-columns: 36px 1fr 150px 140px 180px 72px 36px;
+  grid-template-columns: 36px 1fr 190px 140px 180px 72px 36px;
   align-items: center;
   gap: 20px;
   padding: 14px 20px;
@@ -1307,6 +1307,9 @@ onMounted(async () => {
   cursor: pointer;
   min-width: 0;
   padding-left: 28px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-field {
