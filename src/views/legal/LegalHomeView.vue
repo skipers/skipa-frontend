@@ -639,12 +639,12 @@ onMounted(loadAll)
   transition: box-shadow 0.2s;
 }
 .rgc-card--done {
-  background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, var(--color-surface) 55%);
-  border-color: rgba(99,102,241,0.2);
+  background: linear-gradient(135deg, rgba(103,226,171,0.1) 0%, var(--color-surface) 55%);
+  border-color: rgba(103,226,171,0.35);
 }
 .rgc-card--progress {
-  background: linear-gradient(135deg, rgba(245,158,11,0.08) 0%, var(--color-surface) 55%);
-  border-color: rgba(245,158,11,0.2);
+  background: linear-gradient(135deg, rgba(103,226,171,0.1) 0%, var(--color-surface) 55%);
+  border-color: rgba(103,226,171,0.35);
 }
 
 /* 우측 상단 절대 위치 아이콘 */
@@ -655,8 +655,8 @@ onMounted(loadAll)
   border-radius: 11px;
   display: flex; align-items: center; justify-content: center;
 }
-.rgc-card--done     .rgc-icon-wrap { background: rgba(99,102,241,0.12); color: #6366f1; }
-.rgc-card--progress .rgc-icon-wrap { background: rgba(245,158,11,0.12); color: #d97706; }
+.rgc-card--done     .rgc-icon-wrap { background: rgba(103,226,171,0.18); color: #3ecf8e; }
+.rgc-card--progress .rgc-icon-wrap { background: rgba(103,226,171,0.18); color: #3ecf8e; }
 .rgc-card--inactive .rgc-icon-wrap,
 .rgc-card--loading  .rgc-icon-wrap { background: var(--color-surface-muted, #f1f5f9); color: var(--color-text-secondary); }
 
@@ -705,8 +705,8 @@ onMounted(loadAll)
   line-height: 1;
   flex-shrink: 0;
 }
-.rgc-card--done     .rgc-pct-hero { color: #6366f1; }
-.rgc-card--progress .rgc-pct-hero { color: #d97706; }
+.rgc-card--done     .rgc-pct-hero { color: #2db87a; }
+.rgc-card--progress .rgc-pct-hero { color: #2db87a; }
 .rgc-card--inactive .rgc-pct-hero,
 .rgc-card--loading  .rgc-pct-hero { color: var(--color-border); }
 
@@ -736,14 +736,14 @@ onMounted(loadAll)
 /* 막대 */
 .rgc-bar-track {
   width: 100%;
-  height: 34px;
+  height: 28px;
   background: rgba(0,0,0,0.05);
   border-radius: 8px;
   overflow: hidden;
   box-sizing: border-box;
 }
-.rgc-card--done     .rgc-bar-track { border: 2px solid rgba(99,102,241,0.35); }
-.rgc-card--progress .rgc-bar-track { border: 2px solid rgba(245,158,11,0.35); }
+.rgc-card--done     .rgc-bar-track { border: 2px solid rgba(103,226,171,0.45); }
+.rgc-card--progress .rgc-bar-track { border: 2px solid rgba(103,226,171,0.45); }
 .rgc-card--inactive .rgc-bar-track,
 .rgc-card--loading  .rgc-bar-track { border: 2px solid var(--color-border); }
 .rgc-bar-fill {
@@ -759,8 +759,8 @@ onMounted(loadAll)
   from { clip-path: inset(0 100% 0 0); }
   to   { clip-path: inset(0 0%   0 0); }
 }
-.rgc-bar-fill--done     { background: linear-gradient(90deg, #a5b4fc, #6366f1, #4f46e5); }
-.rgc-bar-fill--progress { background: linear-gradient(90deg, #fcd34d, #f59e0b, #d97706); }
+.rgc-bar-fill--done     { background: linear-gradient(90deg, #86efca, #67E2AB, #3ecf8e); }
+.rgc-bar-fill--progress { background: linear-gradient(90deg, #86efca, #67E2AB, #3ecf8e); }
 .rgc-bar-label {
   color: #fff;
   font-size: 14px;
