@@ -526,11 +526,11 @@ const DONUT_C = 314  // 2π × r=50
 const donutTotal = computed(() => techFieldItems.value.reduce((s, i) => s + i.count, 0))
 
 const donutSegments = computed(() => {
-  const items = techFieldItems.value
+  const items = [...techFieldItems.value].sort((a, b) => b.count - a.count)
   const total = donutTotal.value
   if (!total) return []
   let displayItems: { name: string; count: number }[]
-  if (items.length <= 5) {
+  if (items.length <= 4) {
     displayItems = items
   } else {
     const etcCount = items.slice(4).reduce((s, i) => s + i.count, 0)
