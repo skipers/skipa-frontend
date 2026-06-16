@@ -55,11 +55,6 @@
         <template v-if="!deptId">
           <div class="field-stack-header">
             <span class="field-stack-title">기술분야별 구성 — {{ selectedBarLabel }}</span>
-            <div class="field-stack-legend">
-              <span v-for="(f, i) in heatmapFields" :key="f" class="field-stack-legend-item">
-                <span class="field-legend-dot" :style="{ background: fieldColors[i] }" />{{ f }}
-              </span>
-            </div>
           </div>
           <div class="field-stack-bar">
             <div
@@ -463,9 +458,6 @@ const selectedMonthItems = computed(() =>
   border-top: 1px solid var(--color-border-light);
 }
 .field-stack-title { font-size: 12.5px; font-weight: 600; color: var(--color-text-secondary); }
-.field-stack-legend { display: flex; gap: 10px; flex-wrap: wrap; }
-.field-stack-legend-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-secondary); }
-.field-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 
 .field-stack-bar {
   display: flex;
