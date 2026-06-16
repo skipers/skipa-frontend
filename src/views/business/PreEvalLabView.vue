@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, computed } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { preEvaluationsApi } from '@/api/preEvaluations'
 import type { PreEvaluationListItem, PreEvaluationDetailResponse } from '@/api/preEvaluations'
 
@@ -76,9 +78,15 @@ interface ChatMessage {
   role: ChatRole
   text: string
   typing?: boolean
+  error?: boolean
 }
 
 const GREETING = '안녕하세요! 평가 결과에 대해 궁금한 점을 질문해주세요.'
+
+function renderMarkdown(text: string): string {
+  const html = marked.parse(text, { breaks: true }) as string
+  return DOMPurify.sanitize(html)
+}
 
 
 const priorityLabel: Record<string, string> = { high: '높음', medium: '중간', low: '낮음' }
@@ -593,6 +601,7 @@ async function sendChatMessage() {
         id: nextMsgId(),
         role: 'assistant',
         text: '답변을 불러오는 데 실패했습니다. 다시 시도해주세요.',
+        error: true,
       })
     }
   } finally {
@@ -1125,10 +1134,11 @@ onBeforeUnmount(() => {
 
         <div ref="chatViewport" class="chat-body">
           <div v-for="message in chatMessages" :key="message.id" class="chat-row" :class="message.role">
-            <div class="chat-bubble" :class="message.role">
+            <div class="chat-bubble" :class="[message.role, { 'chat-bubble--error': message.error }]">
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
               </template>
+              <div v-else-if="message.role === 'assistant'" class="md-content" v-html="renderMarkdown(message.text)"/>
               <template v-else>{{ message.text }}</template>
             </div>
           </div>
@@ -1142,7 +1152,7 @@ onBeforeUnmount(() => {
         </div>
         <form class="chat-composer" @submit.prevent="sendChatMessage">
           <textarea ref="chatInputEl" v-model="chatInput" rows="1" placeholder="평가 결과에 대해 질문해 보세요." :disabled="!isEmbeddingReady" @keydown="handleChatKeydown" @input="autoResizeChatInput"></textarea>
-          <button type="submit" :disabled="chatSending || selectedHistoryId === null || !isEmbeddingReady">전송</button>
+          <button type="submit" :disabled="chatSending || selectedHistoryId === null || !isEmbeddingReady">{{ chatSending ? '...' : '전송' }}</button>
         </form>
       </div>
     </aside>
@@ -1824,6 +1834,36 @@ onBeforeUnmount(() => {
 }
 .chat-bubble.assistant { background: #fff; color: #102033; border-top-left-radius: 4px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
 .chat-bubble.user      { background: var(--navy); color: #fff; border-top-right-radius: 4px; }
+.chat-bubble--error    { background: #fef2f2; color: #991b1b; box-shadow: none; border: 1px solid #fecaca; }
+
+.md-content { white-space: normal; }
+.md-content :deep(p)  { margin: 0 0 8px; }
+.md-content :deep(p:last-child) { margin-bottom: 0; }
+.md-content :deep(h1),
+.md-content :deep(h2),
+.md-content :deep(h3) { font-weight: 700; margin: 14px 0 6px; line-height: 1.4; }
+.md-content :deep(h2) { font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+.md-content :deep(h3) { font-size: 13.5px; }
+.md-content :deep(ul),
+.md-content :deep(ol) { margin: 4px 0 8px; padding-left: 20px; }
+.md-content :deep(li) { margin-bottom: 3px; }
+.md-content :deep(hr) { border: none; border-top: 1px solid #e2e8f0; margin: 12px 0; }
+.md-content :deep(strong) { font-weight: 700; }
+.md-content :deep(code) {
+  background: rgba(0,0,0,0.07); border-radius: 4px;
+  padding: 1px 5px; font-size: 12px; font-family: monospace;
+}
+.md-content :deep(table) {
+  border-collapse: collapse; font-size: 12.5px; line-height: 1.5;
+  margin: 8px 0 12px; display: block; overflow-x: auto; max-width: 100%;
+}
+.md-content :deep(th),
+.md-content :deep(td) {
+  padding: 7px 12px; border: 1px solid #d1d5db;
+  text-align: left; vertical-align: top; white-space: normal; min-width: 80px;
+}
+.md-content :deep(th) { background: #f1f5f9; font-weight: 600; white-space: nowrap; }
+.md-content :deep(tr:nth-child(even) td) { background: #f8fafc; }
 
 .typing-dots { display: inline-flex; align-items: center; gap: 4px; min-height: 18px; }
 .typing-dots span {
