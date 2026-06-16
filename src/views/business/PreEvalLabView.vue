@@ -171,6 +171,38 @@ let   _isStarting  = false  // non-reactive guard against double-submission
 
 const pollingTimer = ref<number | null>(null)
 let embeddingPollTimer: ReturnType<typeof setTimeout> | null = null
+const historyPollTimers = ref<Record<number, ReturnType<typeof setTimeout>>>({})
+
+function stopHistoryPoll(id: number) {
+  if (historyPollTimers.value[id]) {
+    clearTimeout(historyPollTimers.value[id])
+    delete historyPollTimers.value[id]
+  }
+}
+
+function startHistoryPoll(id: number) {
+  stopHistoryPoll(id)
+  historyPollTimers.value[id] = setTimeout(async () => {
+    try {
+      const status = await preEvaluationsApi.getStatus(id)
+      const done = ['REPORT_COMPLETED', 'EMBEDDING_COMPLETED', 'COMPLETED'].includes(status.status)
+      const failed = ['FAILED', 'REPORT_FAILED'].includes(status.status)
+
+      const idx = historyList.value.findIndex(h => h.id === id)
+      if (idx !== -1) {
+        historyList.value[idx] = { ...historyList.value[idx], status: status.status }
+      }
+
+      if (done) {
+        await fetchGradesEagerly(historyList.value.filter(h => h.id === id))
+      } else if (!failed) {
+        startHistoryPoll(id)
+      }
+    } catch {
+      startHistoryPoll(id)
+    }
+  }, 3000)
+}
 
 // ── computed ──────────────────────────────────────────
 const isStartEnabled = computed(() =>
@@ -209,7 +241,7 @@ function scrollChatToBottom() {
 // ── 이력 ─────────────────────────────────────────────
 async function fetchGradesEagerly(items: PreEvaluationListItem[]) {
   const targets = items.filter(
-    item => (item.status === 'REPORT_COMPLETED' || item.status === 'EMBEDDING_COMPLETED') && item.reportUrl && !gradeCache.value[item.id],
+    item => (item.status === 'REPORT_COMPLETED' || item.status === 'EMBEDDING_COMPLETED' || item.status === 'COMPLETED') && item.reportUrl && !gradeCache.value[item.id],
   )
   await Promise.all(
     targets.map(async item => {
@@ -231,6 +263,11 @@ async function fetchHistory() {
     const res = await preEvaluationsApi.getList({ size: 100 })
     historyList.value = res.items ?? []
     fetchGradesEagerly(historyList.value)
+
+    const pending = historyList.value.filter(
+      item => !['REPORT_COMPLETED', 'EMBEDDING_COMPLETED', 'COMPLETED', 'FAILED', 'REPORT_FAILED'].includes(item.status),
+    )
+    pending.forEach(item => startHistoryPoll(item.id))
   } catch {
     historyList.value = []
   }
@@ -608,6 +645,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (pollingTimer.value) window.clearTimeout(pollingTimer.value)
   if (embeddingPollTimer) clearTimeout(embeddingPollTimer)
+  Object.keys(historyPollTimers.value).forEach(id => stopHistoryPoll(Number(id)))
 })
 </script>
 
@@ -661,6 +699,19 @@ onBeforeUnmount(() => {
                 <p class="dropdown-item__name">{{ item.title }}</p>
                 <div class="dropdown-item__meta">
                   <span class="dropdown-item__date">{{ formatDate(item.completedAt ?? item.createdAt) }}</span>
+                  <span
+                    v-if="gradeCache[item.id]"
+                    class="grade-pill"
+                    :class="`grade-pill--${gradeCache[item.id].toLowerCase()}`"
+                  >{{ gradeCache[item.id] }}</span>
+                  <span
+                    v-else-if="['FAILED', 'REPORT_FAILED'].includes(item.status)"
+                    class="status-pill status-pill--failed"
+                  >오류</span>
+                  <span
+                    v-else-if="!['REPORT_COMPLETED', 'EMBEDDING_COMPLETED', 'COMPLETED'].includes(item.status)"
+                    class="status-pill status-pill--pending"
+                  >처리 중</span>
                   <button
                     class="btn-delete-history"
                     @click.stop="deleteHistory(item.id)"
@@ -694,7 +745,7 @@ onBeforeUnmount(() => {
           <template v-if="selectedDetail">
             <div class="readonly-header">
               <h2 class="panel-title readonly-panel-title">{{ selectedDetail.title }}</h2>
-              <p class="readonly-date">평가일 {{ evaluationResult ? formatDateTime(evaluationResult.evaluatedAt) || formatDate(selectedDetail.completedAt ?? selectedDetail.createdAt) : formatDate(selectedDetail.completedAt ?? selectedDetail.createdAt) }}</p>
+              <p class="readonly-date">평가일 {{ evaluationResult ? formatDateTime(evaluationResult.evaluatedAt) || formatDateTime(selectedDetail.completedAt ?? selectedDetail.createdAt) : formatDateTime(selectedDetail.completedAt ?? selectedDetail.createdAt) }}</p>
               <button
                 v-if="['FAILED', 'REPORT_FAILED'].includes(selectedDetail.status)"
                 class="btn-retry-history"
