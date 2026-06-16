@@ -10,6 +10,15 @@ export interface ReviewCycle {
   endDate: string
 }
 
+export type CycleStatusLabel =
+  | 'NO_TARGETS'
+  | 'REPORT_NOT_STARTED'
+  | 'REPORT_GENERATING'
+  | 'REPORT_FAILED'
+  | 'REVIEW_NOT_REQUESTED'
+  | 'REVIEW_IN_PROGRESS'
+  | 'REVIEW_COMPLETED'
+
 export interface LegalDashboardResponse {
   reviewCycle: ReviewCycle
   kpi: {
@@ -19,6 +28,21 @@ export interface LegalDashboardResponse {
     overdue: number
     unread: number
     unrequested: number
+  }
+  cycleProgress: {
+    targetPatentCount: number
+    reports: {
+      notStarted: number
+      generating: number
+      completed: number
+      failed: number
+    }
+    reviews: {
+      scheduled: number
+      inReview: number
+      submitted: number
+    }
+    statusLabel: CycleStatusLabel
   }
   departments: {
     departmentId: number
