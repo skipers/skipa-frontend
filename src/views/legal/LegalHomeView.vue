@@ -151,7 +151,7 @@
             >
               <div class="reply-item__left">
                 <div class="reply-item__avatar">{{ r.dept.charAt(0) }}</div>
-                <div>
+                <div class="reply-item__text">
                   <p class="reply-item__title">{{ r.patent }}</p>
                   <p class="reply-item__dept">{{ r.dept }}</p>
                 </div>
@@ -1351,6 +1351,11 @@ onMounted(loadAll)
   font-weight: 700;
   color: var(--color-surface);
   flex-shrink: 0;
+}
+
+.reply-item__text {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .reply-item__title {
