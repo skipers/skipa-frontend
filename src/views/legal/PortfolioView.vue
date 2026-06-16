@@ -34,8 +34,12 @@
           </h3>
         </div>
         <div class="insight-list">
-          <!-- TODO: 확인 필요 - API가 string[] 반환으로 변경됨 (기존 type/icon/text 구조 제거) -->
-          <div v-for="(ins, i) in insights" :key="i" class="insight-item">
+          <div
+            v-for="(ins, i) in insights"
+            :key="i"
+            class="insight-item"
+            :class="['insight-item--warn', 'insight-item--info', 'insight-item--suggest'][i % 3]"
+          >
             <p class="insight-item__text">{{ ins }}</p>
           </div>
         </div>
