@@ -151,7 +151,7 @@
             >
               <div class="reply-item__left">
                 <div class="reply-item__avatar">{{ r.dept.charAt(0) }}</div>
-                <div>
+                <div class="reply-item__info">
                   <p class="reply-item__title">{{ r.patent }}</p>
                   <p class="reply-item__dept">{{ r.dept }}</p>
                 </div>
@@ -1353,14 +1353,19 @@ onMounted(loadAll)
   flex-shrink: 0;
 }
 
+.reply-item__info {
+  min-width: 0;
+  overflow: hidden;
+}
 .reply-item__title {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--color-text);
   margin: 0 0 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .reply-item__dept {
   font-size: 12.5px;
