@@ -55,21 +55,16 @@
         <template v-if="!deptId">
           <div class="field-stack-header">
             <span class="field-stack-title">기술분야별 구성 — {{ selectedBarLabel }}</span>
-            <div class="field-stack-legend">
-              <span v-for="(f, i) in heatmapFields" :key="f" class="field-stack-legend-item">
-                <span class="field-legend-dot" :style="{ background: fieldColors[i] }" />{{ f }}
-              </span>
-            </div>
           </div>
           <div class="field-stack-bar">
             <div
               v-for="(f, i) in heatmapFields"
               :key="f"
               class="field-stack-seg"
-              :style="{ width: fieldStackPct(f) + '%', background: fieldColors[i] }"
+              :style="{ width: fieldStackPct(f) + '%', background: fieldColors[i], color: (i % FIELD_COLORS.length) < 4 ? '#ffffff' : '#374151' }"
               :title="`${f}: ${heatmapData[f]?.[heatmapKey] ?? 0}건 (${fieldStackPct(f)}%)`"
             >
-              <span v-if="fieldStackPct(f) >= 10" class="field-stack-seg__label">
+              <span v-if="fieldStackPct(f) >= 5" class="field-stack-seg__label">
                 <span class="field-stack-seg__name">{{ f }}</span>
                 <span class="field-stack-seg__pct">{{ fieldStackPct(f) }}%</span>
               </span>
@@ -297,16 +292,13 @@ const filteredItems = computed(() => {
 // ── 기술분야별 스택 바 (allItems로부터 계산) ─────────────
 const FIELD_COLORS = ['#6366f1', '#7c7ff3', '#9699f5', '#b0b2f8', '#c9cbfa', '#d8d9fc', '#e6e7fd', '#f0f0fe']
 
-const heatmapFields = computed(() =>
+const allTechFields = computed(() =>
   [...new Set(allItems.value.map(i => i.techField).filter(Boolean))]
 )
-const fieldColors = computed(() =>
-  heatmapFields.value.map((_, i) => FIELD_COLORS[i % FIELD_COLORS.length])
-)
 
-const heatmapData = computed(() => {
+const rawHeatmapData = computed(() => {
   const result: Record<string, Record<string, number>> = {}
-  for (const field of heatmapFields.value) {
+  for (const field of allTechFields.value) {
     result[field] = {
       '3m': allItems.value.filter(i => i.techField === field && i.dday <= 90).length,
       '6m': allItems.value.filter(i => i.techField === field && i.dday <= 180).length,
@@ -319,6 +311,32 @@ const heatmapData = computed(() => {
 })
 
 const heatmapKey = computed(() => activeFilter.value === 'all' ? '5y' : activeFilter.value)
+
+const heatmapFields = computed(() => {
+  const key = heatmapKey.value
+  const sorted = [...allTechFields.value].sort(
+    (a, b) => (rawHeatmapData.value[b]?.[key] ?? 0) - (rawHeatmapData.value[a]?.[key] ?? 0)
+  )
+  const total = sorted.reduce((s, f) => s + (rawHeatmapData.value[f]?.[key] ?? 0), 0)
+  if (!total) return sorted
+  return sorted.filter(f => (rawHeatmapData.value[f]?.[key] ?? 0) / total >= 0.05)
+})
+
+const fieldColors = computed(() =>
+  heatmapFields.value.map((_, i) => FIELD_COLORS[i % FIELD_COLORS.length])
+)
+
+const heatmapData = computed(() => {
+  const key = heatmapKey.value
+  const sorted = [...allTechFields.value].sort(
+    (a, b) => (rawHeatmapData.value[b]?.[key] ?? 0) - (rawHeatmapData.value[a]?.[key] ?? 0)
+  )
+  const total = sorted.reduce((s, f) => s + (rawHeatmapData.value[f]?.[key] ?? 0), 0)
+  const main = total ? sorted.filter(f => (rawHeatmapData.value[f]?.[key] ?? 0) / total >= 0.05) : sorted
+  const result: Record<string, Record<string, number>> = {}
+  for (const f of main) result[f] = rawHeatmapData.value[f]
+  return result
+})
 const fieldStackTotal = computed(() =>
   heatmapFields.value.reduce((sum, f) => sum + (heatmapData.value[f]?.[heatmapKey.value] ?? 0), 0)
 )
@@ -463,9 +481,6 @@ const selectedMonthItems = computed(() =>
   border-top: 1px solid var(--color-border-light);
 }
 .field-stack-title { font-size: 12.5px; font-weight: 600; color: var(--color-text-secondary); }
-.field-stack-legend { display: flex; gap: 10px; flex-wrap: wrap; }
-.field-stack-legend-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-secondary); }
-.field-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 
 .field-stack-bar {
   display: flex;
@@ -482,6 +497,8 @@ const selectedMonthItems = computed(() =>
   min-width: 0;
   overflow: hidden;
 }
+.field-stack-seg:first-child { border-radius: 8px 0 0 8px; }
+.field-stack-seg:last-child { border-radius: 0 8px 8px 0; }
 .field-stack-seg__label {
   display: flex;
   flex-direction: column;
@@ -493,7 +510,7 @@ const selectedMonthItems = computed(() =>
 .field-stack-seg__name {
   font-size: 10.5px;
   font-weight: 600;
-  color: #fff;
+  color: inherit;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -502,7 +519,7 @@ const selectedMonthItems = computed(() =>
 .field-stack-seg__pct {
   font-size: 11px;
   font-weight: 800;
-  color: #fff;
+  color: inherit;
   white-space: nowrap;
 }
 
