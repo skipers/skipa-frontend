@@ -103,10 +103,11 @@ const valueGradeLabel: Record<string, string> = {
 function getValueGradeLabel(v: string) { return valueGradeLabel[v.toLowerCase()] ?? v }
 
 const readinessLabel: Record<string, string> = {
-  ready:                          '출원 준비 완료',
+  ready:                             '출원 준비 완료',
   promising_with_targeted_revisions: '보완 후 출원 가능',
-  needs_significant_work:         '상당한 보완 필요',
-  not_ready:                      '출원 불가',
+  needs_significant_work:            '상당한 보완 필요',
+  needs_substantial_preparation:     '상당한 보완 필요',
+  not_ready:                         '출원 불가',
 }
 function getReadinessLabel(v: string) { return readinessLabel[v.toLowerCase()] ?? v }
 
@@ -135,6 +136,8 @@ const selectedDetail      = ref<PreEvaluationDetailResponse | null>(null)
 const evaluationResult    = ref<EvaluationResult | null>(null)
 const historyDropdownOpen = ref(false)
 const isEvaluating        = ref(false)
+
+const evalError       = ref(false)
 
 const chatbotOpen     = ref(false)
 const chatbotExpanded = ref(false)
@@ -166,7 +169,9 @@ const isStartEnabled = computed(() =>
   Boolean(patentName.value.trim() && techDescription.value.trim()) && !isEvaluating.value
 )
 
-const isEmbeddingReady = computed(() => selectedDetail.value?.status === 'EMBEDDING_COMPLETED')
+const isEmbeddingReady = computed(() =>
+  ['REPORT_COMPLETED', 'EMBEDDING_COMPLETED', 'COMPLETED'].includes(selectedDetail.value?.status ?? ''),
+)
 
 const chatPanelWidth = computed(() => {
   if (!chatbotOpen.value) return '0px'
@@ -196,7 +201,7 @@ function scrollChatToBottom() {
 // ── 이력 ─────────────────────────────────────────────
 async function fetchGradesEagerly(items: PreEvaluationListItem[]) {
   const targets = items.filter(
-    item => item.status === 'REPORT_COMPLETED' && item.reportUrl && !gradeCache.value[item.id],
+    item => (item.status === 'REPORT_COMPLETED' || item.status === 'EMBEDDING_COMPLETED') && item.reportUrl && !gradeCache.value[item.id],
   )
   await Promise.all(
     targets.map(async item => {
@@ -345,7 +350,7 @@ async function selectHistory(id: number) {
     const detail = await preEvaluationsApi.getDetail(id)
     selectedDetail.value = detail
 
-    if ((detail.status === 'REPORT_COMPLETED' || detail.status === 'COMPLETED') && detail.reportUrl) {
+    if ((detail.status === 'REPORT_COMPLETED' || detail.status === 'COMPLETED' || detail.status === 'EMBEDDING_COMPLETED') && detail.reportUrl) {
       const result = await parseReportUrl(detail.reportUrl)
       evaluationResult.value = result
       if (result) gradeCache.value[id] = result.grade
@@ -391,6 +396,7 @@ async function startEvaluation() {
   if (!isStartEnabled.value || _isStarting) return
   _isStarting = true
   isEvaluating.value = true
+  evalError.value = false
   evaluationResult.value = null
   selectedDetail.value = null
   selectedHistoryId.value = null
@@ -414,9 +420,10 @@ async function startEvaluation() {
 
 async function pollStatus(id: number) {
   try {
-    const detail = await preEvaluationsApi.getDetail(id)
+    const statusRes = await preEvaluationsApi.getStatus(id)
 
-    if (detail.status === 'REPORT_COMPLETED' || detail.status === 'COMPLETED') {
+    if (statusRes.status === 'REPORT_COMPLETED' || statusRes.status === 'COMPLETED' || statusRes.status === 'EMBEDDING_COMPLETED') {
+      const detail = await preEvaluationsApi.getDetail(id)
       selectedDetail.value = detail
       selectedHistoryId.value = id
       await fetchHistory()
@@ -427,11 +434,13 @@ async function pollStatus(id: number) {
       }
       await loadChatHistory(id)
       isEvaluating.value = false
-      if (detail.status === 'REPORT_COMPLETED') {
+      if (statusRes.status === 'REPORT_COMPLETED') {
         pollEmbeddingStatus(id)
       }
-    } else if (['FAILED', 'REPORT_FAILED'].includes(detail.status)) {
+    } else if (['FAILED', 'REPORT_FAILED'].includes(statusRes.status)) {
       isEvaluating.value = false
+      evalError.value = true
+      await fetchHistory()
     } else {
       pollingTimer.value = window.setTimeout(() => void pollStatus(id), 3000)
     }
@@ -445,7 +454,7 @@ function pollEmbeddingStatus(id: number) {
   embeddingPollTimer = setTimeout(async () => {
     try {
       const status = await preEvaluationsApi.getStatus(id)
-      if (status.status === 'COMPLETED') {
+      if (status.status === 'COMPLETED' || status.status === 'EMBEDDING_COMPLETED') {
         if (selectedDetail.value && selectedDetail.value.id === id) {
           selectedDetail.value = { ...selectedDetail.value, status: 'COMPLETED' }
         }
@@ -458,6 +467,37 @@ function pollEmbeddingStatus(id: number) {
   }, 5000)
 }
 
+// ── 이력 삭제 ─────────────────────────────────────────
+async function deleteHistory(id: number) {
+  try {
+    await preEvaluationsApi.delete(id)
+    if (selectedHistoryId.value === id) {
+      selectedDetail.value   = null
+      selectedHistoryId.value = null
+      evaluationResult.value  = null
+      evalError.value         = false
+      chatMessages.value = [{ id: nextMsgId(), role: 'assistant', text: GREETING }]
+    }
+    await fetchHistory()
+  } catch { /* silent */ }
+}
+
+// ── 실패 이력에서 재시도 ──────────────────────────────
+function retryFromHistory() {
+  if (!selectedDetail.value) return
+  const d = selectedDetail.value
+  patentName.value      = d.title ?? ''
+  techDescription.value = d.technicalDescription ?? ''
+  claimInputs.value     = d.claims?.length ? [...d.claims] : ['']
+  relatedBusiness.value = d.relatedBusiness ?? ''
+  targetCountries.value = d.targetCountries ?? ''
+  selectedDetail.value     = null
+  selectedHistoryId.value  = null
+  evaluationResult.value   = null
+  evalError.value          = false
+  void startEvaluation()
+}
+
 // ── 새 평가 초기화 ────────────────────────────────────
 function resetAssessment() {
   patentName.value = ''
@@ -465,6 +505,7 @@ function resetAssessment() {
   claimInputs.value = ['']
   relatedBusiness.value = ''
   targetCountries.value = ''
+  evalError.value = false
   evaluationResult.value = null
   selectedDetail.value = null
   selectedHistoryId.value = null
@@ -659,6 +700,14 @@ onBeforeUnmount(() => {
             <div class="readonly-header">
               <h2 class="panel-title readonly-panel-title">{{ selectedDetail.title }}</h2>
               <p class="readonly-date">평가일 {{ evaluationResult ? formatDateTime(evaluationResult.evaluatedAt) || formatDate(selectedDetail.completedAt ?? selectedDetail.createdAt) : formatDate(selectedDetail.completedAt ?? selectedDetail.createdAt) }}</p>
+              <button
+                v-if="['FAILED', 'REPORT_FAILED'].includes(selectedDetail.status)"
+                class="btn-retry-history"
+                type="button"
+                @click="retryFromHistory"
+              >
+                다시 평가하기
+              </button>
             </div>
 
             <div class="readonly-fields">
@@ -701,6 +750,13 @@ onBeforeUnmount(() => {
 
           <!-- 입력 폼 -->
           <template v-else>
+            <div v-if="evalError" class="eval-error-banner">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span class="eval-error-banner__text">평가 중 오류가 발생했습니다.</span>
+              <button class="btn-retry" type="button" :disabled="!isStartEnabled" @click="startEvaluation">다시 평가하기</button>
+            </div>
             <h2 class="panel-title">발명 정보 입력</h2>
 
             <form class="form-stack" @submit.prevent="startEvaluation">
@@ -1261,6 +1317,21 @@ onBeforeUnmount(() => {
   justify-content: space-between; gap: 8px;
 }
 .dropdown-item__date { font-size: 11.5px; color: #94a3b8; }
+.btn-delete-history {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.btn-delete-history:hover { background: #fef2f2; color: #ef4444; }
 
 .btn-delete-history {
   display: flex; align-items: center; justify-content: center;
@@ -1376,6 +1447,22 @@ onBeforeUnmount(() => {
 
 /* ── 읽기 전용 뷰 ─────────────────────────────────── */
 .readonly-header { margin-bottom: 24px; }
+.btn-retry-history {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  border: 1.5px solid #f87171;
+  border-radius: 8px;
+  background: #fff;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.13s;
+}
+.btn-retry-history:hover { background: #fef2f2; }
 
 .btn-back {
   display: inline-flex;
@@ -1445,6 +1532,37 @@ onBeforeUnmount(() => {
   color: #374151;
   line-height: 1.65;
 }
+
+/* ── 에러 배너 ────────────────────────────────────── */
+.eval-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #b91c1c;
+}
+.eval-error-banner__text { flex: 1; }
+.btn-retry {
+  padding: 5px 12px;
+  border: 1.5px solid #f87171;
+  border-radius: 7px;
+  background: #fff;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.13s;
+}
+.btn-retry:hover:not(:disabled) { background: #fef2f2; }
+.btn-retry:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── 평가 진행 중 ─────────────────────────────────── */
 .evaluating-info {
