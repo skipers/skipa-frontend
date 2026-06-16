@@ -55,26 +55,40 @@
       </button>
     </div>
 
+    <!-- 검색 필터 카드 (두 탭 공통) -->
+    <div class="filter-card">
+      <div class="search-bar">
+        <span class="search-bar__icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+        </span>
+        <input
+          v-model="searchInput"
+          type="text"
+          class="search-bar__input"
+          placeholder="특허명, 출원번호, 기술 분야로 검색"
+          @keydown.enter="doSearch"
+        />
+        <button v-if="searchInput" class="search-bar__clear" @click="clearSearch">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <button class="search-bar__btn" @click="doSearch">검색</button>
+      </div>
+    </div>
+
+    <!-- 결과 건수 -->
+    <div class="result-bar">
+      <p class="result-count">
+        <span class="result-count__num">{{ activeTab === 'active' ? activeTotalItems : filteredExpiredPatents.length }}</span>건
+      </p>
+    </div>
+
     <!-- ── 등록 특허 ── -->
     <template v-if="activeTab === 'active'">
       <div class="table-card">
-        <!-- 툴바 -->
-        <div class="table-toolbar">
-          <div class="toolbar-search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
-              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input
-              v-model="searchInput"
-              class="search-input"
-              placeholder="특허명, 출원번호, 기술 분야 검색..."
-              type="text"
-              @keyup.enter="doSearch"
-            />
-            <button v-if="searchInput" class="search-clear" @click="clearSearch">×</button>
-          </div>
-          <button class="btn-search" @click="doSearch">검색</button>
-        </div>
 
         <div v-if="loading" class="skel-rows">
           <div class="skel-row" v-for="n in 6" :key="n" />
@@ -92,16 +106,16 @@
           <thead>
             <tr>
               <th class="sortable" @click="toggleSort('applicationNumber')">
-                출원번호 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'applicationNumber' }">{{ sortIconChar('applicationNumber') }}</span>
+                출원번호 <span class="sort-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" :style="{ opacity: sortKey === 'applicationNumber' ? 1 : 0.3, transform: sortKey === 'applicationNumber' && sortDir === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }"><path d="M12 5l7 7H5z"/></svg></span>
               </th>
               <th class="sortable" @click="toggleSort('title')">
-                특허명 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'title' }">{{ sortIconChar('title') }}</span>
+                특허명 <span class="sort-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" :style="{ opacity: sortKey === 'title' ? 1 : 0.3, transform: sortKey === 'title' && sortDir === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }"><path d="M12 5l7 7H5z"/></svg></span>
               </th>
               <th class="sortable" @click="toggleSort('applicationDate')">
-                출원일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'applicationDate' }">{{ sortIconChar('applicationDate') }}</span>
+                출원일 <span class="sort-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" :style="{ opacity: sortKey === 'applicationDate' ? 1 : 0.3, transform: sortKey === 'applicationDate' && sortDir === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }"><path d="M12 5l7 7H5z"/></svg></span>
               </th>
               <th class="sortable" @click="toggleSort('expiryDate')">
-                소멸 예정일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
+                소멸 예정일 <span class="sort-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" :style="{ opacity: sortKey === 'expiryDate' ? 1 : 0.3, transform: sortKey === 'expiryDate' && sortDir === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }"><path d="M12 5l7 7H5z"/></svg></span>
               </th>
               <th>기술 분야</th>
               <th>상태</th>
@@ -156,23 +170,6 @@
     <!-- ── 소멸/포기 특허 ── -->
     <template v-if="activeTab === 'expired'">
       <div class="table-card">
-        <!-- 툴바 -->
-        <div class="table-toolbar">
-          <div class="toolbar-search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
-              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input
-              v-model="searchInput"
-              class="search-input"
-              placeholder="특허명, 출원번호, 기술 분야 검색..."
-              type="text"
-              @keyup.enter="doSearch"
-            />
-            <button v-if="searchInput" class="search-clear" @click="clearSearch">×</button>
-          </div>
-          <button class="btn-search" @click="doSearch">검색</button>
-        </div>
 
         <div v-if="loading" class="skel-rows">
           <div class="skel-row" v-for="n in 4" :key="n" />
@@ -191,13 +188,13 @@
           <thead>
             <tr>
               <th class="sortable" @click="toggleSort('applicationNumber')">
-                출원번호 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'applicationNumber' }">{{ sortIconChar('applicationNumber') }}</span>
+                출원번호 <span class="sort-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" :style="{ opacity: sortKey === 'applicationNumber' ? 1 : 0.3, transform: sortKey === 'applicationNumber' && sortDir === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }"><path d="M12 5l7 7H5z"/></svg></span>
               </th>
               <th class="sortable" @click="toggleSort('title')">
-                특허명 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'title' }">{{ sortIconChar('title') }}</span>
+                특허명 <span class="sort-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" :style="{ opacity: sortKey === 'title' ? 1 : 0.3, transform: sortKey === 'title' && sortDir === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }"><path d="M12 5l7 7H5z"/></svg></span>
               </th>
               <th class="sortable" @click="toggleSort('expiryDate')">
-                소멸/포기일 <span class="sort-icon" :class="{ 'sort-icon--active': sortKey === 'expiryDate' }">{{ sortIconChar('expiryDate') }}</span>
+                소멸/포기일 <span class="sort-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" :style="{ opacity: sortKey === 'expiryDate' ? 1 : 0.3, transform: sortKey === 'expiryDate' && sortDir === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }"><path d="M12 5l7 7H5z"/></svg></span>
               </th>
               <th>기술 분야</th>
               <th>상태</th>
@@ -515,92 +512,78 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* ── 툴바 ────────────────────────────────────────── */
-/* ── 필터 바 ─────────────────────────────────── */
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
+/* ── 필터 카드 ────────────────────────────────────── */
+.filter-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--color-border);
   border-radius: 10px;
-  flex-wrap: wrap;
+  overflow: hidden;
+  background: var(--color-surface-soft);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.filter-bar__group { display: flex; align-items: center; gap: 8px; }
-.filter-bar__label { font-size: 12.5px; font-weight: 600; color: var(--color-text-muted); white-space: nowrap; }
-.filter-bar__select {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 4px 28px 4px 10px;
-  font-size: 12.5px;
-  color: var(--color-text-secondary);
-  background: var(--color-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
-  appearance: none;
-  cursor: pointer;
-  outline: none;
-  min-width: 110px;
+.search-bar:focus-within {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
 }
-.filter-bar__select:focus { border-color: var(--color-primary); }
-.filter-bar__divider { width: 1px; height: 18px; background: var(--color-border); flex-shrink: 0; }
-
-.table-toolbar {
+.search-bar__icon {
+  padding: 0 14px;
+  color: var(--color-text-subtle);
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f1f5f9;
-  background: #fafafa;
-  flex-wrap: wrap;
-}
-
-.toolbar-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 200px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 7px 10px;
-  transition: border-color .13s;
-}
-.toolbar-search:focus-within { border-color: #818cf8; }
-
-.search-icon { color: #94a3b8; flex-shrink: 0; }
-
-.search-input {
-  flex: 1;
-  border: none; outline: none;
-  font-size: 13px; color: #0f172a;
-  background: transparent;
-  font-family: inherit;
-}
-.search-input::placeholder { color: #cbd5e1; }
-
-.search-clear {
-  background: none; border: none; cursor: pointer;
-  color: #94a3b8; font-size: 16px; line-height: 1;
-  padding: 0 2px; transition: color .12s;
-}
-.search-clear:hover { color: #475569; }
-
-.btn-search {
-  height: 34px;
-  padding: 0 16px;
-  background: #4f46e5;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px; font-weight: 600; font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
   flex-shrink: 0;
-  transition: background .13s, transform .1s;
 }
-.btn-search:hover { background: #4338ca; }
-.btn-search:active { transform: scale(.97); }
+.search-bar__input {
+  flex: 1;
+  padding: 11px 0;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-text);
+  outline: none;
+}
+.search-bar__input::placeholder { color: var(--c-slate-300); }
+.search-bar__clear {
+  padding: 0 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-subtle);
+  display: flex;
+  transition: color 0.13s;
+}
+.search-bar__clear:hover { color: var(--c-slate-600); }
+.search-bar__btn {
+  padding: 0 20px;
+  height: 100%;
+  min-height: 44px;
+  background: var(--color-text);
+  color: var(--color-surface);
+  border: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.13s;
+  white-space: nowrap;
+}
+.search-bar__btn:hover { background: var(--color-navy-hover); }
+
+/* ── 결과 바 ────────────────────────────────────── */
+.result-bar { padding: 0 2px; }
+.result-count { font-size: 13.5px; color: var(--color-text-muted); margin: 0; }
+.result-count__num { font-size: 15px; font-weight: 700; color: var(--color-text); margin-right: 2px; }
 
 /* ── 테이블 ──────────────────────────────────────── */
 .patent-table {
@@ -665,14 +648,12 @@ onMounted(() => {
 .patent-table th.sortable:hover { color: #4f46e5; }
 
 .sort-icon {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   margin-left: 4px;
-  font-size: 10px;
-  color: #cbd5e1;
   vertical-align: middle;
-  transition: color .12s;
+  color: #4f46e5;
 }
-.sort-icon--active { color: #4f46e5; }
 
 .patent-row {
   border-bottom: 1px solid #f1f5f9;

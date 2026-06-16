@@ -67,18 +67,37 @@
 
     <!-- ── 탭 2: 특허 목록 ── -->
     <template v-else>
-      <div class="list-card">
 
-        <div class="list-toolbar">
-          <div class="list-search-wrap">
-            <svg class="list-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <!-- 검색 필터 카드 -->
+      <div class="filter-card">
+        <div class="search-bar">
+          <span class="search-bar__icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            <input class="list-search-input" type="text" v-model="searchQuery" placeholder="특허명, 출원번호로 검색" />
-          </div>
-          <p class="list-total">총 <strong>{{ filteredPatents.length }}</strong>건</p>
+          </span>
+          <input
+            v-model="searchQuery"
+            type="text"
+            class="search-bar__input"
+            placeholder="특허명, 출원번호로 검색"
+          />
+          <button v-if="searchQuery" class="search-bar__clear" @click="searchQuery = ''">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
         </div>
+      </div>
 
+      <!-- 결과 건수 -->
+      <div class="result-bar">
+        <p class="result-count">
+          <span class="result-count__num">{{ filteredPatents.length }}</span>건
+        </p>
+      </div>
+
+      <div class="list-card">
         <div v-if="!filteredPatents.length" class="list-empty">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -987,37 +1006,68 @@ async function handleDelete() {
   overflow: hidden;
 }
 
-.list-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--color-surface-muted);
-}
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
 .form-field { display: flex; flex-direction: column; gap: 5px; }
 .form-field.full { grid-column: 1 / -1; }
 .form-label { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
 .required { color: var(--color-danger); }
 
-.list-search-wrap { position: relative; flex: 1; max-width: 320px; }
-.list-search-icon {
-  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-  color: var(--color-text-muted); pointer-events: none;
+/* ── 필터 카드 ────────────────────────────────────── */
+.filter-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
-.list-search-input {
-  width: 100%; padding: 7px 12px 7px 32px;
-  border: 1.5px solid var(--color-border); border-radius: 8px;
-  font-size: 13.5px; font-family: inherit; color: var(--color-text);
-  background: var(--color-surface-muted); outline: none; box-sizing: border-box;
-  transition: border-color .13s;
+.search-bar {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--color-surface-soft);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.list-search-input:focus { border-color: var(--color-primary); background: var(--color-surface); }
-.list-search-input::placeholder { color: var(--color-text-subtle); }
+.search-bar:focus-within {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+.search-bar__icon {
+  padding: 0 14px;
+  color: var(--color-text-subtle);
+  display: flex;
+  flex-shrink: 0;
+}
+.search-bar__input {
+  flex: 1;
+  padding: 11px 0;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-text);
+  outline: none;
+}
+.search-bar__input::placeholder { color: var(--c-slate-300); }
+.search-bar__clear {
+  padding: 0 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-subtle);
+  display: flex;
+  transition: color 0.13s;
+}
+.search-bar__clear:hover { color: var(--c-slate-600); }
 
-.list-total { font-size: 13px; color: var(--color-text-muted); margin: 0; white-space: nowrap; }
-.list-total strong { color: var(--color-text); }
+/* ── 결과 바 ────────────────────────────────────── */
+.result-bar { padding: 0 2px; }
+.result-count { font-size: 13.5px; color: var(--color-text-muted); margin: 0; }
+.result-count__num { font-size: 15px; font-weight: 700; color: var(--color-text); margin-right: 2px; }
 
 .list-empty {
   padding: 56px 24px;

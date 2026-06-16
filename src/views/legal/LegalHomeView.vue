@@ -17,6 +17,68 @@
       </div>
     </div>
 
+    <!-- 보고서 생성 현황 카드 -->
+    <div class="kpi-card rgc-card" :class="`rgc-card--${reportGenStatus.state}`">
+
+      <!-- 비활성 / 로딩 -->
+      <template v-if="reportGenStatus.state === 'inactive' || reportGenStatus.state === 'loading'">
+        <div class="rgc-inactive">
+          <span class="rgc-inactive__icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="3"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+              <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+          </span>
+          <div class="rgc-inactive__body">
+            <span class="rgc-info__label">보고서 생성 현황</span>
+            <span class="rgc-inactive__title">지금은 재평가 기간이 아닙니다</span>
+            <span class="rgc-inactive__sub">{{ quarterLabel }} 재평가 기간이 시작되면 AI 보고서가 자동으로 생성됩니다.</span>
+          </div>
+        </div>
+      </template>
+
+      <!-- 진행 중 / 완료 -->
+      <template v-else>
+        <!-- 우측 상단 아이콘 -->
+        <div class="rgc-icon-wrap">
+          <svg v-if="reportGenStatus.state === 'done'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 12 11 14 15 10"/>
+          </svg>
+          <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+
+        <!-- 메인: 큰 숫자 + 설명 -->
+        <div class="rgc-main">
+          <span class="rgc-pct-hero">{{ reportGenStatus.state === 'done' ? '100%' : reportGenStatus.pct + '%' }}</span>
+          <div class="rgc-info">
+            <span class="rgc-info__label">보고서 생성 현황</span>
+            <span class="rgc-info__title">{{ reportGenStatus.state === 'done' ? 'AI 보고서 생성 완료' : 'AI 보고서 생성 중' }}</span>
+            <span class="rgc-info__sub">
+              <template v-if="reportGenStatus.state === 'done'">{{ quarterLabel }} · 전체 {{ reportGenStatus.total }}건</template>
+              <template v-else>{{ quarterLabel }} · {{ reportGenStatus.completed }}건 완료 / {{ reportGenStatus.total }}건</template>
+            </span>
+          </div>
+        </div>
+
+        <!-- 막대 -->
+        <div class="rgc-bar-track">
+          <div
+            class="rgc-bar-fill"
+            :class="reportGenStatus.state === 'done' ? 'rgc-bar-fill--done' : 'rgc-bar-fill--progress'"
+            :style="{ width: reportGenStatus.state === 'done' ? '100%' : reportGenStatus.pct + '%' }"
+          >
+            <span class="rgc-bar-label">{{ reportGenStatus.state === 'done' ? '100%' : reportGenStatus.pct + '%' }}</span>
+          </div>
+        </div>
+      </template>
+
+    </div>
+
     <!-- KPI 카드 행 -->
     <div class="kpi-row">
       <!-- 분기 진행률 (독립 카드) -->
@@ -69,7 +131,7 @@
     <div class="mid-row">
 
       <!-- 미확인 회신 -->
-      <div class="card">
+      <div class="card card--reply">
         <div class="card__header">
           <div class="card__header-left">
             <h3 class="card__title">미확인 회신</h3>
@@ -284,7 +346,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useReadReplies } from '@/composables/useReadReplies'
@@ -309,6 +371,45 @@ const loadingDepts   = ref(true)
 // ── API 데이터 ───────────────────────────────────────
 const dashboardData = ref<LegalDashboardResponse | null>(null)
 const error = ref<string | null>(null)
+
+// ── 보고서 생성 현황 ─────────────────────────────────
+const reportGenStatus = computed(() => {
+  const cp = dashboardData.value?.cycleProgress
+  if (!cp) return { state: 'loading' as const }
+
+  const { statusLabel, targetPatentCount: total, reports } = cp
+
+  if (statusLabel === 'NO_TARGETS') return { state: 'inactive' as const }
+
+  if (statusLabel === 'REPORT_GENERATING' || statusLabel === 'REPORT_NOT_STARTED') {
+    const completed = reports.completed
+    const pct = total ? Math.round((completed / total) * 100) : 0
+    return { state: 'progress' as const, total, completed, pct }
+  }
+
+  if (statusLabel === 'REPORT_FAILED') {
+    const completed = reports.completed
+    const pct = total ? Math.round((completed / total) * 100) : 0
+    return { state: 'progress' as const, total, completed, pct }
+  }
+
+  // REVIEW_NOT_REQUESTED | REVIEW_IN_PROGRESS | REVIEW_COMPLETED
+  return { state: 'done' as const, total, completed: total, pct: 100 }
+})
+
+// REPORT_GENERATING 일 때만 1분 폴링
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+watch(dashboardData, (data) => {
+  const label = data?.cycleProgress?.statusLabel
+  if (label === 'REPORT_GENERATING') {
+    if (!pollTimer) pollTimer = setInterval(loadAll, 60_000)
+  } else {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+  }
+})
+
+onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 
 // ── 분기 레이블 ──────────────────────────────────────
 const quarterLabel = computed(() => {
@@ -524,6 +625,151 @@ onMounted(loadAll)
   flex-direction: column;
   gap: 24px;
   font-family: 'Pretendard', sans-serif;
+}
+
+/* ── 보고서 생성 현황 카드 ───────────────────────── */
+.rgc-card {
+  width: 75%;
+  min-width: 420px;
+  align-self: flex-start;
+  gap: 14px;
+  padding: 20px 22px 18px;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.rgc-card--done {
+  background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, var(--color-surface) 55%);
+  border-color: rgba(99,102,241,0.2);
+}
+.rgc-card--progress {
+  background: linear-gradient(135deg, rgba(245,158,11,0.08) 0%, var(--color-surface) 55%);
+  border-color: rgba(245,158,11,0.2);
+}
+
+/* 우측 상단 절대 위치 아이콘 */
+.rgc-icon-wrap {
+  position: absolute;
+  top: 18px; right: 20px;
+  width: 40px; height: 40px;
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+}
+.rgc-card--done     .rgc-icon-wrap { background: rgba(99,102,241,0.12); color: #6366f1; }
+.rgc-card--progress .rgc-icon-wrap { background: rgba(245,158,11,0.12); color: #d97706; }
+.rgc-card--inactive .rgc-icon-wrap,
+.rgc-card--loading  .rgc-icon-wrap { background: var(--color-surface-muted, #f1f5f9); color: var(--color-text-secondary); }
+
+/* 비활성 상태 */
+.rgc-inactive {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 0;
+}
+.rgc-inactive__icon {
+  flex-shrink: 0;
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  background: var(--color-surface-muted, #f1f5f9);
+  border: 1.5px solid var(--color-border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-text-secondary);
+}
+.rgc-inactive__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rgc-inactive__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.rgc-inactive__sub {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* 메인 수치 + 설명 */
+.rgc-main {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.rgc-pct-hero {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.rgc-card--done     .rgc-pct-hero { color: #6366f1; }
+.rgc-card--progress .rgc-pct-hero { color: #d97706; }
+.rgc-card--inactive .rgc-pct-hero,
+.rgc-card--loading  .rgc-pct-hero { color: var(--color-border); }
+
+.rgc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.rgc-info__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.rgc-info__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+.rgc-info__sub {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+/* 막대 */
+.rgc-bar-track {
+  width: 100%;
+  height: 34px;
+  background: rgba(0,0,0,0.05);
+  border-radius: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.rgc-card--done     .rgc-bar-track { border: 2px solid rgba(99,102,241,0.35); }
+.rgc-card--progress .rgc-bar-track { border: 2px solid rgba(245,158,11,0.35); }
+.rgc-card--inactive .rgc-bar-track,
+.rgc-card--loading  .rgc-bar-track { border: 2px solid var(--color-border); }
+.rgc-bar-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  animation: rgc-bar-reveal 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes rgc-bar-reveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0%   0 0); }
+}
+.rgc-bar-fill--done     { background: linear-gradient(90deg, #a5b4fc, #6366f1, #4f46e5); }
+.rgc-bar-fill--progress { background: linear-gradient(90deg, #fcd34d, #f59e0b, #d97706); }
+.rgc-bar-label {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  user-select: none;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  position: relative;
+  z-index: 1;
 }
 
 /* ── 인사 헤더 ───────────────────────────────────── */
@@ -787,6 +1033,7 @@ onMounted(loadAll)
   gap: 16px;
 }
 .mid-row > .card { flex: 1; min-width: 0; }
+.mid-row > .card--reply { flex: 1.5; }
 .mid-row > .card--wide { flex: 2; }
 
 /* ── 퍼널 ────────────────────────────────────────── */
