@@ -228,6 +228,20 @@ async function fetchHistory() {
   }
 }
 
+async function deleteHistory(id: number) {
+  try {
+    await preEvaluationsApi.delete(id)
+    historyList.value = historyList.value.filter(h => h.id !== id)
+    if (selectedHistoryId.value === id) {
+      selectedHistoryId.value = null
+      selectedDetail.value = null
+      evaluationResult.value = null
+    }
+  } catch {
+    // 삭제 실패 시 무시
+  }
+}
+
 // ── 보고서 URL 파싱 (v3) ──────────────────────────────
 async function parseReportUrl(reportUrl: string): Promise<EvaluationResult | null> {
   try {
@@ -652,14 +666,16 @@ onBeforeUnmount(() => {
                 <p class="dropdown-item__name">{{ item.title }}</p>
                 <div class="dropdown-item__meta">
                   <span class="dropdown-item__date">{{ formatDate(item.completedAt ?? item.createdAt) }}</span>
-                  <span v-if="gradeCache[item.id]" class="grade-pill" :class="`grade-pill--${gradeCache[item.id].charAt(0).toLowerCase()}`">
-                    {{ gradeCache[item.id] }}
-                  </span>
-                  <span v-else-if="['PROCESSING', 'PENDING', 'REPORT_PENDING', 'REPORT_PROCESSING', 'REPORT_CREATED'].includes(item.status)" class="status-pill status-pill--pending">평가 중</span>
-                  <span v-else-if="['FAILED', 'REPORT_FAILED'].includes(item.status)" class="status-pill status-pill--failed">오류</span>
-                  <button class="btn-delete-history" type="button" title="삭제" @click.stop="deleteHistory(item.id)">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                  <button
+                    class="btn-delete-history"
+                    @click.stop="deleteHistory(item.id)"
+                    title="삭제"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                      <path d="M10 11v6"/><path d="M14 11v6"/>
+                      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                     </svg>
                   </button>
                 </div>
@@ -1317,6 +1333,14 @@ onBeforeUnmount(() => {
 }
 .btn-delete-history:hover { background: #fef2f2; color: #ef4444; }
 
+.btn-delete-history {
+  display: flex; align-items: center; justify-content: center;
+  padding: 3px; border: none; background: none; cursor: pointer;
+  color: #cbd5e1; border-radius: 4px; flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.btn-delete-history:hover { color: #ef4444; background: #fee2e2; }
+
 .dropdown-empty {
   padding: 32px 20px;
   text-align: center;
@@ -1332,10 +1356,9 @@ onBeforeUnmount(() => {
 
 /* ── 그리드 ───────────────────────────────────────── */
 .lab-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 40%) minmax(0, 60%);
+  display: flex;
+  flex-direction: column;
   gap: 20px;
-  align-items: stretch;
 }
 
 /* ── 패널 공통 ────────────────────────────────────── */
@@ -1847,7 +1870,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1200px) {
-  .lab-grid { grid-template-columns: 1fr; }
   .result-panel { min-height: auto; }
 }
 @media (max-width: 768px) {

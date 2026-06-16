@@ -68,10 +68,6 @@
               <input class="form-input" type="text" v-model="form.title" placeholder="특허명을 입력하세요" />
             </label>
             <label class="form-field">
-              <span class="form-label">관리번호</span>
-              <input class="form-input" type="text" v-model="form.managementNumber" />
-            </label>
-            <label class="form-field">
               <span class="form-label">발명자</span>
               <input class="form-input" type="text" v-model="form.inventors" placeholder="홍길동, 김철수" />
             </label>
@@ -275,7 +271,7 @@
           <!-- 오른쪽 끝: 항상 chevron, 승인이면 hover 시 절대위치 쓰레기통 -->
           <div class="row-end">
             <button
-              v-if="app.appStatus === 'approved'"
+              v-if="app.appStatus === 'approved' || app.appStatus === 'withdrawn'"
               class="btn-row-trash"
               @click.stop="confirmDeleteId = confirmDeleteId === app.id ? null : app.id"
             >

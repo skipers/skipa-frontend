@@ -1188,8 +1188,8 @@ const isOwnDept = computed(() => {
 
 // ── 국가 표시 ────────────────────────────────────────
 const patentCountry = computed(() => {
-  if (!patent.value) return ''
-  const code = patent.value.applicationNumber.split('-')[0]
+  const code = patentData.value?.filingCountry
+  if (!code) return ''
   return COUNTRY_LABEL[code] ?? code
 })
 

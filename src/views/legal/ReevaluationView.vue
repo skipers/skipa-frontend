@@ -34,12 +34,6 @@
           <div class="progress-fill" :style="{ width: progressPct + '%' }" />
         </div>
       </div>
-      <div class="progress-bar-card__legend">
-        <span v-for="seg in progressSegments" :key="seg.label" class="legend-item">
-          <span class="legend-dot" :style="{ background: seg.color }" />
-          {{ seg.label }}
-        </span>
-      </div>
     </div>
 
     <!-- 필터 탭 -->
@@ -171,11 +165,16 @@
           </label>
 
           <!-- 특허 정보 (클릭 → 상세) -->
-          <div class="item-main" @click="goDetail(item.id)">
+          <div class="item-main" @click="goDetail(item)">
             <div class="item-main__top">
-              <span class="item-status-badge" :class="`item-status--${item.reviewStatus}`">
+              <span
+                class="item-status-badge"
+                :class="item.reviewStatus === 'done' && !readIds.has(item.id)
+                  ? 'item-status--unread'
+                  : `item-status--${item.reviewStatus}`"
+              >
                 <span class="item-status-dot" />
-                {{ reviewStatusLabel(item.reviewStatus) }}
+                {{ item.reviewStatus === 'done' && !readIds.has(item.id) ? '미확인' : reviewStatusLabel(item.reviewStatus) }}
               </span>
 
               <h4 class="item-title">{{ item.title }}</h4>
@@ -408,7 +407,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { reviewsApi } from '@/api/reviews'
 import { reviewCyclesApi, type ReviewCycleResponse } from '@/api/reviewCycles'
@@ -481,6 +480,7 @@ const sortedDepartments = computed(() =>
 // ── 타입 ────────────────────────────────────────────
 interface ReevalItem {
   id: number
+  reviewId: number
   title: string
   applicationNumber: string
   techField?: string
@@ -603,12 +603,12 @@ const reviewToStatus: Record<string, ReevalItem['reviewStatus']> = {
 async function fetchStatusCounts(deptId?: number | null) {
   const base: ReviewTargetParams = { page: 1, size: 1 }
   if (deptId != null && deptId !== -1) base.departmentId = deptId
-  const [all, scheduled, pending, overdue, submitted, unread] = await Promise.all([
+  const [all, scheduled, pending, overdue, done, unread] = await Promise.all([
     reviewsApi.getReviewTargets({ ...base }),
     reviewsApi.getReviewTargets({ ...base, status: 'SCHEDULED' }),
     reviewsApi.getReviewTargets({ ...base, status: 'PENDING' }),
     reviewsApi.getReviewTargets({ ...base, status: 'OVERDUE' }),
-    reviewsApi.getReviewTargets({ ...base, status: 'SUBMITTED' }),
+    reviewsApi.getReviewTargets({ ...base, status: 'SUBMITTED', checked: true }),
     reviewsApi.getReviewTargets({ ...base, status: 'SUBMITTED', checked: false }),
   ])
   statusCounts.value = {
@@ -616,7 +616,7 @@ async function fetchStatusCounts(deptId?: number | null) {
     unassigned: scheduled.totalItems,
     requested:  pending.totalItems,
     overdue:    overdue.totalItems,
-    done:       submitted.totalItems,
+    done:       done.totalItems,
     unread:     unread.totalItems,
   }
 }
@@ -630,6 +630,9 @@ async function fetchList(p = 1) {
     if (activeStatus.value === 'unread') {
       params.status = 'SUBMITTED'
       params.checked = false
+    } else if (activeStatus.value === 'done') {
+      params.status = 'SUBMITTED'
+      params.checked = true
     } else if (activeStatus.value !== 'all' && statusToReview[activeStatus.value]) {
       params.status = statusToReview[activeStatus.value]
     }
@@ -643,6 +646,7 @@ async function fetchList(p = 1) {
     ])
     items.value = res.items.map(r => ({
       id: r.patentId,
+      reviewId: r.id,
       title: r.title,
       applicationNumber: r.applicationNumber,
       techField: r.techField,
@@ -661,7 +665,7 @@ async function fetchList(p = 1) {
       requested:  cur === 'requested'  ? res.totalItems : statusCounts.value.requested,
       overdue:    cur === 'overdue'    ? res.totalItems : statusCounts.value.overdue,
       done:       cur === 'done'       ? res.totalItems : statusCounts.value.done,
-      unread:     0,
+      unread:     cur === 'unread' ? res.totalItems : statusCounts.value.unread,
     }
   } catch (err) {
     console.error('목록 조회 오류:', err)
@@ -740,10 +744,28 @@ function handleDueDateChange() {
   showDueDateModal.value = false
 }
 
-function goDetail(id: number) {
-  markRead(id)
-  router.push(`/legal/patents/${id}`)
+function goDetail(item: ReevalItem) {
+  markRead(item.id)
+  reviewsApi.confirmReview(item.reviewId).then(() => {
+    if (activeStatus.value === 'unread') {
+      items.value = items.value.filter(i => i.id !== item.id)
+      statusCounts.value = {
+        ...statusCounts.value,
+        unread: Math.max(0, statusCounts.value.unread - 1),
+        done:   statusCounts.value.done,
+      }
+    }
+  }).catch(() => { /* 확인 실패 시 무시 */ })
+  router.push(`/legal/patents/${item.id}`)
 }
+
+watch([activeStatus, activeDept, activeDecision], ([tab, dept, decision]) => {
+  const query: Record<string, string> = {}
+  if (tab && tab !== 'all') query.tab = tab
+  if (dept !== null) query.dept = String(dept)
+  if (decision !== null) query.decision = decision
+  router.replace({ query })
+})
 
 onMounted(async () => {
   const tab      = route.query.tab      as string | undefined
@@ -764,7 +786,9 @@ onMounted(async () => {
   await fetchList(1)
   if (open) {
     await router.replace({ path: '/legal/reevaluation', query: tab ? { tab } : {} })
-    goDetail(Number(open))
+    const openItem = items.value.find(i => i.id === Number(open))
+    if (openItem) goDetail(openItem)
+    else router.push(`/legal/patents/${open}`)
   }
 })
 </script>
@@ -1253,6 +1277,7 @@ onMounted(async () => {
 
 .item-status--overdue    { background: var(--color-danger-bg); color: var(--color-danger); }
 .item-status--done       { background: var(--color-success-bg); color: var(--color-success-dark); }
+.item-status--unread     { background: #fff3e0; color: #e65100; }
 
 .item-title {
   font-size: 13.5px;
