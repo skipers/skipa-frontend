@@ -1019,7 +1019,23 @@
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
               </template>
-              <div v-else-if="message.role === 'assistant'" class="md-content" v-html="renderMarkdown(message.text)"/>
+              <template v-else-if="message.role === 'assistant'">
+                <div class="md-content" v-html="renderChatMarkdown(message)"/>
+                <div v-if="message.sourceCards?.length" class="source-cards">
+                  <div
+                    v-for="(card, index) in message.sourceCards"
+                    :key="`${message.id}-${card.source_path ?? card.title ?? index}`"
+                    class="source-card"
+                  >
+                    <div class="source-card__head">
+                      <span class="source-card__label">{{ card.label || `근거 ${index + 1}` }}</span>
+                      <span v-if="card.source_type" class="source-card__type">{{ card.source_type }}</span>
+                    </div>
+                    <strong class="source-card__title">{{ sourceCardTitle(card) }}</strong>
+                    <p v-if="card.snippet" class="source-card__snippet">{{ card.snippet }}</p>
+                  </div>
+                </div>
+              </template>
               <template v-else>{{ message.text }}</template>
             </div>
           </div>
@@ -1052,9 +1068,12 @@ import { patentsApi, type PatentDetail } from '@/api/patents'
 import { reviewsApi } from '@/api/reviews'
 import type { ReviewResponse } from '@/api/reviews'
 import { reportsApi } from '@/api/reports'
+import { extractSourceCards } from '@/api/chatStream'
 import { businessReviewsApi } from '@/api/businessReviews'
 import type { BusinessReviewDetailResponse } from '@/api/businessReviews'
 import { patentHistoryApi, type PatentAnnuityResponse, type PatentLegalStatusResponse } from '@/api/patentHistory'
+import { escapeHtml, splitTrailingTableBlock } from '@/utils/streamingMarkdown'
+import { createTypewriter } from '@/composables/useTypewriter'
 
 type ChatRole = 'assistant' | 'user'
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
@@ -1569,6 +1588,21 @@ function renderMarkdown(text: string): string {
   return DOMPurify.sanitize(html)
 }
 
+function renderChatMarkdown(message: ChatMessage): string {
+  if (!message.streaming) return renderMarkdown(message.text)
+
+  const { stable, pendingTable } = splitTrailingTableBlock(message.text)
+  if (!pendingTable) return renderMarkdown(message.text)
+
+  const stableHtml = stable.trim() ? renderMarkdown(stable) : ''
+  const pendingHtml = `<pre class="streaming-markdown-pending">${escapeHtml(pendingTable)}</pre>`
+  return DOMPurify.sanitize(`${stableHtml}${pendingHtml}`)
+}
+
+function sourceCardTitle(card: NonNullable<ChatMessage['sourceCards']>[number]): string {
+  return card.display_title || card.title || card.source_type || card.source_path || '출처'
+}
+
 const chatPanelWidth = computed(() => {
   if (!chatbotOpen.value) return '0px'
   if (chatbotExpanded.value) return '100vw'
@@ -1638,15 +1672,47 @@ async function sendChatMessage() {
   scrollChatToBottom()
 
   try {
-    const res = await reportsApi.sendChatMessage(props.patentId, latestReportId.value, text)
+    let streamError: unknown = null
+    const typewriter = createTypewriter(
+      (chunk) => {
+        const message = history.find(m => m.id === typingId)
+        if (message) message.text += chunk
+      },
+      () => { void nextTick(() => { scrollChatToBottom() }) },
+    )
+    await reportsApi.sendChatMessageStream(props.patentId, latestReportId.value, text, {
+      onSourceCards: (sourceCards) => {
+        const message = history.find(m => m.id === typingId)
+        if (message) message.sourceCards = sourceCards
+      },
+      onDelta: (delta) => {
+        const message = history.find(m => m.id === typingId)
+        if (!message) return
+        message.typing = false
+        message.streaming = true
+        typewriter.enqueue(delta)
+      },
+      onDone: (data) => {
+        const message = history.find(m => m.id === typingId)
+        if (!message) return
+        typewriter.flush()
+        message.typing = false
+        message.streaming = false
+        if (data.answer) message.text = data.answer
+        const sourceCards = extractSourceCards(data)
+        if (sourceCards.length) message.sourceCards = sourceCards
+      },
+      onError: (data) => {
+        typewriter.stop()
+        streamError = data
+      },
+    })
+    if (streamError) throw streamError
+
     const idx = history.findIndex(m => m.id === typingId)
     if (idx !== -1) {
-      history.splice(idx, 1, {
-        id: nextMessageId(),
-        role: 'assistant',
-        text: res.assistantMessage.content,
-        sourceCards: res.assistantMessage.sourceCards,
-      })
+      history[idx].typing = false
+      history[idx].streaming = false
     }
   } catch (e) {
     const err = e as Record<string, unknown>
@@ -1659,6 +1725,7 @@ async function sendChatMessage() {
         id: nextMessageId(),
         role: 'assistant',
         text: `메시지 전송에 실패했습니다.${msg ? `\n사유: ${msg}` : ''}${code ? ` (${code})` : ''}`,
+        streaming: false,
         error: true,
       })
     }
@@ -1733,7 +1800,7 @@ async function fetchChatHistory() {
         id: nextChatId(),
         role: m.role.toLowerCase() as 'user' | 'assistant',
         text: m.content,
-        sourceCards: m.sourceCards,
+        sourceCards: extractSourceCards(m),
       }))
     }
   } catch (e) {
@@ -3038,6 +3105,15 @@ async function openHistoryReport(reportId: number) {
   background: rgba(0,0,0,0.07); border-radius: 4px;
   padding: 1px 5px; font-size: 12px; font-family: monospace;
 }
+.md-content :deep(.streaming-markdown-pending) {
+  margin: 4px 0 8px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
 /* 테이블 */
 .md-content :deep(table) {
   border-collapse: collapse; font-size: 12.5px; line-height: 1.5;
@@ -3050,6 +3126,59 @@ async function openHistoryReport(reportId: number) {
 }
 .md-content :deep(th) { background: #f1f5f9; font-weight: 600; white-space: nowrap; }
 .md-content :deep(tr:nth-child(even) td) { background: #f8fafc; }
+.source-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.28);
+}
+.source-card {
+  display: grid;
+  gap: 4px;
+  padding: 7px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+.source-card__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.source-card__label {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 700;
+}
+.source-card__type {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.source-card__title {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+}
+.source-card__snippet {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11.5px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .chat-bubble.assistant { background: #fff; color: #102033; border-top-left-radius: 4px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
 .chat-bubble.user      { background: #0f172a; color: #fff; border-top-right-radius: 4px; }
 .chat-bubble--error    { background: #fef2f2; color: #991b1b; box-shadow: none; border: 1px solid #fecaca; }

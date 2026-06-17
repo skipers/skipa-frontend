@@ -6,6 +6,7 @@ export interface ChatMessage {
   role: 'assistant' | 'user'
   text: string
   typing?: boolean
+  streaming?: boolean
   error?: boolean
   sourceCards?: ChatSourceCard[]
 }
