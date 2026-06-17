@@ -64,6 +64,7 @@ export interface ReportChatMessageResponse {
   patentId: number
   role: string
   content: string
+  source_cards?: ChatSourceCard[]
   sourceCards?: ChatSourceCard[]
   createdAt: string
 }

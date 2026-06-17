@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, computed } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { preEvaluationsApi } from '@/api/preEvaluations'
+import { extractSourceCards } from '@/api/chatStream'
 import type { PreEvaluationListItem, PreEvaluationDetailResponse } from '@/api/preEvaluations'
 import type { ChatSourceCard } from '@/api/reports'
 import { escapeHtml, splitTrailingTableBlock } from '@/utils/streamingMarkdown'
@@ -104,6 +105,9 @@ function renderChatMarkdown(message: ChatMessage): string {
   return DOMPurify.sanitize(`${stableHtml}${pendingHtml}`)
 }
 
+function sourceCardTitle(card: NonNullable<ChatMessage['sourceCards']>[number]): string {
+  return card.display_title || card.title || card.source_type || card.source_path || '출처'
+}
 
 const priorityLabel: Record<string, string> = { high: '높음', medium: '중간', low: '낮음' }
 
@@ -233,8 +237,12 @@ const isEmbeddingReady = computed(() =>
 const chatPanelWidth = computed(() => {
   if (!chatbotOpen.value) return '0px'
   if (chatbotExpanded.value) return '100vw'
-  return `${chatWidth.value}px`
+  return `min(${chatWidth.value}px, 85vw)`
 })
+
+function maxChatWidth() {
+  return Math.max(320, Math.round(window.innerWidth * 0.85))
+}
 
 // ── 유틸 ─────────────────────────────────────────────
 function nextMsgId() { return _msgId++ }
@@ -430,9 +438,9 @@ async function loadChatHistory(id: number) {
     } else {
       chatMessages.value = messages.map(m => ({
         id: nextMsgId(),
-        role: m.role as ChatRole,
+        role: m.role.toLowerCase() as ChatRole,
         text: m.content,
-        sourceCards: m.sourceCards,
+        sourceCards: extractSourceCards(m),
       }))
     }
   } catch {
@@ -599,7 +607,7 @@ function startResizeDrag(e: MouseEvent) {
 
   function onMove(ev: MouseEvent) {
     const delta    = startX - ev.clientX
-    chatWidth.value = Math.min(Math.max(startWidth + delta, 320), Math.round(window.innerWidth * 0.85))
+    chatWidth.value = Math.min(Math.max(startWidth + delta, 320), maxChatWidth())
   }
   function onUp() {
     isResizing.value = false
@@ -653,7 +661,8 @@ async function sendChatMessage() {
         message.typing = false
         message.streaming = false
         if (data.answer) message.text = data.answer
-        message.sourceCards = data.source_cards ?? message.sourceCards
+        const sourceCards = extractSourceCards(data)
+        if (sourceCards.length) message.sourceCards = sourceCards
       },
       onError: (data) => {
         typewriter.stop()
@@ -1249,7 +1258,23 @@ onBeforeUnmount(() => {
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
               </template>
-              <div v-else-if="message.role === 'assistant'" class="md-content" v-html="renderChatMarkdown(message)"/>
+              <template v-else-if="message.role === 'assistant'">
+                <div class="md-content" v-html="renderChatMarkdown(message)"/>
+                <div v-if="message.sourceCards?.length" class="source-cards">
+                  <div
+                    v-for="(card, index) in message.sourceCards"
+                    :key="`${message.id}-${card.source_path ?? card.title ?? index}`"
+                    class="source-card"
+                  >
+                    <div class="source-card__head">
+                      <span class="source-card__label">{{ card.label || `근거 ${index + 1}` }}</span>
+                      <span v-if="card.source_type" class="source-card__type">{{ card.source_type }}</span>
+                    </div>
+                    <strong class="source-card__title">{{ sourceCardTitle(card) }}</strong>
+                    <p v-if="card.snippet" class="source-card__snippet">{{ card.snippet }}</p>
+                  </div>
+                </div>
+              </template>
               <template v-else>{{ message.text }}</template>
             </div>
           </div>
@@ -1952,9 +1977,10 @@ onBeforeUnmount(() => {
 .chat-row.assistant { justify-content: flex-start; }
 .chat-row.user      { justify-content: flex-end; }
 .chat-bubble {
-  max-width: min(80%, 300px); padding: 12px 15px;
+  max-width: min(92%, 560px); padding: 12px 15px;
   border-radius: 16px; font-size: 13.5px; line-height: 1.7; white-space: pre-line;
 }
+.chat-bubble.user { max-width: min(75%, 320px); }
 .chat-bubble.assistant { background: #fff; color: #102033; border-top-left-radius: 4px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
 .chat-bubble.user      { background: var(--navy); color: #fff; border-top-right-radius: 4px; }
 .chat-bubble--error    { background: #fef2f2; color: #991b1b; box-shadow: none; border: 1px solid #fecaca; }
@@ -1996,7 +2022,59 @@ onBeforeUnmount(() => {
 }
 .md-content :deep(th) { background: #f1f5f9; font-weight: 600; white-space: nowrap; }
 .md-content :deep(tr:nth-child(even) td) { background: #f8fafc; }
-
+.source-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.28);
+}
+.source-card {
+  display: grid;
+  gap: 4px;
+  padding: 7px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+.source-card__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.source-card__label {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 700;
+}
+.source-card__type {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.source-card__title {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+}
+.source-card__snippet {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11.5px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .typing-dots { display: inline-flex; align-items: center; gap: 4px; min-height: 18px; }
 .typing-dots span {
   width: 6px; height: 6px; border-radius: 50%;

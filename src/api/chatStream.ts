@@ -7,6 +7,7 @@ export interface ChatStreamDoneEvent {
   case_id?: string
   answer?: string
   source_cards?: ChatSourceCard[]
+  sourceCards?: ChatSourceCard[]
   metrics?: Record<string, unknown>
   stream?: boolean
 }
@@ -112,7 +113,7 @@ function dispatchEvent(sseEvent: SseEvent, handlers: ChatStreamHandlers) {
       handlers.onMetadata?.(data)
       break
     case 'source_cards':
-      handlers.onSourceCards?.(Array.isArray(data.source_cards) ? data.source_cards : [])
+      handlers.onSourceCards?.(extractSourceCards(data))
       break
     case 'delta':
       handlers.onDelta?.(typeof data.text === 'string' ? data.text : '')
@@ -126,4 +127,10 @@ function dispatchEvent(sseEvent: SseEvent, handlers: ChatStreamHandlers) {
     default:
       break
   }
+}
+
+export function extractSourceCards(data: { source_cards?: ChatSourceCard[]; sourceCards?: ChatSourceCard[] }): ChatSourceCard[] {
+  if (Array.isArray(data.sourceCards)) return data.sourceCards
+  if (Array.isArray(data.source_cards)) return data.source_cards
+  return []
 }
