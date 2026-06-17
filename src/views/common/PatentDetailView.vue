@@ -1056,6 +1056,7 @@ import { businessReviewsApi } from '@/api/businessReviews'
 import type { BusinessReviewDetailResponse } from '@/api/businessReviews'
 import { patentHistoryApi, type PatentAnnuityResponse, type PatentLegalStatusResponse } from '@/api/patentHistory'
 import { escapeHtml, splitTrailingTableBlock } from '@/utils/streamingMarkdown'
+import { createTypewriter } from '@/composables/useTypewriter'
 
 type ChatRole = 'assistant' | 'user'
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
@@ -1651,6 +1652,13 @@ async function sendChatMessage() {
 
   try {
     let streamError: unknown = null
+    const typewriter = createTypewriter(
+      (chunk) => {
+        const message = history.find(m => m.id === typingId)
+        if (message) message.text += chunk
+      },
+      () => { void nextTick(() => { scrollChatToBottom() }) },
+    )
     await reportsApi.sendChatMessageStream(props.patentId, latestReportId.value, text, {
       onSourceCards: (sourceCards) => {
         const message = history.find(m => m.id === typingId)
@@ -1661,18 +1669,19 @@ async function sendChatMessage() {
         if (!message) return
         message.typing = false
         message.streaming = true
-        message.text += delta
-        void nextTick(() => { scrollChatToBottom() })
+        typewriter.enqueue(delta)
       },
       onDone: (data) => {
         const message = history.find(m => m.id === typingId)
         if (!message) return
+        typewriter.flush()
         message.typing = false
         message.streaming = false
         if (data.answer) message.text = data.answer
         message.sourceCards = data.source_cards ?? message.sourceCards
       },
       onError: (data) => {
+        typewriter.stop()
         streamError = data
       },
     })
