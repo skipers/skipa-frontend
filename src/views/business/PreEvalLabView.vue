@@ -5,6 +5,7 @@ import DOMPurify from 'dompurify'
 import { preEvaluationsApi } from '@/api/preEvaluations'
 import type { PreEvaluationListItem, PreEvaluationDetailResponse } from '@/api/preEvaluations'
 import type { ChatSourceCard } from '@/api/reports'
+import { escapeHtml, splitTrailingTableBlock } from '@/utils/streamingMarkdown'
 
 type ChatRole = 'assistant' | 'user'
 
@@ -79,6 +80,7 @@ interface ChatMessage {
   role: ChatRole
   text: string
   typing?: boolean
+  streaming?: boolean
   error?: boolean
   sourceCards?: ChatSourceCard[]
 }
@@ -88,6 +90,17 @@ const GREETING = '안녕하세요! 평가 결과에 대해 궁금한 점을 질�
 function renderMarkdown(text: string): string {
   const html = marked.parse(text, { breaks: true }) as string
   return DOMPurify.sanitize(html)
+}
+
+function renderChatMarkdown(message: ChatMessage): string {
+  if (!message.streaming) return renderMarkdown(message.text)
+
+  const { stable, pendingTable } = splitTrailingTableBlock(message.text)
+  if (!pendingTable) return renderMarkdown(message.text)
+
+  const stableHtml = stable.trim() ? renderMarkdown(stable) : ''
+  const pendingHtml = `<pre class="streaming-markdown-pending">${escapeHtml(pendingTable)}</pre>`
+  return DOMPurify.sanitize(`${stableHtml}${pendingHtml}`)
 }
 
 
@@ -622,6 +635,7 @@ async function sendChatMessage() {
         const message = chatMessages.value.find(m => m.id === typingId)
         if (!message) return
         message.typing = false
+        message.streaming = true
         message.text += delta
         void nextTick(() => scrollChatToBottom())
       },
@@ -629,6 +643,7 @@ async function sendChatMessage() {
         const message = chatMessages.value.find(m => m.id === typingId)
         if (!message) return
         message.typing = false
+        message.streaming = false
         if (data.answer) message.text = data.answer
         message.sourceCards = data.source_cards ?? message.sourceCards
       },
@@ -641,6 +656,7 @@ async function sendChatMessage() {
     const idx = chatMessages.value.findIndex(m => m.id === typingId)
     if (idx !== -1) {
       chatMessages.value[idx].typing = false
+      chatMessages.value[idx].streaming = false
     }
   } catch (e) {
     const idx = chatMessages.value.findIndex(m => m.id === typingId)
@@ -651,6 +667,7 @@ async function sendChatMessage() {
         id: nextMsgId(),
         role: 'assistant',
         text: `답변을 불러오는 데 실패했습니다. 다시 시도해주세요.${msg ? `\n사유: ${msg}` : ''}`,
+        streaming: false,
         error: true,
       })
     }
@@ -1223,7 +1240,7 @@ onBeforeUnmount(() => {
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
               </template>
-              <div v-else-if="message.role === 'assistant'" class="md-content" v-html="renderMarkdown(message.text)"/>
+              <div v-else-if="message.role === 'assistant'" class="md-content" v-html="renderChatMarkdown(message)"/>
               <template v-else>{{ message.text }}</template>
             </div>
           </div>
@@ -1949,6 +1966,15 @@ onBeforeUnmount(() => {
 .md-content :deep(code) {
   background: rgba(0,0,0,0.07); border-radius: 4px;
   padding: 1px 5px; font-size: 12px; font-family: monospace;
+}
+.md-content :deep(.streaming-markdown-pending) {
+  margin: 4px 0 8px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
 }
 .md-content :deep(table) {
   border-collapse: collapse; font-size: 12.5px; line-height: 1.5;

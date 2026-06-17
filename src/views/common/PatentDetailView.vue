@@ -1019,7 +1019,7 @@
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
               </template>
-              <div v-else-if="message.role === 'assistant'" class="md-content" v-html="renderMarkdown(message.text)"/>
+              <div v-else-if="message.role === 'assistant'" class="md-content" v-html="renderChatMarkdown(message)"/>
               <template v-else>{{ message.text }}</template>
             </div>
           </div>
@@ -1055,6 +1055,7 @@ import { reportsApi } from '@/api/reports'
 import { businessReviewsApi } from '@/api/businessReviews'
 import type { BusinessReviewDetailResponse } from '@/api/businessReviews'
 import { patentHistoryApi, type PatentAnnuityResponse, type PatentLegalStatusResponse } from '@/api/patentHistory'
+import { escapeHtml, splitTrailingTableBlock } from '@/utils/streamingMarkdown'
 
 type ChatRole = 'assistant' | 'user'
 import PatentStatusBadge from '@/components/patent/PatentStatusBadge.vue'
@@ -1569,6 +1570,17 @@ function renderMarkdown(text: string): string {
   return DOMPurify.sanitize(html)
 }
 
+function renderChatMarkdown(message: ChatMessage): string {
+  if (!message.streaming) return renderMarkdown(message.text)
+
+  const { stable, pendingTable } = splitTrailingTableBlock(message.text)
+  if (!pendingTable) return renderMarkdown(message.text)
+
+  const stableHtml = stable.trim() ? renderMarkdown(stable) : ''
+  const pendingHtml = `<pre class="streaming-markdown-pending">${escapeHtml(pendingTable)}</pre>`
+  return DOMPurify.sanitize(`${stableHtml}${pendingHtml}`)
+}
+
 const chatPanelWidth = computed(() => {
   if (!chatbotOpen.value) return '0px'
   if (chatbotExpanded.value) return '100vw'
@@ -1648,6 +1660,7 @@ async function sendChatMessage() {
         const message = history.find(m => m.id === typingId)
         if (!message) return
         message.typing = false
+        message.streaming = true
         message.text += delta
         void nextTick(() => { scrollChatToBottom() })
       },
@@ -1655,6 +1668,7 @@ async function sendChatMessage() {
         const message = history.find(m => m.id === typingId)
         if (!message) return
         message.typing = false
+        message.streaming = false
         if (data.answer) message.text = data.answer
         message.sourceCards = data.source_cards ?? message.sourceCards
       },
@@ -1667,6 +1681,7 @@ async function sendChatMessage() {
     const idx = history.findIndex(m => m.id === typingId)
     if (idx !== -1) {
       history[idx].typing = false
+      history[idx].streaming = false
     }
   } catch (e) {
     const err = e as Record<string, unknown>
@@ -1679,6 +1694,7 @@ async function sendChatMessage() {
         id: nextMessageId(),
         role: 'assistant',
         text: `메시지 전송에 실패했습니다.${msg ? `\n사유: ${msg}` : ''}${code ? ` (${code})` : ''}`,
+        streaming: false,
         error: true,
       })
     }
@@ -3057,6 +3073,15 @@ async function openHistoryReport(reportId: number) {
 .md-content :deep(code) {
   background: rgba(0,0,0,0.07); border-radius: 4px;
   padding: 1px 5px; font-size: 12px; font-family: monospace;
+}
+.md-content :deep(.streaming-markdown-pending) {
+  margin: 4px 0 8px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
 }
 /* 테이블 */
 .md-content :deep(table) {
