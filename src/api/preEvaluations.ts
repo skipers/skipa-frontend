@@ -1,4 +1,5 @@
 import apiClient from './axios'
+import { streamChatMessage, type ChatStreamHandlers } from './chatStream'
 import type { PageResponse } from './patents'
 import type { ChatSourceCard } from './reports'
 
@@ -55,6 +56,7 @@ export interface PreEvaluationChatMessageResponse {
   preEvaluationId: number
   role: string
   content: string
+  source_cards?: ChatSourceCard[]
   sourceCards?: ChatSourceCard[]
   createdAt: string
 }
@@ -92,6 +94,14 @@ export const preEvaluationsApi = {
 
   sendChatMessage: async (id: number, message: string): Promise<PreEvaluationChatSendResponse> => {
     return apiClient.post(`/pre-evaluations/${id}/chat/messages`, { message }, { timeout: 120_000 })
+  },
+
+  sendChatMessageStream: async (
+    id: number,
+    message: string,
+    handlers: ChatStreamHandlers,
+  ): Promise<void> => {
+    return streamChatMessage(`/pre-evaluations/${id}/chat/messages/stream`, message, handlers)
   },
 
   clearChat: async (id: number): Promise<void> => {
