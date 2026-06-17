@@ -4,6 +4,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { preEvaluationsApi } from '@/api/preEvaluations'
 import type { PreEvaluationListItem, PreEvaluationDetailResponse } from '@/api/preEvaluations'
+import type { ChatSourceCard } from '@/api/reports'
 
 type ChatRole = 'assistant' | 'user'
 
@@ -79,6 +80,7 @@ interface ChatMessage {
   text: string
   typing?: boolean
   error?: boolean
+  sourceCards?: ChatSourceCard[]
 }
 
 const GREETING = '안녕하세요! 평가 결과에 대해 궁금한 점을 질문해주세요.'
@@ -416,6 +418,7 @@ async function loadChatHistory(id: number) {
         id: nextMsgId(),
         role: m.role as ChatRole,
         text: m.content,
+        sourceCards: m.sourceCards,
       }))
     }
   } catch {
@@ -609,22 +612,45 @@ async function sendChatMessage() {
 
   chatSending.value = true
   try {
-    const res = await preEvaluationsApi.sendChatMessage(selectedHistoryId.value, text)
+    let streamError: unknown = null
+    await preEvaluationsApi.sendChatMessageStream(selectedHistoryId.value, text, {
+      onSourceCards: (sourceCards) => {
+        const message = chatMessages.value.find(m => m.id === typingId)
+        if (message) message.sourceCards = sourceCards
+      },
+      onDelta: (delta) => {
+        const message = chatMessages.value.find(m => m.id === typingId)
+        if (!message) return
+        message.typing = false
+        message.text += delta
+        void nextTick(() => scrollChatToBottom())
+      },
+      onDone: (data) => {
+        const message = chatMessages.value.find(m => m.id === typingId)
+        if (!message) return
+        message.typing = false
+        if (data.answer) message.text = data.answer
+        message.sourceCards = data.source_cards ?? message.sourceCards
+      },
+      onError: (data) => {
+        streamError = data
+      },
+    })
+    if (streamError) throw streamError
+
     const idx = chatMessages.value.findIndex(m => m.id === typingId)
     if (idx !== -1) {
-      chatMessages.value.splice(idx, 1, {
-        id: nextMsgId(),
-        role: 'assistant',
-        text: res.assistantMessage.content,
-      })
+      chatMessages.value[idx].typing = false
     }
-  } catch {
+  } catch (e) {
     const idx = chatMessages.value.findIndex(m => m.id === typingId)
+    const err = e as Record<string, unknown>
+    const msg = String(err?.message ?? '')
     if (idx !== -1) {
       chatMessages.value.splice(idx, 1, {
         id: nextMsgId(),
         role: 'assistant',
-        text: '답변을 불러오는 데 실패했습니다. 다시 시도해주세요.',
+        text: `답변을 불러오는 데 실패했습니다. 다시 시도해주세요.${msg ? `\n사유: ${msg}` : ''}`,
         error: true,
       })
     }

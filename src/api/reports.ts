@@ -1,4 +1,5 @@
 import apiClient from './axios'
+import { streamChatMessage, type ChatStreamHandlers } from './chatStream'
 import type { PageResponse } from './patents'
 
 // ── Types ────────────────────────────────────────────────────
@@ -108,6 +109,15 @@ export const reportsApi = {
 
   sendChatMessage: async (patentId: number, reportId: number, message: string): Promise<ReportChatSendResponse> => {
     return apiClient.post(`/patents/${patentId}/reports/${reportId}/chat/messages`, { message }, { timeout: 120_000 })
+  },
+
+  sendChatMessageStream: async (
+    patentId: number,
+    reportId: number,
+    message: string,
+    handlers: ChatStreamHandlers,
+  ): Promise<void> => {
+    return streamChatMessage(`/patents/${patentId}/reports/${reportId}/chat/messages/stream`, message, handlers)
   },
 
   clearChatHistory: async (patentId: number, reportId: number): Promise<void> => {

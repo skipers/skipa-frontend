@@ -1638,15 +1638,35 @@ async function sendChatMessage() {
   scrollChatToBottom()
 
   try {
-    const res = await reportsApi.sendChatMessage(props.patentId, latestReportId.value, text)
+    let streamError: unknown = null
+    await reportsApi.sendChatMessageStream(props.patentId, latestReportId.value, text, {
+      onSourceCards: (sourceCards) => {
+        const message = history.find(m => m.id === typingId)
+        if (message) message.sourceCards = sourceCards
+      },
+      onDelta: (delta) => {
+        const message = history.find(m => m.id === typingId)
+        if (!message) return
+        message.typing = false
+        message.text += delta
+        void nextTick(() => { scrollChatToBottom() })
+      },
+      onDone: (data) => {
+        const message = history.find(m => m.id === typingId)
+        if (!message) return
+        message.typing = false
+        if (data.answer) message.text = data.answer
+        message.sourceCards = data.source_cards ?? message.sourceCards
+      },
+      onError: (data) => {
+        streamError = data
+      },
+    })
+    if (streamError) throw streamError
+
     const idx = history.findIndex(m => m.id === typingId)
     if (idx !== -1) {
-      history.splice(idx, 1, {
-        id: nextMessageId(),
-        role: 'assistant',
-        text: res.assistantMessage.content,
-        sourceCards: res.assistantMessage.sourceCards,
-      })
+      history[idx].typing = false
     }
   } catch (e) {
     const err = e as Record<string, unknown>
