@@ -263,6 +263,21 @@ function scrollChatToBottom() {
   if (chatViewport.value) chatViewport.value.scrollTop = chatViewport.value.scrollHeight
 }
 
+function keepChatMessageTopVisible(messageId: number) {
+  const viewport = chatViewport.value
+  const row = viewport?.querySelector<HTMLElement>(`[data-chat-message-id="${messageId}"]`)
+  if (!viewport || !row) return
+
+  const padding = 12
+  const viewportRect = viewport.getBoundingClientRect()
+  const rowRect = row.getBoundingClientRect()
+  const rowTopInScrollContent = viewport.scrollTop + rowRect.top - viewportRect.top
+  const maxScrollTopWithMessageVisible = Math.max(rowTopInScrollContent - padding, 0)
+  const bottomScrollTop = Math.max(viewport.scrollHeight - viewport.clientHeight, 0)
+
+  viewport.scrollTop = Math.min(bottomScrollTop, maxScrollTopWithMessageVisible)
+}
+
 // ── 이력 ─────────────────────────────────────────────
 async function fetchGradesEagerly(items: PreEvaluationListItem[]) {
   const targets = items.filter(
@@ -623,14 +638,15 @@ async function sendChatMessage() {
   if (!text || chatSending.value || selectedHistoryId.value === null) return
   if (!chatbotOpen.value) { chatbotOpen.value = true; await nextTick() }
 
-  chatMessages.value.push({ id: nextMsgId(), role: 'user', text })
+  const userMessageId = nextMsgId()
+  chatMessages.value.push({ id: userMessageId, role: 'user', text })
   chatInput.value = ''
   await nextTick(); autoResizeChatInput()
 
   const typingId = nextMsgId()
   chatMessages.value.push({ id: typingId, role: 'assistant', text: '', typing: true })
   await nextTick()
-  scrollChatToBottom()
+  keepChatMessageTopVisible(userMessageId)
 
   chatSending.value = true
   try {
@@ -640,7 +656,7 @@ async function sendChatMessage() {
         const message = chatMessages.value.find(m => m.id === typingId)
         if (message) message.text += chunk
       },
-      () => { void nextTick(() => scrollChatToBottom()) },
+      () => { void nextTick(() => keepChatMessageTopVisible(userMessageId)) },
     )
     await preEvaluationsApi.sendChatMessageStream(selectedHistoryId.value, text, {
       onSourceCards: (sourceCards) => {
@@ -691,7 +707,7 @@ async function sendChatMessage() {
     }
   } finally {
     chatSending.value = false
-    void nextTick(() => scrollChatToBottom())
+    void nextTick(() => keepChatMessageTopVisible(userMessageId))
   }
 }
 
@@ -1253,14 +1269,20 @@ onBeforeUnmount(() => {
         </header>
 
         <div ref="chatViewport" class="chat-body">
-          <div v-for="message in chatMessages" :key="message.id" class="chat-row" :class="message.role">
+          <div
+            v-for="message in chatMessages"
+            :key="message.id"
+            class="chat-row"
+            :class="message.role"
+            :data-chat-message-id="message.id"
+          >
             <div class="chat-bubble" :class="[message.role, { 'chat-bubble--error': message.error }]">
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
               </template>
               <template v-else-if="message.role === 'assistant'">
                 <div class="md-content" v-html="renderChatMarkdown(message)"/>
-                <div v-if="message.sourceCards?.length" class="source-cards">
+                <div v-if="!message.typing && !message.streaming && message.sourceCards?.length" class="source-cards">
                   <div
                     v-for="(card, index) in message.sourceCards"
                     :key="`${message.id}-${card.source_path ?? card.title ?? index}`"
@@ -1972,6 +1994,7 @@ onBeforeUnmount(() => {
 .chat-body {
   flex: 1; overflow-y: auto;
   display: flex; flex-direction: column; gap: 12px; padding: 18px;
+  overflow-anchor: none;
 }
 .chat-row           { display: flex; }
 .chat-row.assistant { justify-content: flex-start; }
