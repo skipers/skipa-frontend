@@ -3415,7 +3415,7 @@ details[open] .rpt-appendix__chevron { transform: rotate(180deg); }
 .rpt-confirm-item:last-of-type { margin-bottom: 0; }
 .rpt-confirm-item-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 5px; }
 .rpt-confirm-item-title span { color: #94a3b8; font-weight: 400; font-size: 12px; }
-.rpt-confirm-item-desc { font-size: 12.5px; color: #475569; line-height: 1.65; }
+.rpt-confirm-item-desc { font-size: 12.5px; color: #475569; line-height: 1.65; white-space: pre-line; }
 
 .rpt-ref-list {
   list-style: none; padding: 0; margin: 0;
