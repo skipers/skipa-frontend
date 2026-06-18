@@ -121,31 +121,8 @@
 
     <hr class="section-divider"/>
 
-    <!-- 신규 신청 현황 + 담당 특허 현황 + 연도별 추이 -->
+    <!-- 담당 특허 현황 + 연도별 추이 -->
     <div class="charts-row">
-
-      <!-- 신규 특허 신청 현황 -->
-      <div class="card">
-        <div class="card__header">
-          <div class="card__header-left">
-            <h3 class="card__title">신규 특허 신청 현황</h3>
-            <span class="card__badge">전체 {{ applications.length }}건</span>
-          </div>
-          <RouterLink to="/biz/register?tab=history" class="card__link">전체 보기</RouterLink>
-        </div>
-        <div v-if="recentApplications.length" class="app-list">
-          <div v-for="a in recentApplications" :key="a.id" class="app-item">
-            <div class="app-item__left">
-              <span class="app-status-badge" :class="`app-status--${a.appStatus}`">
-                {{ appStatusLabel(a.appStatus) }}
-              </span>
-              <p class="app-item__title">{{ a.title }}</p>
-            </div>
-            <p class="app-item__date">{{ formatDate(a.submittedAt) }}</p>
-          </div>
-        </div>
-        <div v-else class="card__empty">신청 이력이 없습니다.</div>
-      </div>
 
       <!-- 담당 특허 현황 (도넛) -->
       <div class="card">
@@ -262,7 +239,6 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { dashboardApi, type BusinessDashboardResponse } from '@/api/dashboard'
-import { usePatentApplications } from '@/composables/usePatentApplications'
 
 const auth   = useAuthStore()
 const router = useRouter()
@@ -316,18 +292,6 @@ const recentSubmissions = computed(() =>
     decidedAt: s.submittedAt,
   }))
 )
-
-// ── 신규 특허 신청 (usePatentApplications composable) ─
-const { applications } = usePatentApplications()
-const recentApplications = computed(() =>
-  [...applications.value]
-    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
-    .slice(0, 5)
-)
-
-function appStatusLabel(s: string) {
-  return { pending: '검토중', approved: '승인', rejected: '거절', withdrawn: '철회' }[s] ?? s
-}
 
 // ── 담당 특허 현황 도넛 ──────────────────────────────
 const patentStatItems = computed(() => {
@@ -741,52 +705,6 @@ onMounted(fetchDashboard)
 .decision-badge--dispose  { background: #fef2f2; color: #dc2626; }
 .decision-badge--abandon  { background: #fef2f2; color: #dc2626; }
 
-/* ── 신규 특허 신청 현황 ──────────────────────────────── */
-.app-list { display: flex; flex-direction: column; gap: 0; }
-
-.app-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid #f8fafc;
-}
-.app-item:last-child { border-bottom: none; }
-
-.app-item__left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.app-item__title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #0f172a;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin: 0;
-}
-
-.app-item__date { font-size: 11.5px; color: #94a3b8; margin: 0; white-space: nowrap; flex-shrink: 0; }
-
-.app-status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 11.5px;
-  font-weight: 700;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.app-status--pending   { background: #fef9c3; color: #854d0e; }
-.app-status--approved  { background: #f0fdf4; color: #15803d; }
-.app-status--rejected  { background: #fef2f2; color: #dc2626; }
-.app-status--withdrawn { background: #f1f5f9; color: #64748b; }
 
 /* ── 구분선 ──────────────────────────────────────────── */
 .section-divider {
@@ -798,10 +716,9 @@ onMounted(fetchDashboard)
 /* ── 하단 차트 2열 ───────────────────────────────────── */
 .charts-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 2fr;
+  grid-template-columns: 1fr 2fr;
   gap: 16px;
 }
-@media (max-width: 960px) { .charts-row { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 640px) { .charts-row { grid-template-columns: 1fr; } }
 
 /* ── 담당 특허 도넛 ──────────────────────────────────── */

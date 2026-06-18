@@ -880,48 +880,10 @@ onBeforeUnmount(() => {
                 <textarea v-model="techDescription" rows="4" placeholder="핵심 기술의 작동 방식, 차별점, 활용 맥락을 입력하세요." />
               </label>
 
-              <div class="claim-group">
-                <div class="claim-header">
-                  <span class="field__label">청구항</span>
-                  <button class="claim-btn claim-btn--add" type="button" @click="addClaimInput">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                      <path d="M12 5v14M5 12h14"/>
-                    </svg>
-                    추가
-                  </button>
-                </div>
-                <div class="claim-list">
-                  <div v-for="(_, index) in claimInputs" :key="index" class="claim-row">
-                    <textarea
-                      v-model="claimInputs[index]"
-                      class="claim-textarea"
-                      rows="2"
-                      placeholder="청구항 내용을 입력하세요."
-                    />
-                    <button
-                      v-if="claimInputs.length > 1"
-                      class="claim-btn claim-btn--remove"
-                      type="button"
-                      @click="removeClaimInput(index)"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <path d="M18 6 6 18M6 6l12 12"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="two-col">
-                <label class="field">
-                  <span class="field__label">관련 사업</span>
-                  <input v-model="relatedBusiness" type="text" placeholder="예: 반도체 제조 공정 품질관리" />
-                </label>
-                <label class="field">
-                  <span class="field__label">출원 예정 국가</span>
-                  <input v-model="targetCountries" type="text" placeholder="예: 한국, 미국, 유럽" />
-                </label>
-              </div>
+              <label class="field">
+                <span class="field__label">관련 사업</span>
+                <input v-model="relatedBusiness" type="text" placeholder="예: 반도체 제조 공정 품질관리" />
+              </label>
 
               <button class="btn-primary" type="submit" :disabled="!isStartEnabled">평가 시작</button>
             </form>
