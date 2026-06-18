@@ -1940,7 +1940,7 @@ const REPORT_EVAL_BLOCKS = computed<RptBlock[]>(() => {
       name: item.name,
       score: item.score,
       method: item.method ?? '',
-      summary: (item.judgment_summary ?? '').slice(0, 50),
+      summary: (item.judgment_summary ?? '').length > 50 ? (item.judgment_summary as string).slice(0, 50) + '…' : (item.judgment_summary ?? ''),
       grounds: item.judgment_basis ?? '',
       sources: (item.sources ?? [])
         .filter((src: any) => src.title || src.url)
@@ -2119,7 +2119,7 @@ function buildEvalReportFromJson(json: any): EvalReport {
       name: item.name,
       score: item.score,
       method: item.method ?? '',
-      summary: (item.judgment_summary ?? '').slice(0, 50),
+      summary: (item.judgment_summary ?? '').length > 50 ? (item.judgment_summary as string).slice(0, 50) + '…' : (item.judgment_summary ?? ''),
       grounds: item.judgment_basis ?? '',
       sources: (item.sources ?? [])
         .filter((src: any) => src.title || src.url)
