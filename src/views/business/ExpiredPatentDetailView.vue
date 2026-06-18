@@ -432,7 +432,7 @@ const patentCountry = computed(() => {
   return COUNTRY_LABEL[code] ?? code
 })
 
-const inventor  = computed(() => patent.value?.inventor ?? '—')
+const inventor  = computed(() => patent.value?.inventor ? patent.value.inventor.replace(/\s*;\s*/g, ', ') : '—')
 const ipcCode   = computed(() => patent.value?.ipcCodes[0] ?? '—')
 const summary   = computed(() => patent.value?.summary ?? '')
 

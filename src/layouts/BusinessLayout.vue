@@ -5,11 +5,7 @@
 
         <div class="sidebar__logo">
           <span class="sidebar__logo-icon">
-            <svg width="20" height="20" viewBox="0 0 28 28" fill="none">
-              <path d="M4 14 L14 4 L24 14" stroke="currentColor" stroke-width="2" stroke-linejoin="round" fill="none"/>
-              <path d="M8 18 L14 12 L20 18 L14 24 Z" fill="currentColor" opacity="0.7"/>
-              <circle cx="14" cy="14" r="2" fill="currentColor"/>
-            </svg>
+            <img :src="logoUrl" alt="SKIPA logo" width="24" height="24" />
           </span>
             <span class="sidebar__logo-text">SKIPA</span>
         </div>
@@ -36,7 +32,10 @@
         <div class="sidebar__bottom">
           <div class="sidebar__user">
             <div class="sidebar__avatar sidebar__avatar--biz">
-              {{ avatarInitial }}
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+              </svg>
             </div>
             <div class="sidebar__user-info">
               <p class="sidebar__user-name">{{ auth.user?.name ?? '사업부' }}</p>
@@ -76,11 +75,11 @@
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import logoUrl from '@/assets/icon.png'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const avatarInitial = computed(() => (auth.user?.name ?? 'B').charAt(0))
 
 const navItems = [
   {
@@ -119,12 +118,6 @@ const navItems = [
     label: '특허 검색',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>`,
   },
-  {
-    name: 'BizPatentRegister',
-    to: '/biz/register',
-    label: '신규 특허 등록 신청',
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`,
-  },
 ]
 
 const pageTitleMap: Record<string, string> = {
@@ -134,13 +127,11 @@ const pageTitleMap: Record<string, string> = {
   '/biz/pre-eval-lab': '사전 평가 Lab',
   '/biz/expiring': '소멸 예정 관리',
   '/biz/patent-search': '특허 검색',
-  '/biz/register': '신규 특허 등록 신청',
 }
 
 const currentPageTitle = computed(() => {
   const path = route.path
   if (path.startsWith('/biz/patent-search/')) return '특허 상세'
-  if (path.startsWith('/biz/register/history/')) return '신청 상세'
   return pageTitleMap[path] ?? ''
 })
 
@@ -196,9 +187,7 @@ async function handleLogout() {
 }
 
 .sidebar__logo-icon {
-  width: 36px; height: 36px;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  width: 40px; height: 40px;
   border-radius: 9px;
   display: flex;
   align-items: center;

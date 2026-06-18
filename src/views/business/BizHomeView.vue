@@ -92,7 +92,17 @@
           <div v-for="s in recentSubmissions.slice(0, 5)" :key="s.id" class="submission-item">
             <div class="submission-item__left">
               <div class="submission-item__icon" :class="`sub-icon--${s.decision.toLowerCase()}`">
-                {{ decisionIcon(s.decision) }}
+                <!-- 유지 -->
+                <svg v-if="s.decision === 'MAINTAIN'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <!-- 포기/소멸 -->
+                <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14H6L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                  <path d="M9 6V4h6v2"/>
+                </svg>
               </div>
               <div>
                 <p class="submission-item__title">{{ s.patentTitle }}</p>
@@ -111,31 +121,8 @@
 
     <hr class="section-divider"/>
 
-    <!-- 신규 신청 현황 + 담당 특허 현황 + 연도별 추이 -->
+    <!-- 담당 특허 현황 + 연도별 추이 -->
     <div class="charts-row">
-
-      <!-- 신규 특허 신청 현황 -->
-      <div class="card">
-        <div class="card__header">
-          <div class="card__header-left">
-            <h3 class="card__title">신규 특허 신청 현황</h3>
-            <span class="card__badge">전체 {{ applications.length }}건</span>
-          </div>
-          <RouterLink to="/biz/register?tab=history" class="card__link">전체 보기</RouterLink>
-        </div>
-        <div v-if="recentApplications.length" class="app-list">
-          <div v-for="a in recentApplications" :key="a.id" class="app-item">
-            <div class="app-item__left">
-              <span class="app-status-badge" :class="`app-status--${a.appStatus}`">
-                {{ appStatusLabel(a.appStatus) }}
-              </span>
-              <p class="app-item__title">{{ a.title }}</p>
-            </div>
-            <p class="app-item__date">{{ formatDate(a.submittedAt) }}</p>
-          </div>
-        </div>
-        <div v-else class="card__empty">신청 이력이 없습니다.</div>
-      </div>
 
       <!-- 담당 특허 현황 (도넛) -->
       <div class="card">
@@ -143,7 +130,8 @@
           <h3 class="card__title">담당 특허 현황</h3>
           <RouterLink to="/biz/patents" class="card__link">특허 관리</RouterLink>
         </div>
-        <div class="donut-wrap">
+        <div v-if="patentTotal === 0" class="card__empty">담당 특허가 없습니다.</div>
+        <div v-else class="donut-wrap">
           <svg class="patent-donut" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20"/>
             <circle
@@ -184,7 +172,7 @@
             </span>
           </div>
         </div>
-        <div class="trend-body">
+        <div class="trend-body" ref="trendBodyRef">
           <svg class="biz-trend-svg" :viewBox="`0 0 ${tW} ${tH}`">
             <!-- 배경 격자 -->
             <line v-for="n in 4" :key="n"
@@ -207,7 +195,37 @@
             <text v-for="(d, i) in bizTrendData" :key="`lbl${i}`"
               :x="tX(i)" :y="tH - 3"
               text-anchor="middle" font-size="9" fill="#94a3b8" font-weight="500">{{ d.year }}</text>
+            <!-- 호버 히트 영역 (연도별 세로 띠) -->
+            <rect
+              v-for="(d, i) in bizTrendData" :key="`hit${i}`"
+              :x="tX(i) - tHitHalfW(i)"
+              :y="tPad.t"
+              :width="tHitHalfW(i) * 2"
+              :height="tPlotH"
+              fill="transparent"
+              style="cursor: default"
+              @mouseenter="(e) => showTrendTooltip(e, d)"
+              @mouseleave="hideTrendTooltip"
+            />
           </svg>
+          <!-- 툴팁 -->
+          <div
+            v-if="trendTooltip.visible"
+            class="trend-tooltip"
+            :style="{ left: trendTooltip.x + 'px', top: trendTooltip.y + 'px' }"
+          >
+            <p class="trend-tooltip__year">{{ trendTooltip.year }}년</p>
+            <div class="trend-tooltip__row">
+              <span class="trend-tooltip__dot" style="background:#ABACED"/>
+              <span class="trend-tooltip__label">출원</span>
+              <span class="trend-tooltip__val">{{ trendTooltip.filed }}건</span>
+            </div>
+            <div class="trend-tooltip__row">
+              <span class="trend-tooltip__dot" style="background:#E88989"/>
+              <span class="trend-tooltip__label">소멸/포기</span>
+              <span class="trend-tooltip__val">{{ trendTooltip.expired }}건</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -221,7 +239,6 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { dashboardApi, type BusinessDashboardResponse } from '@/api/dashboard'
-import { usePatentApplications } from '@/composables/usePatentApplications'
 
 const auth   = useAuthStore()
 const router = useRouter()
@@ -276,18 +293,6 @@ const recentSubmissions = computed(() =>
   }))
 )
 
-// ── 신규 특허 신청 (usePatentApplications composable) ─
-const { applications } = usePatentApplications()
-const recentApplications = computed(() =>
-  [...applications.value]
-    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
-    .slice(0, 5)
-)
-
-function appStatusLabel(s: string) {
-  return { pending: '검토중', approved: '승인', rejected: '거절', withdrawn: '철회' }[s] ?? s
-}
-
 // ── 담당 특허 현황 도넛 ──────────────────────────────
 const patentStatItems = computed(() => {
   const active   = dashboardData.value?.patentStatus.active   ?? 0
@@ -340,11 +345,33 @@ function tY(v: number) { return tPad.t + (1 - v / tMaxVal.value) * tPlotH }
 const filedPoints   = computed(() => bizTrendData.value.map((d, i) => `${tX(i)},${tY(d.filed)}`).join(' '))
 const expiredPoints = computed(() => bizTrendData.value.map((d, i) => `${tX(i)},${tY(d.expired)}`).join(' '))
 
+function tHitHalfW(i: number) {
+  const len = bizTrendData.value.length
+  if (len <= 1) return tPlotW / 2
+  const step = tPlotW / (len - 1)
+  return step / 2
+}
+
+const trendBodyRef = ref<HTMLElement | null>(null)
+const trendTooltip = ref({ visible: false, x: 0, y: 0, year: '', filed: 0, expired: 0 })
+
+function showTrendTooltip(event: MouseEvent, d: { year: string; filed: number; expired: number }) {
+  const container = trendBodyRef.value
+  if (!container) return
+  const rect = container.getBoundingClientRect()
+  let x = event.clientX - rect.left + 12
+  let y = event.clientY - rect.top - 72
+  if (x + 130 > rect.width) x = event.clientX - rect.left - 140
+  if (y < 0) y = event.clientY - rect.top + 12
+  trendTooltip.value = { visible: true, x, y, year: d.year, filed: d.filed, expired: d.expired }
+}
+
+function hideTrendTooltip() {
+  trendTooltip.value.visible = false
+}
+
 function decisionLabel(d: string) {
   return ({ MAINTAIN: '등록', DISPOSE: '포기', ABANDON: '포기'} as Record<string, string>)[d] ?? d
-}
-function decisionIcon(d: string) {
-  return ({MAINTAIN: '✅', DISPOSE: '🗑', ABANDON: '🗑'} as Record<string, string>)[d] ?? '—'
 }
 function formatDate(d?: string) {
   if (!d) return '—'
@@ -560,9 +587,13 @@ onMounted(fetchDashboard)
 }
 
 .card__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   font-size: 13px;
   color: #94a3b8;
-  padding: 24px 0;
   text-align: center;
 }
 .card__empty--success {
@@ -651,9 +682,11 @@ onMounted(fetchDashboard)
   font-size: 14px;
   flex-shrink: 0;
 }
-.sub-icon--keep    { background: #f0fdf4; }
-.sub-icon--sell    { background: #eef2ff; }
-.sub-icon--dispose { background: #fef2f2; }
+.sub-icon--keep     { background: #f0fdf4; color: #16a34a; }
+.sub-icon--maintain { background: #f0fdf4; color: #16a34a; }
+.sub-icon--sell     { background: #eef2ff; color: #4338ca; }
+.sub-icon--dispose  { background: #fef2f2; color: #dc2626; }
+.sub-icon--abandon  { background: #fef2f2; color: #dc2626; }
 
 .submission-item__title {
   font-size: 13px; font-weight: 600; color: #0f172a;
@@ -672,52 +705,6 @@ onMounted(fetchDashboard)
 .decision-badge--dispose  { background: #fef2f2; color: #dc2626; }
 .decision-badge--abandon  { background: #fef2f2; color: #dc2626; }
 
-/* ── 신규 특허 신청 현황 ──────────────────────────────── */
-.app-list { display: flex; flex-direction: column; gap: 0; }
-
-.app-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid #f8fafc;
-}
-.app-item:last-child { border-bottom: none; }
-
-.app-item__left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.app-item__title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #0f172a;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin: 0;
-}
-
-.app-item__date { font-size: 11.5px; color: #94a3b8; margin: 0; white-space: nowrap; flex-shrink: 0; }
-
-.app-status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 11.5px;
-  font-weight: 700;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.app-status--pending   { background: #fef9c3; color: #854d0e; }
-.app-status--approved  { background: #f0fdf4; color: #15803d; }
-.app-status--rejected  { background: #fef2f2; color: #dc2626; }
-.app-status--withdrawn { background: #f1f5f9; color: #64748b; }
 
 /* ── 구분선 ──────────────────────────────────────────── */
 .section-divider {
@@ -729,10 +716,9 @@ onMounted(fetchDashboard)
 /* ── 하단 차트 2열 ───────────────────────────────────── */
 .charts-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 2fr;
+  grid-template-columns: 1fr 2fr;
   gap: 16px;
 }
-@media (max-width: 960px) { .charts-row { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 640px) { .charts-row { grid-template-columns: 1fr; } }
 
 /* ── 담당 특허 도넛 ──────────────────────────────────── */
@@ -803,5 +789,53 @@ onMounted(fetchDashboard)
   width: 7px; height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+/* ── 연도별 추이 툴팁 ─────────────────────────────────── */
+.trend-body { position: relative; }
+
+.trend-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 8px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,.18);
+}
+
+.trend-tooltip__year {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin: 0 0 2px;
+}
+
+.trend-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trend-tooltip__dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.trend-tooltip__label {
+  font-size: 12px;
+  color: #cbd5e1;
+  flex: 1;
+}
+
+.trend-tooltip__val {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f5f9;
 }
 </style>

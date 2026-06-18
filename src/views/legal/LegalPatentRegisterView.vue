@@ -5,7 +5,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-header__title">특허 관리</h2>
-        <p class="page-header__desc">신청을 검토하거나 기존 특허를 수정·삭제합니다.</p>
+        <p class="page-header__desc">특허를 등록하거나 기존 특허를 수정·삭제합니다.</p>
       </div>
       <button class="btn-new-register" @click="openRegisterModal">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -15,60 +15,7 @@
       </button>
     </div>
 
-    <!-- 탭 -->
-    <div class="tab-bar">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        class="tab-btn"
-        :class="{ 'tab-btn--active': activeTab === tab.key }"
-        @click="activeTab = tab.key"
-      >
-        <span v-html="tab.icon" class="tab-btn__icon" />
-        {{ tab.label }}
-        <span v-if="tab.key === 'review' && pendingCount > 0" class="tab-badge tab-badge--alert">{{ pendingCount }}</span>
-      </button>
-    </div>
-
-    <!-- ── 탭 1: 신청 검토 ── -->
-    <template v-if="activeTab === 'review'">
-      <div v-if="!reviewApplications.length" class="list-card">
-        <div class="list-empty">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
-          <p>검토할 신청이 없습니다.</p>
-        </div>
-      </div>
-
-      <div v-else class="review-list">
-        <div
-          v-for="app in reviewApplications"
-          :key="app.id"
-          class="review-row"
-          @click="router.push({ name: 'LegalReviewDetail', params: { appId: app.id } })"
-        >
-          <span
-            class="app-status-badge"
-            :class="app.appStatus === 'pending' && app.isResubmit ? 'app-status--resubmit' : `app-status--${app.appStatus}`"
-          >
-            {{ app.appStatus === 'pending' && app.isResubmit ? '재신청' : appStatusLabel(app.appStatus) }}
-          </span>
-          <span class="review-row__title">{{ app.title }}</span>
-          <span class="review-row__dept">{{ app.submittedBy }}</span>
-          <span class="review-row__date">신청일 {{ app.submittedAt ? app.submittedAt.slice(0, 10) : '' }}</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="review-row__chevron">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </div>
-      </div>
-    </template>
-
-    <!-- ── 탭 2: 특허 목록 ── -->
-    <template v-else>
-
-      <!-- 검색 필터 카드 -->
+    <!-- 검색 필터 카드 -->
       <div class="filter-card">
         <div class="search-bar">
           <span class="search-bar__icon">
@@ -94,6 +41,7 @@
       <div class="result-bar">
         <p class="result-count">
           <span class="result-count__num">{{ filteredPatents.length }}</span>건
+          <span v-if="totalPages > 1" class="result-count__page">（{{ currentPage }} / {{ totalPages }} 페이지）</span>
         </p>
       </div>
 
@@ -116,7 +64,7 @@
           </div>
 
           <div class="list-rows">
-            <div v-for="p in filteredPatents" :key="p.id" class="list-row list-row--clickable" @click="startEdit(p)">
+            <div v-for="p in pagedPatents" :key="p.id" class="list-row list-row--clickable" @click="startEdit(p)">
               <div class="list-row__cell list-row__title">{{ p.title }}</div>
               <div class="list-row__cell">{{ p.applicationNumber }}</div>
               <div class="list-row__cell">
@@ -140,9 +88,25 @@
               </div>
             </div>
           </div>
+
+          <!-- 페이지네이션 -->
+          <div v-if="totalPages > 1" class="pagination">
+            <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button
+              v-for="p in totalPages"
+              :key="p"
+              class="page-btn"
+              :class="{ 'page-btn--active': p === currentPage }"
+              @click="currentPage = p"
+            >{{ p }}</button>
+            <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage++">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
         </template>
       </div>
-    </template>
 
     <!-- ── 신규 등록 / 수정 모달 ── -->
     <Teleport to="body">
@@ -581,15 +545,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { patentsApi, type PatentCreateRequest, type PatentListItem } from '@/api/patents'
 import { patentHistoryApi } from '@/api/patentHistory'
 import TagInput from '@/components/ui/TagInput.vue'
-import { usePatentApplications } from '@/composables/usePatentApplications'
-
 const router = useRouter()
-const { applications, fetchApplications } = usePatentApplications()
 
 const patentItems = ref<PatentListItem[]>([])
 
@@ -602,36 +563,7 @@ async function fetchPatents() {
   }
 }
 
-onMounted(() => { fetchApplications(); fetchPatents() })
-// ── 탭 ──────────────────────────────────────────────
-type TabKey = 'review' | 'list'
-const activeTab = ref<TabKey>('review')
-
-const tabs: { key: TabKey; label: string; icon: string }[] = [
-  {
-    key: 'review',
-    label: '신청 검토',
-    icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
-  },
-  {
-    key: 'list',
-    label: '특허 목록 / 수정·삭제',
-    icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
-  },
-]
-  
-
-// ── 신청 검토 ────────────────────────────────────────
-const reviewApplications = computed(() =>
-  applications.value.filter(a => a.appStatus !== 'withdrawn' && a.appStatus !== 'approved')
-)
-const pendingCount = computed(() =>
-  applications.value.filter(a => a.appStatus === 'pending').length
-)
-
-function appStatusLabel(s: string) {
-  return { pending: '신규 신청', approved: '승인', rejected: '거절', withdrawn: '철회' }[s] ?? s
-}
+onMounted(() => { fetchPatents() })
 
 // ── 등록 모달 ────────────────────────────────────────
 const AH_LABELS: Record<string, string> = {
@@ -818,6 +750,8 @@ async function handleSave() {
 }
 
 const searchQuery = ref('')
+const currentPage = ref(1)
+const PAGE_SIZE = 50
 
 const filteredPatents = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
@@ -828,11 +762,19 @@ const filteredPatents = computed(() => {
   )
 })
 
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredPatents.value.length / PAGE_SIZE)))
+const pagedPatents = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return filteredPatents.value.slice(start, start + PAGE_SIZE)
+})
+
+watch(searchQuery, () => { currentPage.value = 1 })
+
 function statusLabel(s: string) {
-  return ({ REGISTERED: '등록', EXPIRED: '소멸', ABANDONED: '포기', PUBLISHED: '공개', PENDING: '출원' } as Record<string, string>)[s] ?? s
+  return ({ REGISTERED: '등록', EXPIRED: '소멸', ABANDONED: '포기', PUBLISHED: '공개', PENDING: '출원', WITHDRAWN: '취하', REJECTED: '거절' } as Record<string, string>)[s] ?? s
 }
 function statusClass(s: string) {
-  return ({ REGISTERED: 'status--registered', EXPIRED: 'status--expired', ABANDONED: 'status--abandoned', PUBLISHED: 'status--published', PENDING: 'status--pending' } as Record<string, string>)[s] ?? ''
+  return ({ REGISTERED: 'status--registered', EXPIRED: 'status--expired', ABANDONED: 'status--abandoned', PUBLISHED: 'status--published', PENDING: 'status--pending', WITHDRAWN: 'status--withdrawn', REJECTED: 'status--rejected' } as Record<string, string>)[s] ?? ''
 }
 
 const LEGAL_TYPE_MAP: Record<string, string> = {
@@ -1122,6 +1064,26 @@ async function handleDelete() {
 .status--abandoned  { background: #f1f5f9; color: #475569; }
 .status--published  { background: #ede9fe; color: #5b21b6; }
 .status--pending    { background: #fef9c3; color: #854d0e; }
+.status--withdrawn  { background: #f1f5f9; color: #475569; }
+.status--rejected   { background: #fee2e2; color: #b91c1c; }
+
+.result-count__page { font-size: 12px; color: var(--color-text-muted); margin-left: 8px; }
+
+.pagination {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  padding: 16px 0 4px;
+}
+.page-btn {
+  min-width: 32px; height: 32px; padding: 0 8px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--color-border); border-radius: 7px;
+  background: var(--color-surface); color: var(--color-text-secondary);
+  font-size: 13px; font-family: inherit; cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.page-btn:hover:not(:disabled) { background: var(--color-surface-muted); color: var(--color-text); }
+.page-btn--active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); font-weight: 700; }
+.page-btn:disabled { opacity: 0.35; cursor: default; }
 
 .btn-action {
   display: flex; align-items: center; gap: 5px; padding: 5px 11px;
@@ -1133,40 +1095,6 @@ async function handleDelete() {
 .btn-action--delete { background: var(--color-danger-bg); border: 1px solid #fecaca; color: var(--color-danger); }
 .btn-action--delete:hover { background: #fecaca; }
 
-/* ── 신청 검토 목록 ── */
-.review-list {
-  background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 14px; overflow: hidden;
-  display: flex; flex-direction: column;
-}
-
-.review-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--color-surface-muted);
-  cursor: pointer; transition: background .12s;
-}
-.review-row:last-child { border-bottom: none; }
-.review-row:hover { background: var(--color-surface-hover); }
-
-.review-row__title { flex: 1; font-size: 14px; font-weight: 600; color: var(--color-text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.review-row__dept {
-  font-size: 11.5px; font-weight: 600; padding: 2px 9px;
-  background: var(--color-surface-muted); border-radius: 5px;
-  color: var(--color-text-secondary); white-space: nowrap; flex-shrink: 0;
-}
-.review-row__date { font-size: 12px; color: var(--color-text-muted); white-space: nowrap; flex-shrink: 0; }
-.review-row__chevron { flex-shrink: 0; color: var(--color-text-muted); }
-
-.app-status-badge {
-  display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 6px;
-  font-size: 12px; font-weight: 700; white-space: nowrap; flex-shrink: 0;
-}
-.app-status--pending   { background: #fee2e2; color: #b91c1c; }
-.app-status--resubmit  { background: #ede9fe; color: #5b21b6; }
-.app-status--approved  { background: #dcfce7; color: #166534; }
-.app-status--rejected  { background: #fef9c3; color: #854d0e; }
-.app-status--withdrawn{ background: #f1f5f9; color: #475569; }
 
 /* ── 뷰 모드 ── */
 .reg-panel__head--view { align-items: center; }

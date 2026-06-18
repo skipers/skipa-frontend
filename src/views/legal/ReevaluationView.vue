@@ -740,10 +740,15 @@ function openDueDateModal() {
   showDueDateModal.value = true
 }
 
-function handleDueDateChange() {
-  if (!newDueDate.value) return
-  globalDueDate.value = newDueDate.value
-  showDueDateModal.value = false
+async function handleDueDateChange() {
+  if (!newDueDate.value || !currentCycle.value) return
+  try {
+    await reviewCyclesApi.updateDeadline(currentCycle.value.id, newDueDate.value)
+    globalDueDate.value = newDueDate.value
+    showDueDateModal.value = false
+  } catch {
+    alert('기한 변경에 실패했습니다. 다시 시도해주세요.')
+  }
 }
 
 function goDetail(item: ReevalItem) {

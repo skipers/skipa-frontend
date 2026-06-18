@@ -679,6 +679,7 @@ async function sendChatMessage() {
         if (data.answer) message.text = data.answer
         const sourceCards = extractSourceCards(data)
         if (sourceCards.length) message.sourceCards = sourceCards
+        void nextTick(() => keepChatMessageTopVisible(userMsgId))
       },
       onError: (data) => {
         typewriter.stop()
@@ -893,51 +894,13 @@ onBeforeUnmount(() => {
 
               <label class="field">
                 <span class="field__label">기술 설명 <em>*</em></span>
-                <textarea v-model="techDescription" rows="4" placeholder="핵심 기술의 작동 방식, 차별점, 활용 맥락을 입력하세요." />
+                <textarea v-model="techDescription" rows="8" placeholder="핵심 기술의 작동 방식, 차별점, 활용 맥락을 입력하세요." />
               </label>
 
-              <div class="claim-group">
-                <div class="claim-header">
-                  <span class="field__label">청구항</span>
-                  <button class="claim-btn claim-btn--add" type="button" @click="addClaimInput">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                      <path d="M12 5v14M5 12h14"/>
-                    </svg>
-                    추가
-                  </button>
-                </div>
-                <div class="claim-list">
-                  <div v-for="(_, index) in claimInputs" :key="index" class="claim-row">
-                    <textarea
-                      v-model="claimInputs[index]"
-                      class="claim-textarea"
-                      rows="2"
-                      placeholder="청구항 내용을 입력하세요."
-                    />
-                    <button
-                      v-if="claimInputs.length > 1"
-                      class="claim-btn claim-btn--remove"
-                      type="button"
-                      @click="removeClaimInput(index)"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <path d="M18 6 6 18M6 6l12 12"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="two-col">
-                <label class="field">
-                  <span class="field__label">관련 사업</span>
-                  <input v-model="relatedBusiness" type="text" placeholder="예: 반도체 제조 공정 품질관리" />
-                </label>
-                <label class="field">
-                  <span class="field__label">출원 예정 국가</span>
-                  <input v-model="targetCountries" type="text" placeholder="예: 한국, 미국, 유럽" />
-                </label>
-              </div>
+              <label class="field">
+                <span class="field__label">관련 사업</span>
+                <input v-model="relatedBusiness" type="text" placeholder="예: 반도체 제조 공정 품질관리" />
+              </label>
 
               <button class="btn-primary" type="submit" :disabled="!isStartEnabled">평가 시작</button>
             </form>
@@ -1286,15 +1249,13 @@ onBeforeUnmount(() => {
                   <div
                     v-for="(card, index) in message.sourceCards"
                     :key="`${message.id}-${card.source_path ?? card.title ?? index}`"
-                    class="source-card"
                   >
-                    <div class="source-card__head">
-                      <span class="source-card__label">{{ card.label || `근거 ${index + 1}` }}</span>
-                      <span v-if="card.source_type" class="source-card__type">{{ card.source_type }}</span>
+                    <a v-if="card.url?.startsWith('http')" :href="card.url" target="_blank" rel="noopener noreferrer" class="source-card source-card--web">{{ sourceCardTitle(card) }}</a>
+                    <div v-else class="source-card source-card--report">
+                      <span class="source-card__ref-label">{{ card.display_title || card.title }}</span>
+                      <span class="source-card__ref-tag">보고서 참조</span>
                     </div>
-                    <strong class="source-card__title">{{ sourceCardTitle(card) }}</strong>
-                    <p v-if="card.snippet" class="source-card__snippet">{{ card.snippet }}</p>
-                  </div>
+                  </template>
                 </div>
               </template>
               <template v-else>{{ message.text }}</template>
@@ -2054,50 +2015,26 @@ onBeforeUnmount(() => {
   border-top: 1px solid rgba(148, 163, 184, 0.28);
 }
 .source-card {
-  display: grid;
-  gap: 4px;
-  padding: 7px 8px;
+  padding: 6px 8px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   background: #f8fafc;
+  font-size: 12px;
+  line-height: 1.4;
 }
-.source-card__head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.source-card__label {
-  flex: 0 0 auto;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: #e0f2fe;
+.source-card--web {
+  display: block;
   color: #0369a1;
-  font-size: 11px;
-  font-weight: 700;
-}
-.source-card__type {
+  font-weight: 600;
+  text-decoration: none;
   overflow: hidden;
-  color: #64748b;
-  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.source-card__title {
-  color: #0f172a;
-  font-size: 12px;
-  font-weight: 700;
-}
-.source-card__snippet {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  color: #64748b;
-  font-size: 11.5px;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
+.source-card--web:hover { text-decoration: underline; background: #f0f9ff; }
+.source-card--report { display: flex; align-items: center; gap: 6px; }
+.source-card__ref-label { color: #0f172a; font-weight: 600; font-size: 12px; }
+.source-card__ref-tag { color: #64748b; font-size: 11px; }
 .typing-dots { display: inline-flex; align-items: center; gap: 4px; min-height: 18px; }
 .typing-dots span {
   width: 6px; height: 6px; border-radius: 50%;

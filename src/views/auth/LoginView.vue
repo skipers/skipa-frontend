@@ -11,12 +11,7 @@
         <div class="brand-panel__inner">
           <div class="brand-logo">
             <span class="brand-logo__icon">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                <path d="M4 14 L14 4 L24 14 L14 24 Z" fill="currentColor" opacity="0.15"/>
-                <path d="M4 14 L14 4 L24 14" stroke="currentColor" stroke-width="2" stroke-linejoin="round" fill="none"/>
-                <path d="M8 18 L14 12 L20 18 L14 24 Z" fill="currentColor" opacity="0.6"/>
-                <circle cx="14" cy="14" r="2.5" fill="currentColor"/>
-              </svg>
+              <img :src="logoUrl" alt="SKIPA logo" width="36" height="36" />
             </span>
             <span class="brand-logo__text">SKIPA</span>
           </div>
@@ -163,6 +158,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import logoUrl from '@/assets/icon.png'
 
 const router = useRouter()
 const route = useRoute()
@@ -356,8 +352,6 @@ async function handleSubmit() {
 
 .brand-logo__icon {
   width: 40px; height: 40px;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.15);
   border-radius: 10px;
   display: flex;
   align-items: center;

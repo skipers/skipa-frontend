@@ -153,17 +153,6 @@ const routes: RouteRecordRaw[] = [
         props: (route) => ({ patentId: Number(route.params.patentId) }),
       },
       {
-        path: 'register',
-        name: 'BizPatentRegister',
-        component: () => import('@/views/business/BizPatentRegisterView.vue'),
-      },
-      {
-        path: 'register/history/:appId',
-        name: 'BizApplicationDetail',
-        component: () => import('@/views/business/BizApplicationDetailView.vue'),
-        props: (route) => ({ appId: Number(route.params.appId) }),
-      },
-      {
         path: 'patents/:id',
         name: 'ExpiredPatentDetail',
         component: () => import('@/views/business/ExpiredPatentDetailView.vue'),

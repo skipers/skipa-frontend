@@ -55,8 +55,13 @@
         <template v-if="!deptId">
           <div class="field-stack-header">
             <span class="field-stack-title">기술분야별 구성 — {{ selectedBarLabel }}</span>
+            <div class="field-stack-toggle">
+              <button :class="{ active: fieldView === 'expiring' }" @click="fieldView = 'expiring'">소멸 예정</button>
+              <button :class="{ active: fieldView === 'remaining' }" @click="fieldView = 'remaining'">잔여 등록 특허</button>
+            </div>
           </div>
-          <div class="field-stack-bar">
+
+          <div v-if="fieldView === 'expiring'" class="field-stack-bar">
             <div
               v-for="(f, i) in heatmapFields"
               :key="f"
@@ -67,6 +72,21 @@
               <span v-if="fieldStackPct(f) >= 5" class="field-stack-seg__label">
                 <span class="field-stack-seg__name">{{ f }}</span>
                 <span class="field-stack-seg__pct">{{ fieldStackPct(f) }}%</span>
+              </span>
+            </div>
+          </div>
+
+          <div v-else class="field-stack-bar">
+            <div
+              v-for="(f, i) in remainingFields"
+              :key="f"
+              class="field-stack-seg"
+              :style="{ width: remainingStackPct(f) + '%', background: FIELD_COLORS[i % FIELD_COLORS.length], color: i < 4 ? '#ffffff' : '#374151' }"
+              :title="`${f}: ${remainingByField[f] ?? 0}건 (${remainingStackPct(f)}%)`"
+            >
+              <span v-if="remainingStackPct(f) >= 5" class="field-stack-seg__label">
+                <span class="field-stack-seg__name">{{ f }}</span>
+                <span class="field-stack-seg__pct">{{ remainingStackPct(f) }}%</span>
               </span>
             </div>
           </div>
@@ -187,6 +207,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { expiringApi } from '@/api/expiring'
+import { patentsApi } from '@/api/patents'
 
 const props = defineProps<{ deptId?: number }>()
 const { deptId } = props
@@ -199,6 +220,7 @@ function goDetail(id: number) { router.push(`${base.value}/patents/${id}`) }
 // ── 뷰 모드 ─────────────────────────────────────────
 const view         = ref<'timeline' | 'calendar'>('timeline')
 const activeFilter = ref<'all' | '3m' | '6m' | '1y' | '3y' | '5y'>('5y')
+const fieldView    = ref<'expiring' | 'remaining'>('expiring')
 
 // ── 색상 ────────────────────────────────────────────
 const periodColors = [
@@ -257,7 +279,21 @@ async function fetchItems() {
   }
 }
 
-onMounted(() => fetchItems())
+const allPatentFields = ref<string[]>([])
+
+async function fetchAllPatentFields() {
+  try {
+    const res = await patentsApi.getPatents({ size: 1000 })
+    allPatentFields.value = res.items.map(i => i.techField ?? '').filter(Boolean)
+  } catch (err) {
+    console.error('전체 특허 조회 실패:', err)
+  }
+}
+
+onMounted(() => {
+  fetchItems()
+  fetchAllPatentFields()
+})
 
 // ── 기간별 막대 차트 (allItems로부터 계산) ─────────────
 const periodBarData = computed(() => [
@@ -347,6 +383,44 @@ function fieldStackPct(field: string) {
 }
 
 function formatDate(d: string) { return d.replace(/-/g, '.') }
+
+// ── 잔여 등록 특허 기술분야별 구성 ───────────────────────
+const totalByField = computed(() => {
+  const result: Record<string, number> = {}
+  for (const f of allPatentFields.value) {
+    result[f] = (result[f] ?? 0) + 1
+  }
+  return result
+})
+
+const remainingByField = computed(() => {
+  const key = heatmapKey.value
+  const result: Record<string, number> = {}
+  for (const [field, total] of Object.entries(totalByField.value)) {
+    const expiring = rawHeatmapData.value[field]?.[key] ?? 0
+    const remaining = total - expiring
+    if (remaining > 0) result[field] = remaining
+  }
+  return result
+})
+
+const remainingFields = computed(() => {
+  const total = Object.values(remainingByField.value).reduce((s, v) => s + v, 0)
+  if (!total) return []
+  return Object.entries(remainingByField.value)
+    .sort((a, b) => b[1] - a[1])
+    .filter(([, count]) => count / total >= 0.05)
+    .map(([field]) => field)
+})
+
+const remainingDisplayTotal = computed(() =>
+  remainingFields.value.reduce((s, f) => s + (remainingByField.value[f] ?? 0), 0)
+)
+
+function remainingStackPct(field: string) {
+  if (!remainingDisplayTotal.value) return 0
+  return Math.round((remainingByField.value[field] ?? 0) / remainingDisplayTotal.value * 100)
+}
 
 // ── 연도별 캘린더 ────────────────────────────────────
 const today       = new Date()
@@ -470,6 +544,29 @@ const selectedMonthItems = computed(() =>
 
 /* 분야별 분포 */
 /* ── 기술분야별 스택 바 ──────────────────────────── */
+.field-stack-toggle {
+  display: flex;
+  gap: 4px;
+}
+.field-stack-toggle button {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-muted, #f8fafc);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+.field-stack-toggle button.active {
+  background: var(--color-primary-bg, #eef2ff);
+  border-color: var(--color-primary-border, #c7d2fe);
+  color: var(--color-primary, #6366f1);
+  font-weight: 600;
+}
+
 .field-stack-header {
   display: flex;
   align-items: center;
@@ -522,6 +619,7 @@ const selectedMonthItems = computed(() =>
   color: inherit;
   white-space: nowrap;
 }
+
 
 /* 소멸 목록 */
 .table-card {

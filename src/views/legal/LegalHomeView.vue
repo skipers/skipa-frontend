@@ -213,7 +213,8 @@
           <h3 class="card__title">유지 · 포기 현황</h3>
           <span class="card__badge">결정 완료 {{ decidedTotal }}건</span>
         </div>
-        <div class="decision-donut-wrap">
+        <div v-if="decidedTotal === 0" class="card__empty">결정된 데이터가 없습니다.</div>
+        <div v-else class="decision-donut-wrap">
           <svg class="decision-donut-svg" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
             <circle cx="60" cy="60" r="50" fill="none" stroke="#67E2AB" stroke-width="20"
@@ -284,6 +285,7 @@
         <div v-if="loadingDist" class="card__skeleton">
           <div class="skel skel--donut" />
         </div>
+        <div v-else-if="donutTotal === 0" class="card__empty">분야별 데이터가 없습니다.</div>
         <div v-else class="donut-wrap">
           <svg class="donut-svg" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
@@ -321,6 +323,7 @@
         <div v-if="loadingDist" class="card__skeleton">
           <div class="skel skel--chart" />
         </div>
+        <div v-else-if="expiryItems.length === 0" class="card__empty">소멸 예정 데이터가 없습니다.</div>
         <div v-else class="expiry-chart">
           <div
             v-for="item in expiryItems"
@@ -427,13 +430,13 @@ const progressCard = computed(() => {
   const decided = kpi?.decided ?? 0
   const unrequested = kpi?.unrequested ?? 0
   const total = requested + unrequested
-  const progressRate = total ? Math.round((requested / total) * 100) : 0
+  const progressRate = total ? Math.round((decided / total) * 100) : 0
   return {
     label: '분기 진행률',
     value: dashboardData.value ? `${progressRate}%` : null,
     progress: progressRate,
     progressColor: '#6366f1',
-    sub: `요청 ${requested}건 중 ${decided}건 회신`,
+    sub: `전체 ${total}건 중 ${decided}건 결정 완료`,
     icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
     iconBg: '#eef2ff', iconColor: '#6366f1',
     alert: false, alertCount: 0, valueColor: '#0f172a',
@@ -629,9 +632,6 @@ onMounted(loadAll)
 
 /* ── 보고서 생성 현황 카드 ───────────────────────── */
 .rgc-card {
-  width: 75%;
-  min-width: 420px;
-  align-self: flex-start;
   gap: 14px;
   padding: 20px 22px 18px;
   position: relative;
@@ -960,7 +960,11 @@ onMounted(loadAll)
 .card__link:hover { color: var(--color-primary-darker); }
 
 .card__empty {
-  padding: 32px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   font-size: 13px;
   color: var(--color-text-subtle);
@@ -1309,6 +1313,7 @@ onMounted(loadAll)
 }
 
 /* ── 최근 회신 ───────────────────────────────────── */
+.reply-list  { flex: 1; display: flex; flex-direction: column; }
 .reply-items { display: flex; flex-direction: column; gap: 0; }
 
 .reply-fade-leave-active {
