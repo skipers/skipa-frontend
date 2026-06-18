@@ -39,7 +39,7 @@ const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = tokenStorage.getAccess()
-  if (token && config.headers) {
+  if (token && config.headers && !isAuthEndpoint(config)) {
     config.headers['Authorization'] = `Bearer ${token}`
   }
   return config

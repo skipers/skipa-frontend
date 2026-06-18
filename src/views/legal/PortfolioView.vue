@@ -49,20 +49,19 @@
       <div class="chart-card">
         <div class="chart-card__header">
           <h3 class="chart-card__title">가치 평가 등급 분포</h3>
-          <span class="chart-card__sub">총 {{ selectedFieldData?.total }}건</span>
+          <div class="tg-header-right">
+            <div class="tg-field-select-wrap">
+              <select class="tg-field-select" v-model="selectedField">
+                <option v-for="f in allFieldDist" :key="f.name" :value="f.name">{{ f.name }}</option>
+              </select>
+              <svg class="tg-field-select__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+            <span class="chart-card__sub">총 {{ selectedFieldData?.total }}건</span>
+          </div>
         </div>
         <div class="tg-content">
-        <div class="tg-field-tabs">
-          <button
-            v-for="f in allFieldDist"
-            :key="f.name"
-            class="tg-field-tab"
-            :class="{ 'tg-field-tab--active': selectedField === f.name }"
-            @click="selectedField = f.name"
-          >
-            {{ f.name }}
-          </button>
-        </div>
         <div v-if="selectedFieldData" class="tg-detail">
           <div v-for="g in (['S','A','B','C','D'] as const)" :key="g" class="tg-grade-row">
             <div class="grade-badge" :style="{ background: gradeBgMap[g], color: gradeColorMap[g] }">{{ g }}</div>
@@ -212,38 +211,64 @@
             </div>
           </div>
         </div>
-        <svg class="trend-svg" :viewBox="`0 0 ${svgW} ${svgH}`">
-          <line
-            v-for="n in 4" :key="n"
-            :x1="pad.l" :y1="pad.t + ((n - 1) / 3) * plotH"
-            :x2="svgW - pad.r" :y2="pad.t + ((n - 1) / 3) * plotH"
-            stroke="#f1f5f9" stroke-width="1"
-          />
-          <polyline
-            v-for="(line, i) in trendLines"
-            :key="i"
-            :points="line.points"
-            fill="none"
-            :stroke="line.color"
-            stroke-width="1.8"
-            stroke-linejoin="round"
-            stroke-linecap="round"
-          />
-          <circle
-            v-for="dot in trendDots"
-            :key="dot.id"
-            :cx="dot.x" :cy="dot.y" r="3"
-            :fill="dot.color"
-            stroke="#fff" stroke-width="1.5"
-          />
-          <text
-            v-for="(d, i) in trendData"
-            :key="d.year"
-            :x="trendX(i)" :y="svgH - 4"
-            text-anchor="middle"
-            font-size="8" fill="#475569"
-          >{{ d.year }}</text>
-        </svg>
+        <div class="trend-chart-wrap" ref="trendChartRef">
+          <svg class="trend-svg" :viewBox="`0 0 ${svgW} ${svgH}`">
+            <line
+              v-for="n in 4" :key="n"
+              :x1="pad.l" :y1="pad.t + ((n - 1) / 3) * plotH"
+              :x2="svgW - pad.r" :y2="pad.t + ((n - 1) / 3) * plotH"
+              stroke="#f1f5f9" stroke-width="1"
+            />
+            <polyline
+              v-for="(line, i) in trendLines"
+              :key="i"
+              :points="line.points"
+              fill="none"
+              :stroke="line.color"
+              stroke-width="1.8"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+            />
+            <circle
+              v-for="dot in trendDots"
+              :key="dot.id"
+              :cx="dot.x" :cy="dot.y" r="3"
+              :fill="dot.color"
+              stroke="#fff" stroke-width="1.5"
+            />
+            <text
+              v-for="(d, i) in trendData"
+              :key="d.year"
+              :x="trendX(i)" :y="svgH - 4"
+              text-anchor="middle"
+              font-size="8" fill="#475569"
+            >{{ d.year }}</text>
+            <!-- 호버 히트 영역 -->
+            <rect
+              v-for="(d, i) in trendData" :key="`hit${i}`"
+              :x="trendX(i) - trendHitHalfW(i)"
+              :y="pad.t"
+              :width="trendHitHalfW(i) * 2"
+              :height="plotH"
+              fill="transparent"
+              @mouseenter="(e) => showTrendTooltip(e, d, i)"
+              @mouseleave="hideTrendTooltip"
+            />
+          </svg>
+          <!-- 툴팁 -->
+          <div
+            v-if="trendTooltip.visible"
+            class="trend-tooltip"
+            :style="{ left: trendTooltip.x + 'px', top: trendTooltip.y + 'px' }"
+          >
+            <p class="trend-tooltip__year">{{ trendTooltip.year }}년</p>
+            <div v-for="(s, i) in trendSeries" :key="s.key" class="trend-tooltip__row">
+              <span class="trend-tooltip__dot" :style="{ background: trendColors[i] }" />
+              <span class="trend-tooltip__label">{{ s.label }}</span>
+              <span class="trend-tooltip__val">{{ trendTooltip.values[s.key] }}건</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 연차료 추이 -->
@@ -508,6 +533,39 @@ const trendDots = computed(() =>
   )
 )
 
+// ── 꺾은선 차트 툴팁 ─────────────────────────────────
+const trendChartRef = ref<HTMLElement | null>(null)
+const trendTooltip = ref({
+  visible: false, x: 0, y: 0,
+  year: '',
+  values: { applications: 0, registrations: 0, expiries: 0 },
+})
+
+function trendHitHalfW(i: number) {
+  const len = trendData.value.length
+  if (len <= 1) return plotW / 2
+  return plotW / (len - 1) / 2
+}
+
+function showTrendTooltip(event: MouseEvent, d: YearlyTrendItem, i: number) {
+  const container = trendChartRef.value
+  if (!container) return
+  const rect = container.getBoundingClientRect()
+  let x = event.clientX - rect.left + 12
+  let y = event.clientY - rect.top - 90
+  if (x + 140 > rect.width) x = event.clientX - rect.left - 152
+  if (y < 0) y = event.clientY - rect.top + 12
+  trendTooltip.value = {
+    visible: true, x, y,
+    year: String(d.year),
+    values: { applications: d.applications, registrations: d.registrations, expiries: d.expiries },
+  }
+}
+
+function hideTrendTooltip() {
+  trendTooltip.value.visible = false
+}
+
 // ── 분기별 재평가 결정 ────────────────────────────────
 function keepPct(d: { maintain: number; abandon: number })    { return Math.round(d.maintain / (d.maintain + d.abandon) * 100) }
 function disposePct(d: { maintain: number; abandon: number }) { return Math.round(d.abandon  / (d.maintain + d.abandon) * 100) }
@@ -604,7 +662,7 @@ const allFieldDist = computed(() => {
     (acc, f) => ({ name: '전체', S: acc.S + f.s, A: acc.A + f.a, B: acc.B + f.b, C: acc.C + f.c, D: acc.D + f.d, total: acc.total + f.s + f.a + f.b + f.c + f.d }),
     { name: '전체', S: 0, A: 0, B: 0, C: 0, D: 0, total: 0 }
   )
-  return [overall, ...gradeDist.map(f => normalize(f, f.departmentName))]
+  return [overall, ...gradeDist.filter(f => f.departmentName !== '전체').map(f => normalize(f, f.departmentName))]
 })
 
 const selectedField = ref('전체')
@@ -822,6 +880,58 @@ function annBarH(amount: number) {
 }
 
 /* ── 연도별 추이 (꺾은선) ─────────────────────── */
+.trend-chart-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.trend-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 8px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,.18);
+}
+
+.trend-tooltip__year {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin: 0 0 2px;
+}
+
+.trend-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trend-tooltip__dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.trend-tooltip__label {
+  font-size: 12px;
+  color: #cbd5e1;
+  flex: 1;
+}
+
+.trend-tooltip__val {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
 .trend-svg {
   width: 100%;
   height: auto;
@@ -957,30 +1067,40 @@ function annBarH(amount: number) {
 }
 @media (max-width: 860px) { .trend-annuity-row { grid-template-columns: 1fr; } }
 
-.tg-field-tabs {
+.tg-header-right {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 
-.tg-field-tab {
-  padding: 5px 14px;
-  border-radius: 20px;
+.tg-field-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tg-field-select {
+  appearance: none;
+  padding: 6px 32px 6px 12px;
+  border-radius: 8px;
   border: 1.5px solid var(--color-border);
   background: var(--color-surface-muted);
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--color-text);
   cursor: pointer;
-  transition: all 0.15s;
   font-family: 'Pretendard', sans-serif;
+  transition: border-color 0.15s;
+  outline: none;
 }
-.tg-field-tab:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.tg-field-tab--active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff;
-  font-weight: 600;
+.tg-field-select:hover,
+.tg-field-select:focus { border-color: var(--color-primary); }
+
+.tg-field-select__chevron {
+  position: absolute;
+  right: 8px;
+  pointer-events: none;
+  color: var(--color-text-secondary);
 }
 
 .tg-content {

@@ -7,11 +7,7 @@
         <!-- 로고 -->
         <div class="sidebar__logo">
           <span class="sidebar__logo-icon">
-            <svg width="20" height="20" viewBox="0 0 28 28" fill="none">
-              <path d="M4 14 L14 4 L24 14" stroke="currentColor" stroke-width="2" stroke-linejoin="round" fill="none"/>
-              <path d="M8 18 L14 12 L20 18 L14 24 Z" fill="currentColor" opacity="0.7"/>
-              <circle cx="14" cy="14" r="2" fill="currentColor"/>
-            </svg>
+            <img :src="logoUrl" alt="SKIPA logo" width="24" height="24" />
           </span>
           <span class="sidebar__logo-text">SKIPA</span>
         </div>
@@ -43,7 +39,10 @@
           <!-- 사용자 정보 -->
           <div class="sidebar__user">
             <div class="sidebar__avatar">
-              {{ avatarInitial }}
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+              </svg>
             </div>
             <div class="sidebar__user-info">
               <p class="sidebar__user-name">{{ auth.user?.name ?? 'Legal AI팀' }}</p>
@@ -88,14 +87,11 @@
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import logoUrl from '@/assets/icon.png'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const avatarInitial = computed(() => {
-  const name = auth.user?.name ?? 'L'
-  return name.charAt(0)
-})
 
 const navItems: { name: string; to: string; label: string; icon: string; badge?: string }[] = [
   {
@@ -206,9 +202,7 @@ async function handleLogout() {
 }
 
 .sidebar__logo-icon {
-  width: 36px; height: 36px;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  width: 40px; height: 40px;
   border-radius: 9px;
   display: flex;
   align-items: center;

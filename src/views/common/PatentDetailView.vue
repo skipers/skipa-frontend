@@ -62,13 +62,13 @@
               </div>
             </div>
             <div class="detail-header__right">
-              <button class="btn-pdf-download">
+              <button class="btn-pdf-download" :disabled="pdfLoading" @click="downloadOriginalPdf">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                   <polyline points="7 10 12 15 17 10"/>
                   <line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
-                원문 PDF
+                {{ pdfLoading ? '로딩 중...' : '원문 PDF' }}
               </button>
               <span v-if="latestReport?.evaluatedAt" class="evaluated-label">
                 AI 보고서 생성일 · {{ formatDate(latestReport.evaluatedAt) }}
@@ -132,7 +132,7 @@
                 </tr>
                 <tr>
                   <th>발명자</th>
-                  <td>{{ detailExtras.inventor }}</td>
+                  <td>{{ detailExtras.inventor.split(';').map(s => s.trim()).join(', ') }}</td>
                 </tr>
                 <tr>
                   <th>등록번호(일자)</th>
@@ -393,7 +393,7 @@
             <!-- 5. 추가 확인 필요 사항 -->
             <div class="rpt-part">
               <h3 class="rpt-part-title"><span class="rpt-part-num">05</span>추가 확인 필요 사항</h3>
-              <p class="rpt-subsection-desc">점수가 낮은 평가 항목에서 자동 추출했습니다. 사업부 자체 자료와의 교차 검토를 권장합니다.</p>
+              <p class="rpt-subsection-desc">평가 점수 3점 이하 또는 근거 확신도 낮음 항목을 자동 추출했습니다. 사업부 자체 자료와의 교차 검토를 권장합니다.</p>
               <div v-for="item in REPORT_CONFIRM_ITEMS" :key="item.title" class="rpt-confirm-item">
                 <div class="rpt-confirm-item-title">{{ item.title }}<span>{{ item.meta }}</span></div>
                 <div class="rpt-confirm-item-desc">{{ item.desc }}</div>
@@ -926,7 +926,7 @@
             <!-- 05 추가 확인 필요 사항 -->
             <div class="erp-section">
               <h3 class="rpt-part-title"><span class="rpt-part-num">05</span>추가 확인 필요 사항</h3>
-              <p class="rpt-subsection-desc">점수가 낮은 평가 항목에서 자동 추출했습니다. 사업부 자체 자료와의 교차 검토를 권장합니다.</p>
+              <p class="rpt-subsection-desc">평가 점수 3점 이하 또는 근거 확신도 낮음 항목을 자동 추출했습니다. 사업부 자체 자료와의 교차 검토를 권장합니다.</p>
               <div v-for="item in selectedEvalReport.confirmItems" :key="item.title" class="rpt-confirm-item">
                 <div class="rpt-confirm-item-title">{{ item.title }}<span>{{ item.meta }}</span></div>
                 <div class="rpt-confirm-item-desc">{{ item.desc }}</div>
@@ -1031,14 +1031,12 @@
                   <div
                     v-for="(card, index) in message.sourceCards"
                     :key="`${message.id}-${card.source_path ?? card.title ?? index}`"
-                    class="source-card"
                   >
-                    <div class="source-card__head">
-                      <span class="source-card__label">{{ card.label || `근거 ${index + 1}` }}</span>
-                      <span v-if="card.source_type" class="source-card__type">{{ card.source_type }}</span>
+                    <a v-if="card.url?.startsWith('http')" :href="card.url" target="_blank" rel="noopener noreferrer" class="source-card source-card--web">{{ sourceCardTitle(card) }}</a>
+                    <div v-else class="source-card source-card--report">
+                      <span class="source-card__ref-label">{{ card.display_title || card.title }}</span>
+                      <span class="source-card__ref-tag">보고서 참조</span>
                     </div>
-                    <strong class="source-card__title">{{ sourceCardTitle(card) }}</strong>
-                    <p v-if="card.snippet" class="source-card__snippet">{{ card.snippet }}</p>
                   </div>
                 </div>
               </template>
@@ -1103,6 +1101,20 @@ const myDept     = computed(() => DEPT_MAP[auth.user?.departmentId ?? 0] ?? null
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const patentData = ref<PatentDetail | null>(null)
+const pdfLoading = ref(false)
+
+async function downloadOriginalPdf() {
+  if (pdfLoading.value) return
+  pdfLoading.value = true
+  try {
+    const { url } = await patentsApi.getOriginalPdfUrl(props.patentId)
+    window.open(url, '_blank', 'noopener,noreferrer')
+  } catch {
+    alert('원문 PDF를 불러오지 못했습니다.')
+  } finally {
+    pdfLoading.value = false
+  }
+}
 const reviewData = ref<ReviewResponse | null>(null)
 const businessReviewData = ref<BusinessReviewDetailResponse | null>(null)
 const evalHistory = ref<EvalHistoryItem[]>([])
@@ -1723,6 +1735,7 @@ async function sendChatMessage() {
         if (data.answer) message.text = data.answer
         const sourceCards = extractSourceCards(data)
         if (sourceCards.length) message.sourceCards = sourceCards
+        void nextTick(() => keepChatMessageTopVisible(userMessageId))
       },
       onError: (data) => {
         typewriter.stop()
@@ -1944,7 +1957,7 @@ const REPORT_EVAL_BLOCKS = computed<RptBlock[]>(() => {
       name: item.name,
       score: item.score,
       method: item.method ?? '',
-      summary: (item.judgment_summary ?? '').slice(0, 50),
+      summary: (item.judgment_summary ?? '').length > 50 ? (item.judgment_summary as string).slice(0, 50) + '…' : (item.judgment_summary ?? ''),
       grounds: item.judgment_basis ?? '',
       sources: (item.sources ?? [])
         .filter((src: any) => src.title || src.url)
@@ -2123,7 +2136,7 @@ function buildEvalReportFromJson(json: any): EvalReport {
       name: item.name,
       score: item.score,
       method: item.method ?? '',
-      summary: (item.judgment_summary ?? '').slice(0, 50),
+      summary: (item.judgment_summary ?? '').length > 50 ? (item.judgment_summary as string).slice(0, 50) + '…' : (item.judgment_summary ?? ''),
       grounds: item.judgment_basis ?? '',
       sources: (item.sources ?? [])
         .filter((src: any) => src.title || src.url)
@@ -3158,50 +3171,26 @@ async function openHistoryReport(reportId: number) {
   border-top: 1px solid rgba(148, 163, 184, 0.28);
 }
 .source-card {
-  display: grid;
-  gap: 4px;
-  padding: 7px 8px;
+  padding: 6px 8px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   background: #f8fafc;
+  font-size: 12px;
+  line-height: 1.4;
 }
-.source-card__head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.source-card__label {
-  flex: 0 0 auto;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: #e0f2fe;
+.source-card--web {
+  display: block;
   color: #0369a1;
-  font-size: 11px;
-  font-weight: 700;
-}
-.source-card__type {
+  font-weight: 600;
+  text-decoration: none;
   overflow: hidden;
-  color: #64748b;
-  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.source-card__title {
-  color: #0f172a;
-  font-size: 12px;
-  font-weight: 700;
-}
-.source-card__snippet {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  color: #64748b;
-  font-size: 11.5px;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
+.source-card--web:hover { text-decoration: underline; background: #f0f9ff; }
+.source-card--report { display: flex; align-items: center; gap: 6px; }
+.source-card__ref-label { color: #0f172a; font-weight: 600; font-size: 12px; }
+.source-card__ref-tag { color: #64748b; font-size: 11px; }
 .chat-bubble.assistant { background: #fff; color: #102033; border-top-left-radius: 4px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
 .chat-bubble.user      { background: #0f172a; color: #fff; border-top-right-radius: 4px; }
 .chat-bubble--error    { background: #fef2f2; color: #991b1b; box-shadow: none; border: 1px solid #fecaca; }

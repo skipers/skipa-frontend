@@ -166,6 +166,10 @@ export const patentsApi = {
     return apiClient.get(`/patents/${patentId}`)
   },
 
+  getOriginalPdfUrl: async (patentId: number): Promise<{ patentId: number; originalPdfKey: string; url: string }> => {
+    return apiClient.get(`/patents/${patentId}/original-pdf-url`)
+  },
+
   getPatentSummary: async (): Promise<{ active: number; inactive: number }> => {
     return apiClient.get('/patents/summary')
   },
@@ -204,10 +208,6 @@ export const patentsApi = {
 
   rejectApplication: async (patentId: number, reason: string): Promise<void> => {
     return apiClient.patch(`/patents/${patentId}/reject`, { reason })
-  },
-
-  withdrawApplication: async (patentId: number): Promise<void> => {
-    return apiClient.patch(`/patents/${patentId}/withdraw`)
   },
 
   // ── Extract Jobs ───────────────────────────────────────
