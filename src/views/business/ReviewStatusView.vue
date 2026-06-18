@@ -218,22 +218,51 @@
                   <span class="gp-num">02</span>
                   <h4 class="gp-section__title">평가 기준 및 지표</h4>
                 </div>
-                <p class="gp-section__meta">특허청·한국발명진흥회 「IP 가치평가 실무 가이드」 기반 · 세부 항목 17개</p>
-                <div class="gp-pillars">
-                  <div class="gp-pillar" style="border-top-color:#6366f1;">
-                    <p class="gp-pillar__emoji">🔬</p>
-                    <p class="gp-pillar__name">기술성</p>
-                    <p class="gp-pillar__desc">기술 완성도, 진보성, 구현 난이도</p>
+                <p class="gp-section__meta">특허청·한국발명진흥회 「IP 가치평가 실무 가이드」 기반 · 17개 항목 · 각 항목 1–5점 척도 · 차원별 평균으로 종합 점수 산출</p>
+                <div class="gp-pillar-blocks">
+                  <div class="gp-pillar-block" style="border-left-color:#6366f1;">
+                    <div class="gp-pillar-block__head">
+                      <span>🔬</span>
+                      <p class="gp-pillar-block__name">기술성 <span class="gp-pillar-block__count">4개 항목</span></p>
+                    </div>
+                    <p class="gp-pillar-block__desc">기술의 차별성, 혁신성, 경쟁 기술 대비 모방 난이도 등을 평가합니다.</p>
+                    <div class="gp-item-tags">
+                      <span class="gp-item-tag">차별성 및 파급성</span>
+                      <span class="gp-item-tag">혁신성 및 개척성</span>
+                      <span class="gp-item-tag">대체기술 및 경쟁성</span>
+                      <span class="gp-item-tag">기술 모방 및 회피설계 난이도</span>
+                    </div>
                   </div>
-                  <div class="gp-pillar" style="border-top-color:#0ea5e9;">
-                    <p class="gp-pillar__emoji">⚖️</p>
-                    <p class="gp-pillar__name">권리성</p>
-                    <p class="gp-pillar__desc">청구항 범위, 등록 안정성, 침해 회피 가능성</p>
+                  <div class="gp-pillar-block" style="border-left-color:#0ea5e9;">
+                    <div class="gp-pillar-block__head">
+                      <span>⚖️</span>
+                      <p class="gp-pillar-block__name">권리성 <span class="gp-pillar-block__count">10개 항목</span></p>
+                    </div>
+                    <p class="gp-pillar-block__desc">청구항의 범위와 질, 등록 안정성, 회피·침해 가능성을 평가합니다.</p>
+                    <div class="gp-item-tags">
+                      <span class="gp-item-tag">IP 원천성</span>
+                      <span class="gp-item-tag">무효 가능성</span>
+                      <span class="gp-item-tag">회피설계 곤란성</span>
+                      <span class="gp-item-tag">권리범위 적절성</span>
+                      <span class="gp-item-tag">권리의 구성요소</span>
+                      <span class="gp-item-tag">권리의 추상성</span>
+                      <span class="gp-item-tag">권리의 충실성</span>
+                      <span class="gp-item-tag">권리행사 제한 리스크</span>
+                      <span class="gp-item-tag">IP 포트폴리오 구축 적절성</span>
+                      <span class="gp-item-tag">침해 발견 및 입증 용이성</span>
+                    </div>
                   </div>
-                  <div class="gp-pillar" style="border-top-color:#10b981;">
-                    <p class="gp-pillar__emoji">📈</p>
-                    <p class="gp-pillar__name">시장성·사업성</p>
-                    <p class="gp-pillar__desc">시장 규모, 경쟁 현황, 사내 활용 가능성</p>
+                  <div class="gp-pillar-block" style="border-left-color:#10b981;">
+                    <div class="gp-pillar-block__head">
+                      <span>📈</span>
+                      <p class="gp-pillar-block__name">시장성·사업성 <span class="gp-pillar-block__count">3개 항목</span></p>
+                    </div>
+                    <p class="gp-pillar-block__desc">관련 기술 분야 출원 추이, 고객 영향, 산업별 시장 성장성을 평가합니다.</p>
+                    <div class="gp-item-tags">
+                      <span class="gp-item-tag">특허출원 활성도</span>
+                      <span class="gp-item-tag">고객 영향도</span>
+                      <span class="gp-item-tag">매출 성장성</span>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -246,19 +275,45 @@
                 </div>
                 <div class="gp-methods">
                   <div class="gp-method" v-for="m in scoreMethods" :key="m.tag">
-                    <span class="gp-method__tag" :style="{ background: m.bg, color: m.color }">{{ m.tag }}</span>
-                    <div class="gp-method__body">
+                    <div class="gp-method__header">
+                      <span class="gp-method__tag" :style="{ background: m.bg, color: m.color }">{{ m.tag }}</span>
                       <p class="gp-method__title">{{ m.title }}</p>
-                      <p class="gp-method__desc">{{ m.desc }}</p>
+                    </div>
+                    <p class="gp-method__summary">{{ m.summary }}</p>
+                    <div class="gp-method__points">
+                      <span class="gp-method__point" v-for="pt in m.points" :key="pt">{{ pt }}</span>
                     </div>
                   </div>
                 </div>
               </section>
 
-              <!-- §4 판단 보조 자료 -->
+              <!-- §4 점수와 등급 이해하기 -->
               <section class="gp-section">
                 <div class="gp-section__head">
                   <span class="gp-num">04</span>
+                  <h4 class="gp-section__title">점수와 등급 이해하기</h4>
+                </div>
+                <p class="gp-section__meta">각 항목 1–5점 → 차원별 평균 → 100점 환산 → 등급 부여</p>
+                <div class="gp-grades">
+                  <div class="gp-grade" v-for="g in gradeGuide" :key="g.grade">
+                    <span class="gp-grade__badge" :style="{ background: g.bg, color: g.color }">{{ g.grade }}</span>
+                    <span class="gp-grade__desc">{{ g.desc }}</span>
+                  </div>
+                </div>
+                <div class="gp-caution">
+                  <p class="gp-caution__title">이런 경우엔 점수를 참고만 하고 추가 검토를 권장합니다</p>
+                  <ul class="gp-caution__list">
+                    <li>항목별 근거 확신도가 '낮음'으로 표시된 경우</li>
+                    <li>해당 기술 분야 통계 데이터가 연결되지 않은 경우</li>
+                    <li>보고서에 "세부 항목 수 제한" 안내가 있는 경우</li>
+                  </ul>
+                </div>
+              </section>
+
+              <!-- §5 판단 보조 자료 -->
+              <section class="gp-section">
+                <div class="gp-section__head">
+                  <span class="gp-num">05</span>
                   <h4 class="gp-section__title">판단 보조 자료</h4>
                 </div>
                 <div class="gp-supports">
@@ -272,10 +327,10 @@
                 </div>
               </section>
 
-              <!-- §5 프로세스 흐름 -->
+              <!-- §6 프로세스 흐름 -->
               <section class="gp-section gp-section--last">
                 <div class="gp-section__head">
-                  <span class="gp-num">05</span>
+                  <span class="gp-num">06</span>
                   <h4 class="gp-section__title">재평가 프로세스 흐름</h4>
                 </div>
                 <div class="gp-flow">
@@ -375,24 +430,47 @@ function tabCount(v: string) {
 
 // ── 안내 패널 콘텐츠 ──────────────────────────────────
 const scoreMethods = [
-  { tag: '자동 계산',  bg: '#eff6ff', color: '#2563eb', title: '메타데이터 기반 자동 계산',  desc: '피인용 횟수, 청구항 수 등 공개 데이터를 수집해 자동 산출합니다.' },
-  { tag: 'LLM 분석',  bg: '#f5f3ff', color: '#7c3aed', title: 'LLM 청구항 채점',           desc: '청구항 원문을 분석하여 체크리스트 기준으로 1–5점 척도로 채점합니다.' },
-  { tag: '외부 자료',  bg: '#f0fdf4', color: '#15803d', title: '웹 검색 기반 시장성 판단',  desc: '웹 검색으로 시장 동향·경쟁 특허·사업 연관성 정보를 수집합니다.' },
-  { tag: '하이브리드', bg: '#fff7ed', color: '#c2410c', title: 'LLM + 웹 검색 혼합',        desc: '복합 판단이 필요한 항목은 LLM과 웹 검색 결과를 함께 활용합니다.' },
+  {
+    tag: '자동 계산', bg: '#eff6ff', color: '#2563eb',
+    title: '등록 정보·공개 통계 기반 자동 채점',
+    summary: '수치 데이터를 미리 정해진 기준에 따라 1–5점으로 자동 변환합니다. 사람의 주관 없이 수치로만 결정되므로 일관성이 높습니다.',
+    points: ['피인용 횟수 · 청구항 수', '특허 출원 증가율', '산업별 매출 성장률'],
+  },
+  {
+    tag: 'AI 분석', bg: '#f5f3ff', color: '#7c3aed',
+    title: '청구항·명세서 AI 직접 분석',
+    summary: 'IP가치평가 실무가이드 기준에 따라 특허 청구항 전문을 AI가 직접 읽고 채점합니다.',
+    points: ['권리 범위 넓을수록 고점', '무효 가능성 낮을수록 고점', '권리성 10개 항목에 적용', '확신도 낮음 → 추가 검토 권장'],
+  },
+  {
+    tag: 'AI + 시장 조사', bg: '#f0fdf4', color: '#15803d',
+    title: 'AI 분석 + 최신 시장 정보 결합',
+    summary: '청구항 분석에 더해 최신 기술·시장 동향 자료를 함께 참고합니다.',
+    points: ['기술성 항목 → 최근 5년 자료', '시장 영향·매출 성장 → 최근 2년', '기술성·시장성 항목에 적용', '신뢰 기관 자료만 선별'],
+  },
+]
+
+const gradeGuide = [
+  { grade: 'S', desc: '매우 우수 — 적극적 유지·활용 권장',       bg: '#f0fdf4', color: '#15803d' },
+  { grade: 'A', desc: '우수 — 유지 및 활용 검토 가능',           bg: '#eff6ff', color: '#1d4ed8' },
+  { grade: 'B', desc: '양호 — 추가 검토 후 의사결정 권장',       bg: '#f5f3ff', color: '#6d28d9' },
+  { grade: 'C', desc: '보통 — 사업화 가능성 중점 검토 필요',     bg: '#fff7ed', color: '#c2410c' },
+  { grade: 'D', desc: '미흡 — 포기 또는 전략적 재검토 권장',     bg: '#fef2f2', color: '#b91c1c' },
 ]
 
 const supportItems = [
-  { title: '사내 활용 현황',  desc: '어떤 제품 또는 프로젝트에 활용되고 있는지 연결 정보를 제공합니다.' },
-  { title: '유사 특허 분석',  desc: 'KIPRIS 기반 동일 기술 분야 특허의 유지/포기 추이를 비교합니다.' },
-  { title: '근거 및 출처 링크', desc: '점수 항목마다 AI 판단 근거와 외부 출처 URL을 자동으로 첨부합니다.' },
+  { title: '사내 활용 현황',   desc: '어떤 제품 또는 프로젝트에 활용되고 있는지 연결 정보를 제공합니다.' },
+  { title: '유사 특허 분석',   desc: '동일 기술 분야의 유사 특허 목록과 유지/소멸 현황을 비교해 보여줍니다.' },
+  { title: '근거 및 출처 링크', desc: '각 평가 항목마다 AI 판단 근거와 참고한 외부 자료 링크를 자동으로 첨부합니다.' },
+  { title: '신뢰 자료만 선별', desc: '시장·기술 정보 수집 시 개인 블로그·포털 집계 링크는 제외하고, 공신력 있는 기관 자료와 공식 보고서 위주로만 참고합니다.' },
 ]
 
 const flowSteps = [
-  { label: '데이터 추출',      sub: '특허 메타데이터 및 원문 수집' },
-  { label: 'AI 가치 평가',     sub: '기술성·권리성·시장성 자동 분석' },
-  { label: '보고서 자동 생성', sub: '점수·근거·출처 포함 보고서 생성' },
-  { label: '사업부 검토',      sub: '담당자가 AI 보고서 기반 의견 제출' },
-  { label: '최종 결정',        sub: 'Legal팀 최종 포트폴리오 조정' },
+  { label: '데이터 수집',      sub: '특허 원문·청구항, 출원 통계, 산업 매출 통계 등 수집' },
+  { label: 'AI 자동 평가',     sub: '17개 항목별 점수 산출 및 판단 근거 생성' },
+  { label: '보고서 생성',      sub: '항목별 점수·근거·참고 자료 링크 포함 보고서 자동 작성' },
+  { label: '사업부 검토',      sub: '담당자가 AI 보고서를 참고해 유지/포기 의견 제출' },
+  { label: '최종 결정',        sub: 'Legal팀이 제출 의견을 종합해 포트폴리오 최종 조정' },
 ]
 
 // ── 유틸 ────────────────────────────────────────────
@@ -872,33 +950,64 @@ onMounted(async () => {
 .gp-why-item__title { font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
 .gp-why-item__desc  { font-size: 12.5px; color: #64748b; margin: 0; line-height: 1.6; }
 
-/* §2 평가 기준 3대 기둥 */
-.gp-pillars { display: flex; gap: 8px; }
-.gp-pillar {
-  flex: 1; padding: 14px 12px;
+/* §2 평가 기준 확장 블록 */
+.gp-pillar-blocks { display: flex; flex-direction: column; gap: 10px; }
+.gp-pillar-block {
+  padding: 14px 16px;
   background: #f8fafc; border-radius: 10px;
-  border-top: 3px solid #e2e8f0;
-  text-align: center;
+  border-left: 3px solid #e2e8f0;
 }
-.gp-pillar__emoji { font-size: 20px; margin: 0 0 6px; }
-.gp-pillar__name  { font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 5px; }
-.gp-pillar__desc  { font-size: 11.5px; color: #64748b; margin: 0; line-height: 1.5; }
+.gp-pillar-block__head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.gp-pillar-block__name { font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0; }
+.gp-pillar-block__count { font-size: 11.5px; color: #94a3b8; font-weight: 400; margin-left: 2px; }
+.gp-pillar-block__desc { font-size: 12px; color: #64748b; margin: 0 0 10px; line-height: 1.55; }
+.gp-item-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.gp-item-tag {
+  font-size: 11.5px; color: #475569;
+  background: #fff; border: 1px solid #e2e8f0;
+  border-radius: 5px; padding: 2px 8px;
+}
 
 /* §3 점수 산출 */
 .gp-methods { display: flex; flex-direction: column; gap: 8px; }
 .gp-method  {
-  display: flex; align-items: flex-start; gap: 12px;
-  padding: 12px 14px; background: #f8fafc; border-radius: 10px;
+  padding: 14px 16px; background: #f8fafc; border-radius: 10px;
+  display: flex; flex-direction: column; gap: 8px;
 }
+.gp-method__header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .gp-method__tag {
   padding: 3px 9px; border-radius: 6px;
   font-size: 11.5px; font-weight: 700;
-  white-space: nowrap; flex-shrink: 0; margin-top: 1px;
+  white-space: nowrap; flex-shrink: 0;
 }
-.gp-method__title { font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 3px; }
-.gp-method__desc  { font-size: 12px; color: #64748b; margin: 0; line-height: 1.55; }
+.gp-method__title   { font-size: 13px; font-weight: 700; color: #0f172a; margin: 0; }
+.gp-method__summary { font-size: 12px; color: #475569; margin: 0; line-height: 1.55; }
+.gp-method__points  { display: flex; flex-wrap: wrap; gap: 5px; }
+.gp-method__point {
+  font-size: 11.5px; color: #64748b;
+  background: #fff; border: 1px solid #e2e8f0;
+  border-radius: 5px; padding: 2px 8px;
+}
 
-/* §4 보조 자료 */
+/* §4 점수와 등급 */
+.gp-grades { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.gp-grade  { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; }
+.gp-grade__badge {
+  width: 28px; height: 28px; border-radius: 7px;
+  font-size: 12px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.gp-grade__desc { font-size: 12.5px; color: #475569; }
+.gp-caution {
+  background: #fefce8; border: 1px solid #fef08a;
+  border-radius: 10px; padding: 12px 14px;
+}
+.gp-caution__title { font-size: 12.5px; font-weight: 700; color: #854d0e; margin: 0 0 7px; }
+.gp-caution__list  { margin: 0; padding-left: 16px; }
+.gp-caution__list li { font-size: 12px; color: #92400e; line-height: 1.7; }
+
+/* §5 보조 자료 */
 .gp-supports { display: flex; flex-direction: column; gap: 10px; }
 .gp-support  {
   display: flex; align-items: flex-start; gap: 12px;
