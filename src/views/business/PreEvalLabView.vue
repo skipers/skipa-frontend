@@ -263,10 +263,19 @@ function scrollChatToBottom() {
   if (chatViewport.value) chatViewport.value.scrollTop = chatViewport.value.scrollHeight
 }
 
-function scrollToUserMessage(id: number) {
-  if (!chatViewport.value) return
-  const el = chatViewport.value.querySelector(`[data-msg-id="${id}"]`) as HTMLElement | null
-  if (el) chatViewport.value.scrollTop = el.offsetTop - 8
+function keepChatMessageTopVisible(messageId: number) {
+  const viewport = chatViewport.value
+  const row = viewport?.querySelector<HTMLElement>(`[data-chat-message-id="${messageId}"]`)
+  if (!viewport || !row) return
+
+  const padding = 12
+  const viewportRect = viewport.getBoundingClientRect()
+  const rowRect = row.getBoundingClientRect()
+  const rowTopInScrollContent = viewport.scrollTop + rowRect.top - viewportRect.top
+  const maxScrollTopWithMessageVisible = Math.max(rowTopInScrollContent - padding, 0)
+  const bottomScrollTop = Math.max(viewport.scrollHeight - viewport.clientHeight, 0)
+
+  viewport.scrollTop = Math.min(bottomScrollTop, maxScrollTopWithMessageVisible)
 }
 
 // ── 이력 ─────────────────────────────────────────────
@@ -637,7 +646,7 @@ async function sendChatMessage() {
   const typingId = nextMsgId()
   chatMessages.value.push({ id: typingId, role: 'assistant', text: '', typing: true })
   await nextTick()
-  scrollToUserMessage(userMsgId)
+  keepChatMessageTopVisible(userMsgId)
 
   chatSending.value = true
   try {
@@ -669,7 +678,7 @@ async function sendChatMessage() {
         if (data.answer) message.text = data.answer
         const sourceCards = extractSourceCards(data)
         if (sourceCards.length) message.sourceCards = sourceCards
-        void nextTick(() => scrollToUserMessage(userMsgId))
+        void nextTick(() => keepChatMessageTopVisible(userMsgId))
       },
       onError: (data) => {
         typewriter.stop()
@@ -1221,7 +1230,7 @@ onBeforeUnmount(() => {
         </header>
 
         <div ref="chatViewport" class="chat-body">
-          <div v-for="message in chatMessages" :key="message.id" :data-msg-id="message.id" class="chat-row" :class="message.role">
+          <div v-for="message in chatMessages" :key="message.id" :data-chat-message-id="message.id" class="chat-row" :class="message.role">
             <div class="chat-bubble" :class="[message.role, { 'chat-bubble--error': message.error }]">
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
