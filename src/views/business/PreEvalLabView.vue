@@ -679,7 +679,7 @@ async function sendChatMessage() {
         if (data.answer) message.text = data.answer
         const sourceCards = extractSourceCards(data)
         if (sourceCards.length) message.sourceCards = sourceCards
-        void nextTick(() => keepChatMessageTopVisible(userMsgId))
+        void nextTick(() => keepChatMessageTopVisible(userMessageId))
       },
       onError: (data) => {
         typewriter.stop()
