@@ -4,7 +4,16 @@
     <!-- 페이지 헤더 -->
     <div class="page-header">
       <div>
-        <h2 class="page-header__title">재평가 관리</h2>
+        <h2 class="page-header__title">
+          재평가 관리
+          <button class="btn-guide-icon" type="button" aria-label="재평가 안내" @click="showGuide = true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" overflow="visible">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17" stroke-linecap="round" stroke-width="2.5"/>
+            </svg>
+          </button>
+        </h2>
         <p class="page-header__desc">이번 분기 처리할 특허 목록을 관리하고 사업부에 검토를 요청합니다</p>
       </div>
       <div class="deadline-block">
@@ -403,6 +412,149 @@
       </Transition>
     </Teleport>
 
+    <!-- ── SKIPA 재평가 안내 패널 ── -->
+    <Teleport to="body">
+      <Transition name="guide-panel">
+        <div v-if="showGuide" class="gp-backdrop" @click.self="showGuide = false">
+          <aside class="gp-panel">
+            <div class="gp-header">
+              <div class="gp-header__left">
+                <span class="gp-header__badge">SKIPA</span>
+                <div>
+                  <h3 class="gp-header__title">AI 특허 재평가 시스템</h3>
+                  <p class="gp-header__sub">재평가 배경 및 운영 방식 안내</p>
+                </div>
+              </div>
+              <button class="gp-close" @click="showGuide = false">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div class="gp-body">
+
+              <section class="gp-section">
+                <div class="gp-section__head"><span class="gp-num">01</span><h4 class="gp-section__title">왜 재평가를 하는가</h4></div>
+                <div class="gp-why-list">
+                  <div class="gp-why-item">
+                    <div class="gp-why-item__icon" style="background:#eff6ff; color:#3b82f6;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    </div>
+                    <div>
+                      <p class="gp-why-item__title">분기별 연차료 납부 결정</p>
+                      <p class="gp-why-item__desc">연차료 납부 시점이 도래한 특허에 대해 매 분기마다 유지/포기 여부를 결정합니다.</p>
+                    </div>
+                  </div>
+                  <div class="gp-why-item">
+                    <div class="gp-why-item__icon" style="background:#f0fdf4; color:#16a34a;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>
+                    </div>
+                    <div>
+                      <p class="gp-why-item__title">주관적 판단 → 객관적 가치 평가</p>
+                      <p class="gp-why-item__desc">기존의 주관적·추상적 체크리스트 방식에서 벗어나 AI 기반 객관적 가치 평가 시스템으로 전환했습니다.</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="gp-section">
+                <div class="gp-section__head"><span class="gp-num">02</span><h4 class="gp-section__title">평가 기준 및 지표</h4></div>
+                <p class="gp-section__meta">특허청·한국발명진흥회 「IP 가치평가 실무 가이드」 기반 · 17개 항목 · 각 항목 1–5점 척도 · 차원별 평균으로 종합 점수 산출</p>
+                <div class="gp-pillar-blocks">
+                  <div class="gp-pillar-block" style="border-left-color:#6366f1;">
+                    <div class="gp-pillar-block__head"><span>🔬</span><p class="gp-pillar-block__name">기술성 <span class="gp-pillar-block__count">4개 항목</span></p></div>
+                    <p class="gp-pillar-block__desc">기술의 차별성, 혁신성, 경쟁 기술 대비 모방 난이도 등을 평가합니다.</p>
+                    <div class="gp-item-tags">
+                      <span class="gp-item-tag">차별성 및 파급성</span><span class="gp-item-tag">혁신성 및 개척성</span><span class="gp-item-tag">대체기술 및 경쟁성</span><span class="gp-item-tag">기술 모방 및 회피설계 난이도</span>
+                    </div>
+                  </div>
+                  <div class="gp-pillar-block" style="border-left-color:#0ea5e9;">
+                    <div class="gp-pillar-block__head"><span>⚖️</span><p class="gp-pillar-block__name">권리성 <span class="gp-pillar-block__count">10개 항목</span></p></div>
+                    <p class="gp-pillar-block__desc">청구항의 범위와 질, 등록 안정성, 회피·침해 가능성을 평가합니다.</p>
+                    <div class="gp-item-tags">
+                      <span class="gp-item-tag">IP 원천성</span><span class="gp-item-tag">무효 가능성</span><span class="gp-item-tag">회피설계 곤란성</span><span class="gp-item-tag">권리범위 적절성</span><span class="gp-item-tag">권리의 구성요소</span><span class="gp-item-tag">권리의 추상성</span><span class="gp-item-tag">권리의 충실성</span><span class="gp-item-tag">권리행사 제한 리스크</span><span class="gp-item-tag">IP 포트폴리오 구축 적절성</span><span class="gp-item-tag">침해 발견 및 입증 용이성</span>
+                    </div>
+                  </div>
+                  <div class="gp-pillar-block" style="border-left-color:#10b981;">
+                    <div class="gp-pillar-block__head"><span>📈</span><p class="gp-pillar-block__name">시장성·사업성 <span class="gp-pillar-block__count">3개 항목</span></p></div>
+                    <p class="gp-pillar-block__desc">관련 기술 분야 출원 추이, 고객 영향, 산업별 시장 성장성을 평가합니다.</p>
+                    <div class="gp-item-tags">
+                      <span class="gp-item-tag">특허출원 활성도</span><span class="gp-item-tag">고객 영향도</span><span class="gp-item-tag">매출 성장성</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="gp-section">
+                <div class="gp-section__head"><span class="gp-num">03</span><h4 class="gp-section__title">점수 산출 방식</h4></div>
+                <div class="gp-methods">
+                  <div class="gp-method" v-for="m in gpScoreMethods" :key="m.tag">
+                    <div class="gp-method__header">
+                      <span class="gp-method__tag" :style="{ background: m.bg, color: m.color }">{{ m.tag }}</span>
+                      <p class="gp-method__title">{{ m.title }}</p>
+                    </div>
+                    <p class="gp-method__summary">{{ m.summary }}</p>
+                    <div class="gp-method__points">
+                      <span class="gp-method__point" v-for="pt in m.points" :key="pt">{{ pt }}</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="gp-section">
+                <div class="gp-section__head"><span class="gp-num">04</span><h4 class="gp-section__title">점수와 등급 이해하기</h4></div>
+                <p class="gp-section__meta">각 항목 1–5점 → 차원별 평균 → 100점 환산 → 등급 부여</p>
+                <div class="gp-grades">
+                  <div class="gp-grade" v-for="g in gpGradeGuide" :key="g.grade">
+                    <span class="gp-grade__badge" :style="{ background: g.bg, color: g.color }">{{ g.grade }}</span>
+                    <span class="gp-grade__desc">{{ g.desc }}</span>
+                  </div>
+                </div>
+                <div class="gp-caution">
+                  <p class="gp-caution__title">이런 경우엔 점수를 참고만 하고 추가 검토를 권장합니다</p>
+                  <ul class="gp-caution__list">
+                    <li>항목별 근거 확신도가 '낮음'으로 표시된 경우</li>
+                    <li>해당 기술 분야 통계 데이터가 연결되지 않은 경우</li>
+                    <li>보고서에 "세부 항목 수 제한" 안내가 있는 경우</li>
+                  </ul>
+                </div>
+              </section>
+
+              <section class="gp-section">
+                <div class="gp-section__head"><span class="gp-num">05</span><h4 class="gp-section__title">판단 보조 자료</h4></div>
+                <div class="gp-supports">
+                  <div class="gp-support" v-for="s in gpSupportItems" :key="s.title">
+                    <div class="gp-support__dot" />
+                    <div>
+                      <p class="gp-support__title">{{ s.title }}</p>
+                      <p class="gp-support__desc">{{ s.desc }}</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="gp-section gp-section--last">
+                <div class="gp-section__head"><span class="gp-num">06</span><h4 class="gp-section__title">재평가 프로세스 흐름</h4></div>
+                <div class="gp-flow">
+                  <div class="gp-flow__item" v-for="(s, i) in gpFlowSteps" :key="i">
+                    <div class="gp-flow__track">
+                      <div class="gp-flow__dot">{{ i + 1 }}</div>
+                      <div v-if="i < gpFlowSteps.length - 1" class="gp-flow__line" />
+                    </div>
+                    <div class="gp-flow__content">
+                      <p class="gp-flow__label">{{ s.label }}</p>
+                      <p class="gp-flow__sub">{{ s.sub }}</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+            </div>
+          </aside>
+        </div>
+      </Transition>
+    </Teleport>
+
   </div>
 </template>
 
@@ -443,6 +595,33 @@ const decisionOpts = [
 const showAssignModal  = ref(false)
 const showSendModal    = ref(false)
 const showDueDateModal = ref(false)
+const showGuide        = ref(false)
+
+const gpScoreMethods = [
+  { tag: '자동 계산', bg: '#eff6ff', color: '#2563eb', title: '등록 정보·공개 통계 기반 자동 채점', summary: '수치 데이터를 미리 정해진 기준에 따라 1–5점으로 자동 변환합니다. 사람의 주관 없이 수치로만 결정되므로 일관성이 높습니다.', points: ['피인용 횟수 · 청구항 수', '특허 출원 증가율', '산업별 매출 성장률'] },
+  { tag: 'AI 분석', bg: '#f5f3ff', color: '#7c3aed', title: '청구항·명세서 AI 직접 분석', summary: 'IP가치평가 실무가이드 기준에 따라 특허 청구항 전문을 AI가 직접 읽고 채점합니다.', points: ['권리 범위 넓을수록 고점', '무효 가능성 낮을수록 고점', '권리성 10개 항목에 적용', '확신도 낮음 → 추가 검토 권장'] },
+  { tag: 'AI + 시장 조사', bg: '#f0fdf4', color: '#15803d', title: 'AI 분석 + 최신 시장 정보 결합', summary: '청구항 분석에 더해 최신 기술·시장 동향 자료를 함께 참고합니다.', points: ['기술성 항목 → 최근 5년 자료', '시장 영향·매출 성장 → 최근 2년', '기술성·시장성 항목에 적용', '신뢰 기관 자료만 선별'] },
+]
+const gpGradeGuide = [
+  { grade: 'S', desc: '매우 우수 — 적극적 유지·활용 권장',     bg: '#f0fdf4', color: '#15803d' },
+  { grade: 'A', desc: '우수 — 유지 및 활용 검토 가능',         bg: '#eff6ff', color: '#1d4ed8' },
+  { grade: 'B', desc: '양호 — 추가 검토 후 의사결정 권장',     bg: '#f5f3ff', color: '#6d28d9' },
+  { grade: 'C', desc: '보통 — 사업화 가능성 중점 검토 필요',   bg: '#fff7ed', color: '#c2410c' },
+  { grade: 'D', desc: '미흡 — 포기 또는 전략적 재검토 권장',   bg: '#fef2f2', color: '#b91c1c' },
+]
+const gpSupportItems = [
+  { title: '사내 활용 현황',    desc: '어떤 제품 또는 프로젝트에 활용되고 있는지 연결 정보를 제공합니다.' },
+  { title: '유사 특허 분석',    desc: '동일 기술 분야의 유사 특허 목록과 유지/소멸 현황을 비교해 보여줍니다.' },
+  { title: '근거 및 출처 링크', desc: '각 평가 항목마다 AI 판단 근거와 참고한 외부 자료 링크를 자동으로 첨부합니다.' },
+  { title: '신뢰 자료만 선별',  desc: '시장·기술 정보 수집 시 개인 블로그·포털 집계 링크는 제외하고, 공신력 있는 기관 자료와 공식 보고서 위주로만 참고합니다.' },
+]
+const gpFlowSteps = [
+  { label: '데이터 수집',  sub: '특허 원문·청구항, 출원 통계, 산업 매출 통계 등 수집' },
+  { label: 'AI 자동 평가', sub: '17개 항목별 점수 산출 및 판단 근거 생성' },
+  { label: '보고서 생성',  sub: '항목별 점수·근거·참고 자료 링크 포함 보고서 자동 작성' },
+  { label: '사업부 검토',  sub: '담당자가 AI 보고서를 참고해 유지/포기 의견 제출' },
+  { label: '최종 결정',    sub: 'Legal팀이 제출 의견을 종합해 포트폴리오 최종 조정' },
+]
 const globalDueDate    = ref('')
 const newDueDate       = ref('')
 const today            = new Date().toISOString().slice(0, 10)
@@ -1652,4 +1831,75 @@ onMounted(async () => {
 .modal-enter-from, .modal-leave-to { opacity: 0; }
 .modal-enter-active .modal { animation: modalUp .22s cubic-bezier(.34,1.56,.64,1); }
 @keyframes modalUp { from { transform: translateY(12px) scale(.98); } to { transform: translateY(0) scale(1); } }
+
+/* ── 안내 패널 ── */
+.btn-guide-icon { width:26px; height:26px; border-radius:50%; background:transparent; border:none; cursor:pointer; color:#94a3b8; display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; margin-left:6px; transition:background .13s, color .13s; }
+.btn-guide-icon:hover { background:#e2e8f0; color:#0f172a; }
+.gp-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.4); z-index:200; backdrop-filter:blur(2px); display:flex; justify-content:flex-end; }
+.gp-panel { width:min(500px,96vw); height:100%; background:#fff; display:flex; flex-direction:column; box-shadow:-8px 0 40px rgba(15,23,42,.14); overflow:hidden; }
+.gp-header { display:flex; align-items:center; justify-content:space-between; padding:22px 24px; background:#0f172a; flex-shrink:0; }
+.gp-header__left { display:flex; align-items:center; gap:14px; }
+.gp-header__badge { padding:3px 9px; background:#6366f1; color:#fff; font-size:11px; font-weight:800; letter-spacing:.08em; border-radius:6px; flex-shrink:0; }
+.gp-header__title { font-size:16px; font-weight:700; color:#f8fafc; margin:0 0 2px; }
+.gp-header__sub   { font-size:12px; color:#94a3b8; margin:0; }
+.gp-close { width:32px; height:32px; border-radius:8px; background:rgba(255,255,255,.08); border:none; cursor:pointer; color:#94a3b8; display:flex; align-items:center; justify-content:center; transition:background .13s, color .13s; flex-shrink:0; }
+.gp-close:hover { background:rgba(255,255,255,.16); color:#f1f5f9; }
+.gp-body { flex:1; overflow-y:auto; padding:0; }
+.gp-body::-webkit-scrollbar { width:4px; }
+.gp-body::-webkit-scrollbar-thumb { background:#e2e8f0; border-radius:4px; }
+.gp-section { padding:24px 24px; border-bottom:1px solid #f1f5f9; }
+.gp-section--last { border-bottom:none; }
+.gp-section__head { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.gp-num { font-size:11px; font-weight:800; letter-spacing:.06em; color:#6366f1; background:#eef2ff; padding:2px 7px; border-radius:5px; flex-shrink:0; }
+.gp-section__title { font-size:14px; font-weight:700; color:#0f172a; margin:0; }
+.gp-section__meta { font-size:12px; color:#94a3b8; margin:-6px 0 14px; line-height:1.5; }
+.gp-why-list { display:flex; flex-direction:column; gap:10px; }
+.gp-why-item { display:flex; align-items:flex-start; gap:12px; padding:14px; background:#f8fafc; border-radius:10px; }
+.gp-why-item__icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.gp-why-item__title { font-size:13.5px; font-weight:700; color:#0f172a; margin:0 0 4px; }
+.gp-why-item__desc  { font-size:12.5px; color:#64748b; margin:0; line-height:1.6; }
+.gp-pillar-blocks { display:flex; flex-direction:column; gap:10px; }
+.gp-pillar-block { padding:14px 16px; background:#f8fafc; border-radius:10px; border-left:3px solid #e2e8f0; }
+.gp-pillar-block__head { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.gp-pillar-block__name { font-size:13.5px; font-weight:700; color:#0f172a; margin:0; }
+.gp-pillar-block__count { font-size:11.5px; color:#94a3b8; font-weight:400; margin-left:2px; }
+.gp-pillar-block__desc { font-size:12px; color:#64748b; margin:0 0 10px; line-height:1.55; }
+.gp-item-tags { display:flex; flex-wrap:wrap; gap:5px; }
+.gp-item-tag { font-size:11.5px; color:#475569; background:#fff; border:1px solid #e2e8f0; border-radius:5px; padding:2px 8px; }
+.gp-methods { display:flex; flex-direction:column; gap:8px; }
+.gp-method { padding:14px 16px; background:#f8fafc; border-radius:10px; display:flex; flex-direction:column; gap:8px; }
+.gp-method__header { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.gp-method__tag { padding:3px 9px; border-radius:6px; font-size:11.5px; font-weight:700; white-space:nowrap; flex-shrink:0; }
+.gp-method__title   { font-size:13px; font-weight:700; color:#0f172a; margin:0; }
+.gp-method__summary { font-size:12px; color:#475569; margin:0; line-height:1.55; }
+.gp-method__points  { display:flex; flex-wrap:wrap; gap:5px; }
+.gp-method__point { font-size:11.5px; color:#64748b; background:#fff; border:1px solid #e2e8f0; border-radius:5px; padding:2px 8px; }
+.gp-grades { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.gp-grade  { display:flex; align-items:center; gap:10px; padding:8px 12px; background:#f8fafc; border-radius:8px; }
+.gp-grade__badge { width:28px; height:28px; border-radius:7px; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.gp-grade__desc { font-size:12.5px; color:#475569; }
+.gp-caution { background:#fefce8; border:1px solid #fef08a; border-radius:10px; padding:12px 14px; }
+.gp-caution__title { font-size:12.5px; font-weight:700; color:#854d0e; margin:0 0 7px; }
+.gp-caution__list  { margin:0; padding-left:16px; }
+.gp-caution__list li { font-size:12px; color:#92400e; line-height:1.7; }
+.gp-supports { display:flex; flex-direction:column; gap:10px; }
+.gp-support  { display:flex; align-items:flex-start; gap:12px; }
+.gp-support__dot { width:7px; height:7px; border-radius:50%; background:#6366f1; flex-shrink:0; margin-top:5px; }
+.gp-support__title { font-size:13px; font-weight:700; color:#0f172a; margin:0 0 3px; }
+.gp-support__desc  { font-size:12px; color:#64748b; margin:0; line-height:1.55; }
+.gp-flow { display:flex; flex-direction:column; }
+.gp-flow__item { display:flex; align-items:flex-start; gap:14px; }
+.gp-flow__track { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+.gp-flow__dot { width:28px; height:28px; border-radius:50%; background:#0f172a; color:#a5b4fc; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.gp-flow__line { width:2px; flex:1; min-height:20px; background:#e2e8f0; margin:4px 0; }
+.gp-flow__content { padding-bottom:20px; padding-top:4px; }
+.gp-flow__label { font-size:13.5px; font-weight:700; color:#0f172a; margin:0 0 3px; }
+.gp-flow__sub   { font-size:12px; color:#64748b; margin:0; }
+.guide-panel-enter-active { transition:opacity .25s; }
+.guide-panel-leave-active { transition:opacity .2s; }
+.guide-panel-enter-from, .guide-panel-leave-to { opacity:0; }
+.guide-panel-enter-active .gp-panel { animation:panelSlideIn .3s cubic-bezier(.4,0,.2,1); }
+.guide-panel-leave-active .gp-panel { animation:panelSlideOut .22s ease-in; }
+@keyframes panelSlideIn  { from { transform:translateX(100%); } to { transform:translateX(0); } }
+@keyframes panelSlideOut { from { transform:translateX(0); } to { transform:translateX(100%); } }
 </style>
