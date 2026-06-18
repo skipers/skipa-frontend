@@ -62,13 +62,13 @@
               </div>
             </div>
             <div class="detail-header__right">
-              <button class="btn-pdf-download">
+              <button class="btn-pdf-download" :disabled="pdfLoading" @click="downloadOriginalPdf">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                   <polyline points="7 10 12 15 17 10"/>
                   <line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
-                원문 PDF
+                {{ pdfLoading ? '로딩 중...' : '원문 PDF' }}
               </button>
               <span v-if="latestReport?.evaluatedAt" class="evaluated-label">
                 AI 보고서 생성일 · {{ formatDate(latestReport.evaluatedAt) }}
@@ -1097,6 +1097,20 @@ const myDept     = computed(() => DEPT_MAP[auth.user?.departmentId ?? 0] ?? null
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const patentData = ref<PatentDetail | null>(null)
+const pdfLoading = ref(false)
+
+async function downloadOriginalPdf() {
+  if (pdfLoading.value) return
+  pdfLoading.value = true
+  try {
+    const { url } = await patentsApi.getOriginalPdfUrl(props.patentId)
+    window.open(url, '_blank', 'noopener,noreferrer')
+  } catch {
+    alert('원문 PDF를 불러오지 못했습니다.')
+  } finally {
+    pdfLoading.value = false
+  }
+}
 const reviewData = ref<ReviewResponse | null>(null)
 const businessReviewData = ref<BusinessReviewDetailResponse | null>(null)
 const evalHistory = ref<EvalHistoryItem[]>([])
