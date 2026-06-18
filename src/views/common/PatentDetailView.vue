@@ -1014,14 +1014,20 @@
         </header>
 
         <div ref="chatViewport" class="chat-body">
-          <div v-for="message in chatMessages" :key="message.id" class="chat-row" :class="message.role">
+          <div
+            v-for="message in chatMessages"
+            :key="message.id"
+            class="chat-row"
+            :class="message.role"
+            :data-chat-message-id="message.id"
+          >
             <div class="chat-bubble" :class="[message.role, { 'chat-bubble--error': message.error }]">
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
               </template>
               <template v-else-if="message.role === 'assistant'">
                 <div class="md-content" v-html="renderChatMarkdown(message)"/>
-                <div v-if="message.sourceCards?.length" class="source-cards">
+                <div v-if="!message.typing && !message.streaming && message.sourceCards?.length" class="source-cards">
                   <div
                     v-for="(card, index) in message.sourceCards"
                     :key="`${message.id}-${card.source_path ?? card.title ?? index}`"
@@ -1613,6 +1619,21 @@ function scrollChatToBottom() {
   if (chatViewport.value) chatViewport.value.scrollTop = chatViewport.value.scrollHeight
 }
 
+function keepChatMessageTopVisible(messageId: number) {
+  const viewport = chatViewport.value
+  const row = viewport?.querySelector<HTMLElement>(`[data-chat-message-id="${messageId}"]`)
+  if (!viewport || !row) return
+
+  const padding = 12
+  const viewportRect = viewport.getBoundingClientRect()
+  const rowRect = row.getBoundingClientRect()
+  const rowTopInScrollContent = viewport.scrollTop + rowRect.top - viewportRect.top
+  const maxScrollTopWithMessageVisible = Math.max(rowTopInScrollContent - padding, 0)
+  const bottomScrollTop = Math.max(viewport.scrollHeight - viewport.clientHeight, 0)
+
+  viewport.scrollTop = Math.min(bottomScrollTop, maxScrollTopWithMessageVisible)
+}
+
 function nextMessageId() { return nextChatId() }
 
 async function resetChat() {
@@ -1661,7 +1682,8 @@ async function sendChatMessage() {
   if (!chatbotOpen.value) { chatbotOpen.value = true; await nextTick() }
 
   const history = patentChatHistories[props.patentId]
-  history.push({ id: nextMessageId(), role: 'user', text })
+  const userMessageId = nextMessageId()
+  history.push({ id: userMessageId, role: 'user', text })
   chatInput.value = ''
   await nextTick(); autoResizeChatInput()
 
@@ -1669,7 +1691,7 @@ async function sendChatMessage() {
   history.push({ id: typingId, role: 'assistant', text: '', typing: true })
   chatSending.value = true
   await nextTick()
-  scrollChatToBottom()
+  keepChatMessageTopVisible(userMessageId)
 
   try {
     let streamError: unknown = null
@@ -1678,7 +1700,7 @@ async function sendChatMessage() {
         const message = history.find(m => m.id === typingId)
         if (message) message.text += chunk
       },
-      () => { void nextTick(() => { scrollChatToBottom() }) },
+      () => { void nextTick(() => { keepChatMessageTopVisible(userMessageId) }) },
     )
     await reportsApi.sendChatMessageStream(props.patentId, latestReportId.value, text, {
       onSourceCards: (sourceCards) => {
@@ -1731,7 +1753,7 @@ async function sendChatMessage() {
     }
   } finally {
     chatSending.value = false
-    void nextTick(() => { scrollChatToBottom() })
+    void nextTick(() => { keepChatMessageTopVisible(userMessageId) })
   }
 }
 
@@ -3077,6 +3099,7 @@ async function openHistoryReport(reportId: number) {
 .chat-body {
   flex: 1; overflow-y: auto;
   display: flex; flex-direction: column; gap: 12px; padding: 18px;
+  overflow-anchor: none;
 }
 .chat-row           { display: flex; }
 .chat-row.assistant { justify-content: flex-start; }
