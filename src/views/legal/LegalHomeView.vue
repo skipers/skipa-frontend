@@ -252,30 +252,6 @@
     <!-- 하단 행: 신규 신청 내역 + 기술 분야 분포 + 분기별 소멸 현황 -->
     <div class="bottom-row">
 
-      <!-- 신규 특허 등록 신청 내역 -->
-      <div class="card">
-        <div class="card__header">
-          <div class="card__header-left">
-            <h3 class="card__title">신규 특허 등록 신청 내역</h3>
-            <span class="card__badge">전체 {{ applications.length }}건</span>
-          </div>
-          <RouterLink to="/legal/patent-manage" class="card__link">전체 보기</RouterLink>
-        </div>
-        <div v-if="applications.length" class="app-list">
-          <div v-for="a in applications.slice(0, 5)" :key="a.id" class="app-item" @click="router.push({ name: 'LegalReviewDetail', params: { appId: a.id } })">
-            <div class="app-item__top">
-              <span class="app-status-badge" :class="a.appStatus === 'pending' && a.isResubmit ? 'app-status--resubmit' : `app-status--${a.appStatus}`">
-                {{ a.appStatus === 'pending' && a.isResubmit ? '재신청' : appStatusLabel(a.appStatus) }}
-              </span>
-              <span class="app-item__dept">{{ a.submittedBy }}</span>
-            </div>
-            <p class="app-item__title">{{ a.title }}</p>
-            <p class="app-item__date">{{ a.submittedAt ? a.submittedAt.slice(0, 10) : '' }}</p>
-          </div>
-        </div>
-        <div v-else class="card__empty">신청 내역이 없습니다.</div>
-      </div>
-
       <!-- 기술 분야 분포 (도넛 차트) -->
       <div class="card">
         <div class="card__header">
@@ -354,16 +330,9 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useReadReplies } from '@/composables/useReadReplies'
 import { dashboardApi, type LegalDashboardResponse } from '@/api/dashboard'
-import { usePatentApplications } from '@/composables/usePatentApplications'
-
 const auth = useAuthStore()
 const router = useRouter()
 const { readIds, markRead: markReplyRead } = useReadReplies()
-const { applications } = usePatentApplications()
-
-function appStatusLabel(s: string) {
-  return { pending: '심사중', approved: '승인', rejected: '거절', withdrawn: '철회' }[s] ?? s
-}
 
 // ── 로딩 상태 ────────────────────────────────────────
 const loadingSummary = ref(true)
@@ -1166,69 +1135,11 @@ onMounted(loadAll)
 
 .bottom-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
-@media (max-width: 1100px) { .bottom-row { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 720px)  { .bottom-row { grid-template-columns: 1fr; } }
-
-/* ── 신규 특허 등록 신청 내역 ──────────────────────── */
-.app-list { display: flex; flex-direction: column; gap: 0; }
-
-.app-item {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--color-surface-hover);
-  cursor: pointer;
-  transition: background 0.12s;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.app-item:last-child { border-bottom: none; }
-.app-item:hover { background: var(--color-surface-hover); }
-
-.app-item__top {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.app-item__title {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--color-text);
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.app-item__dept {
-  font-size: 11.5px;
-  color: var(--color-text-secondary);
-  font-weight: 500;
-}
-
-.app-item__date {
-  font-size: 11.5px;
-  color: var(--color-text-subtle);
-  margin: 0;
-}
-
-.app-status-badge {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.app-status--pending   { background: #eff6ff; color: #2563eb; }
-.app-status--approved  { background: #f0fdf4; color: #16a34a; }
-.app-status--rejected  { background: #fef2f2; color: #dc2626; }
-.app-status--withdrawn { background: #f8fafc; color: #64748b; }
-.app-status--resubmit  { background: #fefce8; color: #ca8a04; }
+@media (max-width: 720px) { .bottom-row { grid-template-columns: 1fr; } }
 
 /* ── 기술 분야 분포 (도넛) ─────────────────────────── */
 .skel--donut { height: 140px; border-radius: 8px; }

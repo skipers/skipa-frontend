@@ -329,7 +329,13 @@
               @mouseenter="showTooltip($event, d)"
               @mouseleave="hideTooltip"
             >
-              <div class="decision-bar-stack">
+              <div class="decision-bar-above">
+                <span v-if="d.quarter === inProgressQuarter" class="inprogress-badge">진행중</span>
+              </div>
+              <div
+                class="decision-bar-stack"
+                :class="{ 'decision-bar-stack--inprogress': d.quarter === inProgressQuarter }"
+              >
                 <div class="decision-bar-seg decision-bar-seg--keep"    :style="{ height: keepPct(d) + '%' }" />
                 <div class="decision-bar-seg decision-bar-seg--dispose" :style="{ height: disposePct(d) + '%' }" />
               </div>
@@ -376,6 +382,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { portfolioApi } from '@/api/portfolio'
+import { reviewCyclesApi } from '@/api/reviewCycles'
 import type {
   TechFieldItem, CountryItem, DepartmentItem, GradeDistributionItem,
   YearlyTrendItem, AnnuityTrendItem, QuarterDecisionItem, TechFieldDecision,
@@ -405,6 +412,7 @@ const trendData    = ref<YearlyTrendItem[]>([])
 
 // ── 결정 데이터 ──────────────────────────────────────
 const decisionData = ref<QuarterDecisionItem[]>([])
+const inProgressQuarter = ref<string | null>(null)
 
 // ── 인사이트 ─────────────────────────────────────────
 const insights = ref<string[]>([])
@@ -436,6 +444,12 @@ async function fetchAll() {
     decisionData.value = decisionsResp.byQuarter ?? []
     if (decisionData.value.length) selectedQuarter.value = decisionData.value[0].quarter
     insights.value     = ins.insights               ?? []
+    try {
+      const cycle = await reviewCyclesApi.getCurrent()
+      if (cycle) inProgressQuarter.value = `${cycle.year}Q${cycle.quarter}`
+    } catch {
+      inProgressQuarter.value = null
+    }
   } catch (err) {
     console.error('PortfolioView/fetchAll:', err)
   } finally {
@@ -1179,7 +1193,33 @@ function annBarH(amount: number) {
 }
 
 /* ── 진행중 바 ───────────────────────────────────── */
-.decision-bar-stack--inprogress { opacity: 0.65; outline: 2px dashed var(--color-text-subtle); outline-offset: 2px; border-radius: 4px; }
+.decision-bar-stack--inprogress {
+  outline: 1.5px dashed var(--color-primary-border);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.decision-chart {
+  height: 200px;
+}
+.decision-bar-above {
+  height: 26px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.inprogress-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--color-primary-bg);
+  color: var(--color-primary-dark);
+  border: 1px solid var(--color-primary-border);
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
 
 /* ── 툴팁 ───────────────────────────────────────── */
 .decision-tooltip {
