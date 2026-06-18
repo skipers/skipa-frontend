@@ -1255,7 +1255,7 @@ onBeforeUnmount(() => {
                       <span class="source-card__ref-label">{{ card.display_title || card.title }}</span>
                       <span class="source-card__ref-tag">보고서 참조</span>
                     </div>
-                  </template>
+                  </div>
                 </div>
               </template>
               <template v-else>{{ message.text }}</template>
