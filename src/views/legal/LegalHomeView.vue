@@ -213,7 +213,8 @@
           <h3 class="card__title">유지 · 포기 현황</h3>
           <span class="card__badge">결정 완료 {{ decidedTotal }}건</span>
         </div>
-        <div class="decision-donut-wrap">
+        <div v-if="decidedTotal === 0" class="card__empty">결정된 데이터가 없습니다.</div>
+        <div v-else class="decision-donut-wrap">
           <svg class="decision-donut-svg" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
             <circle cx="60" cy="60" r="50" fill="none" stroke="#67E2AB" stroke-width="20"
@@ -284,6 +285,7 @@
         <div v-if="loadingDist" class="card__skeleton">
           <div class="skel skel--donut" />
         </div>
+        <div v-else-if="donutTotal === 0" class="card__empty">분야별 데이터가 없습니다.</div>
         <div v-else class="donut-wrap">
           <svg class="donut-svg" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="20" />
@@ -321,6 +323,7 @@
         <div v-if="loadingDist" class="card__skeleton">
           <div class="skel skel--chart" />
         </div>
+        <div v-else-if="expiryItems.length === 0" class="card__empty">소멸 예정 데이터가 없습니다.</div>
         <div v-else class="expiry-chart">
           <div
             v-for="item in expiryItems"
@@ -960,7 +963,11 @@ onMounted(loadAll)
 .card__link:hover { color: var(--color-primary-darker); }
 
 .card__empty {
-  padding: 32px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   font-size: 13px;
   color: var(--color-text-subtle);
@@ -1309,6 +1316,7 @@ onMounted(loadAll)
 }
 
 /* ── 최근 회신 ───────────────────────────────────── */
+.reply-list  { flex: 1; display: flex; flex-direction: column; }
 .reply-items { display: flex; flex-direction: column; gap: 0; }
 
 .reply-fade-leave-active {
