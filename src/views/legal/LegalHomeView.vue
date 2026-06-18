@@ -632,9 +632,6 @@ onMounted(loadAll)
 
 /* ── 보고서 생성 현황 카드 ───────────────────────── */
 .rgc-card {
-  width: 75%;
-  min-width: 420px;
-  align-self: flex-start;
   gap: 14px;
   padding: 20px 22px 18px;
   position: relative;

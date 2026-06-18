@@ -7,7 +7,7 @@
         <!-- 로고 -->
         <div class="sidebar__logo">
           <span class="sidebar__logo-icon">
-            <img :src="logoUrl" alt="SKIPA logo" width="32" height="32" />
+            <img :src="logoUrl" alt="SKIPA logo" width="24" height="24" />
           </span>
           <span class="sidebar__logo-text">SKIPA</span>
         </div>
@@ -203,8 +203,6 @@ async function handleLogout() {
 
 .sidebar__logo-icon {
   width: 40px; height: 40px;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: 9px;
   display: flex;
   align-items: center;

@@ -11,7 +11,7 @@
         <div class="brand-panel__inner">
           <div class="brand-logo">
             <span class="brand-logo__icon">
-              <img :src="logoUrl" alt="SKIPA logo" width="48" height="48" />
+              <img :src="logoUrl" alt="SKIPA logo" width="36" height="36" />
             </span>
             <span class="brand-logo__text">SKIPA</span>
           </div>
@@ -352,8 +352,6 @@ async function handleSubmit() {
 
 .brand-logo__icon {
   width: 40px; height: 40px;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.15);
   border-radius: 10px;
   display: flex;
   align-items: center;
