@@ -877,7 +877,7 @@ onBeforeUnmount(() => {
 
               <label class="field">
                 <span class="field__label">기술 설명 <em>*</em></span>
-                <textarea v-model="techDescription" rows="4" placeholder="핵심 기술의 작동 방식, 차별점, 활용 맥락을 입력하세요." />
+                <textarea v-model="techDescription" rows="8" placeholder="핵심 기술의 작동 방식, 차별점, 활용 맥락을 입력하세요." />
               </label>
 
               <label class="field">
