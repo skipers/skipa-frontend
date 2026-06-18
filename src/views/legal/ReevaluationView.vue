@@ -1044,7 +1044,6 @@ onMounted(async () => {
   display: flex;
   gap: 4px;
   border-bottom: 1.5px solid var(--color-border);
-  overflow-x: auto;
 }
 
 .filter-tab {
