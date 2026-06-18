@@ -49,20 +49,19 @@
       <div class="chart-card">
         <div class="chart-card__header">
           <h3 class="chart-card__title">가치 평가 등급 분포</h3>
-          <span class="chart-card__sub">총 {{ selectedFieldData?.total }}건</span>
+          <div class="tg-header-right">
+            <div class="tg-field-select-wrap">
+              <select class="tg-field-select" v-model="selectedField">
+                <option v-for="f in allFieldDist" :key="f.name" :value="f.name">{{ f.name }}</option>
+              </select>
+              <svg class="tg-field-select__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+            <span class="chart-card__sub">총 {{ selectedFieldData?.total }}건</span>
+          </div>
         </div>
         <div class="tg-content">
-        <div class="tg-field-tabs">
-          <button
-            v-for="f in allFieldDist"
-            :key="f.name"
-            class="tg-field-tab"
-            :class="{ 'tg-field-tab--active': selectedField === f.name }"
-            @click="selectedField = f.name"
-          >
-            {{ f.name }}
-          </button>
-        </div>
         <div v-if="selectedFieldData" class="tg-detail">
           <div v-for="g in (['S','A','B','C','D'] as const)" :key="g" class="tg-grade-row">
             <div class="grade-badge" :style="{ background: gradeBgMap[g], color: gradeColorMap[g] }">{{ g }}</div>
@@ -604,7 +603,7 @@ const allFieldDist = computed(() => {
     (acc, f) => ({ name: '전체', S: acc.S + f.s, A: acc.A + f.a, B: acc.B + f.b, C: acc.C + f.c, D: acc.D + f.d, total: acc.total + f.s + f.a + f.b + f.c + f.d }),
     { name: '전체', S: 0, A: 0, B: 0, C: 0, D: 0, total: 0 }
   )
-  return [overall, ...gradeDist.map(f => normalize(f, f.departmentName))]
+  return [overall, ...gradeDist.filter(f => f.departmentName !== '전체').map(f => normalize(f, f.departmentName))]
 })
 
 const selectedField = ref('전체')
@@ -957,30 +956,40 @@ function annBarH(amount: number) {
 }
 @media (max-width: 860px) { .trend-annuity-row { grid-template-columns: 1fr; } }
 
-.tg-field-tabs {
+.tg-header-right {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 
-.tg-field-tab {
-  padding: 5px 14px;
-  border-radius: 20px;
+.tg-field-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tg-field-select {
+  appearance: none;
+  padding: 6px 32px 6px 12px;
+  border-radius: 8px;
   border: 1.5px solid var(--color-border);
   background: var(--color-surface-muted);
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--color-text);
   cursor: pointer;
-  transition: all 0.15s;
   font-family: 'Pretendard', sans-serif;
+  transition: border-color 0.15s;
+  outline: none;
 }
-.tg-field-tab:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.tg-field-tab--active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff;
-  font-weight: 600;
+.tg-field-select:hover,
+.tg-field-select:focus { border-color: var(--color-primary); }
+
+.tg-field-select__chevron {
+  position: absolute;
+  right: 8px;
+  pointer-events: none;
+  color: var(--color-text-secondary);
 }
 
 .tg-content {

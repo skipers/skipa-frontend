@@ -427,13 +427,13 @@ const progressCard = computed(() => {
   const decided = kpi?.decided ?? 0
   const unrequested = kpi?.unrequested ?? 0
   const total = requested + unrequested
-  const progressRate = total ? Math.round((requested / total) * 100) : 0
+  const progressRate = total ? Math.round((decided / total) * 100) : 0
   return {
     label: '분기 진행률',
     value: dashboardData.value ? `${progressRate}%` : null,
     progress: progressRate,
     progressColor: '#6366f1',
-    sub: `요청 ${requested}건 중 ${decided}건 회신`,
+    sub: `전체 ${total}건 중 ${decided}건 결정 완료`,
     icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
     iconBg: '#eef2ff', iconColor: '#6366f1',
     alert: false, alertCount: 0, valueColor: '#0f172a',

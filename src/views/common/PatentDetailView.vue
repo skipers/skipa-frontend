@@ -132,7 +132,7 @@
                 </tr>
                 <tr>
                   <th>발명자</th>
-                  <td>{{ detailExtras.inventor }}</td>
+                  <td>{{ detailExtras.inventor.split(';').map(s => s.trim()).join(', ') }}</td>
                 </tr>
                 <tr>
                   <th>등록번호(일자)</th>
@@ -393,7 +393,7 @@
             <!-- 5. 추가 확인 필요 사항 -->
             <div class="rpt-part">
               <h3 class="rpt-part-title"><span class="rpt-part-num">05</span>추가 확인 필요 사항</h3>
-              <p class="rpt-subsection-desc">점수가 낮은 평가 항목에서 자동 추출했습니다. 사업부 자체 자료와의 교차 검토를 권장합니다.</p>
+              <p class="rpt-subsection-desc">평가 점수 3점 이하 또는 근거 확신도 낮음 항목을 자동 추출했습니다. 사업부 자체 자료와의 교차 검토를 권장합니다.</p>
               <div v-for="item in REPORT_CONFIRM_ITEMS" :key="item.title" class="rpt-confirm-item">
                 <div class="rpt-confirm-item-title">{{ item.title }}<span>{{ item.meta }}</span></div>
                 <div class="rpt-confirm-item-desc">{{ item.desc }}</div>
@@ -926,7 +926,7 @@
             <!-- 05 추가 확인 필요 사항 -->
             <div class="erp-section">
               <h3 class="rpt-part-title"><span class="rpt-part-num">05</span>추가 확인 필요 사항</h3>
-              <p class="rpt-subsection-desc">점수가 낮은 평가 항목에서 자동 추출했습니다. 사업부 자체 자료와의 교차 검토를 권장합니다.</p>
+              <p class="rpt-subsection-desc">평가 점수 3점 이하 또는 근거 확신도 낮음 항목을 자동 추출했습니다. 사업부 자체 자료와의 교차 검토를 권장합니다.</p>
               <div v-for="item in selectedEvalReport.confirmItems" :key="item.title" class="rpt-confirm-item">
                 <div class="rpt-confirm-item-title">{{ item.title }}<span>{{ item.meta }}</span></div>
                 <div class="rpt-confirm-item-desc">{{ item.desc }}</div>
