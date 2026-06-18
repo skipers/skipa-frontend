@@ -1014,15 +1014,21 @@
         </header>
 
         <div ref="chatViewport" class="chat-body">
-          <div v-for="message in chatMessages" :key="message.id" :data-chat-message-id="message.id" class="chat-row" :class="message.role">
+          <div
+            v-for="message in chatMessages"
+            :key="message.id"
+            class="chat-row"
+            :class="message.role"
+            :data-chat-message-id="message.id"
+          >
             <div class="chat-bubble" :class="[message.role, { 'chat-bubble--error': message.error }]">
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
               </template>
               <template v-else-if="message.role === 'assistant'">
                 <div class="md-content" v-html="renderChatMarkdown(message)"/>
-                <div v-if="message.sourceCards?.length" class="source-cards">
-                  <template
+                <div v-if="!message.typing && !message.streaming && message.sourceCards?.length" class="source-cards">
+                  <div
                     v-for="(card, index) in message.sourceCards"
                     :key="`${message.id}-${card.source_path ?? card.title ?? index}`"
                   >
@@ -1688,8 +1694,8 @@ async function sendChatMessage() {
   if (!chatbotOpen.value) { chatbotOpen.value = true; await nextTick() }
 
   const history = patentChatHistories[props.patentId]
-  const userMsgId = nextMessageId()
-  history.push({ id: userMsgId, role: 'user', text })
+  const userMessageId = nextMessageId()
+  history.push({ id: userMessageId, role: 'user', text })
   chatInput.value = ''
   await nextTick(); autoResizeChatInput()
 
@@ -1697,7 +1703,7 @@ async function sendChatMessage() {
   history.push({ id: typingId, role: 'assistant', text: '', typing: true })
   chatSending.value = true
   await nextTick()
-  keepChatMessageTopVisible(userMsgId)
+  keepChatMessageTopVisible(userMessageId)
 
   try {
     let streamError: unknown = null
@@ -1706,6 +1712,7 @@ async function sendChatMessage() {
         const message = history.find(m => m.id === typingId)
         if (message) message.text += chunk
       },
+      () => { void nextTick(() => { keepChatMessageTopVisible(userMessageId) }) },
     )
     await reportsApi.sendChatMessageStream(props.patentId, latestReportId.value, text, {
       onSourceCards: (sourceCards) => {
@@ -1759,6 +1766,7 @@ async function sendChatMessage() {
     }
   } finally {
     chatSending.value = false
+    void nextTick(() => { keepChatMessageTopVisible(userMessageId) })
   }
 }
 
@@ -3104,6 +3112,7 @@ async function openHistoryReport(reportId: number) {
 .chat-body {
   flex: 1; overflow-y: auto;
   display: flex; flex-direction: column; gap: 12px; padding: 18px;
+  overflow-anchor: none;
 }
 .chat-row           { display: flex; }
 .chat-row.assistant { justify-content: flex-start; }
