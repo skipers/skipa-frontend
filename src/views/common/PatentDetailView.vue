@@ -1014,7 +1014,7 @@
         </header>
 
         <div ref="chatViewport" class="chat-body">
-          <div v-for="message in chatMessages" :key="message.id" class="chat-row" :class="message.role">
+          <div v-for="message in chatMessages" :key="message.id" :data-msg-id="message.id" class="chat-row" :class="message.role">
             <div class="chat-bubble" :class="[message.role, { 'chat-bubble--error': message.error }]">
               <template v-if="message.typing">
                 <span class="typing-dots"><span/><span/><span/></span>
@@ -1022,18 +1022,16 @@
               <template v-else-if="message.role === 'assistant'">
                 <div class="md-content" v-html="renderChatMarkdown(message)"/>
                 <div v-if="message.sourceCards?.length" class="source-cards">
-                  <div
+                  <template
                     v-for="(card, index) in message.sourceCards"
                     :key="`${message.id}-${card.source_path ?? card.title ?? index}`"
-                    class="source-card"
                   >
-                    <div class="source-card__head">
-                      <span class="source-card__label">{{ card.label || `근거 ${index + 1}` }}</span>
-                      <span v-if="card.source_type" class="source-card__type">{{ card.source_type }}</span>
+                    <a v-if="card.url?.startsWith('http')" :href="card.url" target="_blank" rel="noopener noreferrer" class="source-card source-card--web">{{ sourceCardTitle(card) }}</a>
+                    <div v-else class="source-card source-card--report">
+                      <span class="source-card__ref-label">{{ card.display_title || card.title }}</span>
+                      <span class="source-card__ref-tag">보고서 참조</span>
                     </div>
-                    <strong class="source-card__title">{{ sourceCardTitle(card) }}</strong>
-                    <p v-if="card.snippet" class="source-card__snippet">{{ card.snippet }}</p>
-                  </div>
+                  </template>
                 </div>
               </template>
               <template v-else>{{ message.text }}</template>
@@ -1627,6 +1625,12 @@ function scrollChatToBottom() {
   if (chatViewport.value) chatViewport.value.scrollTop = chatViewport.value.scrollHeight
 }
 
+function scrollToUserMessage(id: number) {
+  if (!chatViewport.value) return
+  const el = chatViewport.value.querySelector(`[data-msg-id="${id}"]`) as HTMLElement | null
+  if (el) chatViewport.value.scrollTop = el.offsetTop - 8
+}
+
 function nextMessageId() { return nextChatId() }
 
 async function resetChat() {
@@ -1675,7 +1679,8 @@ async function sendChatMessage() {
   if (!chatbotOpen.value) { chatbotOpen.value = true; await nextTick() }
 
   const history = patentChatHistories[props.patentId]
-  history.push({ id: nextMessageId(), role: 'user', text })
+  const userMsgId = nextMessageId()
+  history.push({ id: userMsgId, role: 'user', text })
   chatInput.value = ''
   await nextTick(); autoResizeChatInput()
 
@@ -1683,7 +1688,7 @@ async function sendChatMessage() {
   history.push({ id: typingId, role: 'assistant', text: '', typing: true })
   chatSending.value = true
   await nextTick()
-  scrollChatToBottom()
+  scrollToUserMessage(userMsgId)
 
   try {
     let streamError: unknown = null
@@ -1692,7 +1697,6 @@ async function sendChatMessage() {
         const message = history.find(m => m.id === typingId)
         if (message) message.text += chunk
       },
-      () => { void nextTick(() => { scrollChatToBottom() }) },
     )
     await reportsApi.sendChatMessageStream(props.patentId, latestReportId.value, text, {
       onSourceCards: (sourceCards) => {
@@ -1715,6 +1719,7 @@ async function sendChatMessage() {
         if (data.answer) message.text = data.answer
         const sourceCards = extractSourceCards(data)
         if (sourceCards.length) message.sourceCards = sourceCards
+        void nextTick(() => scrollToUserMessage(userMsgId))
       },
       onError: (data) => {
         typewriter.stop()
@@ -1745,7 +1750,6 @@ async function sendChatMessage() {
     }
   } finally {
     chatSending.value = false
-    void nextTick(() => { scrollChatToBottom() })
   }
 }
 
@@ -3149,50 +3153,26 @@ async function openHistoryReport(reportId: number) {
   border-top: 1px solid rgba(148, 163, 184, 0.28);
 }
 .source-card {
-  display: grid;
-  gap: 4px;
-  padding: 7px 8px;
+  padding: 6px 8px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   background: #f8fafc;
+  font-size: 12px;
+  line-height: 1.4;
 }
-.source-card__head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.source-card__label {
-  flex: 0 0 auto;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: #e0f2fe;
+.source-card--web {
+  display: block;
   color: #0369a1;
-  font-size: 11px;
-  font-weight: 700;
-}
-.source-card__type {
+  font-weight: 600;
+  text-decoration: none;
   overflow: hidden;
-  color: #64748b;
-  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.source-card__title {
-  color: #0f172a;
-  font-size: 12px;
-  font-weight: 700;
-}
-.source-card__snippet {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  color: #64748b;
-  font-size: 11.5px;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
+.source-card--web:hover { text-decoration: underline; background: #f0f9ff; }
+.source-card--report { display: flex; align-items: center; gap: 6px; }
+.source-card__ref-label { color: #0f172a; font-weight: 600; font-size: 12px; }
+.source-card__ref-tag { color: #64748b; font-size: 11px; }
 .chat-bubble.assistant { background: #fff; color: #102033; border-top-left-radius: 4px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
 .chat-bubble.user      { background: #0f172a; color: #fff; border-top-right-radius: 4px; }
 .chat-bubble--error    { background: #fef2f2; color: #991b1b; box-shadow: none; border: 1px solid #fecaca; }
