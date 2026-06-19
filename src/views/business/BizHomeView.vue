@@ -194,7 +194,7 @@
             <!-- X축 연도 라벨 -->
             <text v-for="(d, i) in bizTrendData" :key="`lbl${i}`"
               :x="tX(i)" :y="tH - 3"
-              text-anchor="middle" font-size="9" fill="#94a3b8" font-weight="500">{{ d.year }}</text>
+              text-anchor="middle" font-size="6.5" fill="#94a3b8" font-weight="500">{{ d.year }}</text>
             <!-- 호버 히트 영역 (연도별 세로 띠) -->
             <rect
               v-for="(d, i) in bizTrendData" :key="`hit${i}`"
@@ -246,10 +246,10 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const dashboardData = ref<BusinessDashboardResponse | null>(null)
 
-// ── 마감일 (reviewCycle.endDate 우선, 없으면 현재 분기 말일) ──
+// ── 마감일 (reviewCycle.deadline 우선, 없으면 현재 분기 말일) ──
 const deadline = computed(() => {
-  const endDate = dashboardData.value?.reviewCycle?.endDate
-  if (endDate) return new Date(endDate)
+  const dueDate = dashboardData.value?.reviewCycle?.deadline
+  if (dueDate) return new Date(dueDate)
   const d = new Date()
   const q = Math.ceil((d.getMonth() + 1) / 3)
   return new Date(d.getFullYear(), q * 3, 0)
@@ -327,8 +327,8 @@ const bizTrendData = computed(() =>
   }))
 )
 
-const tW = 540, tH = 130
-const tPad   = { t: 28, b: 22, l: 18, r: 12 }
+const tW = 540, tH = 96
+const tPad   = { t: 18, b: 16, l: 18, r: 12 }
 const tPlotH = tH - tPad.t - tPad.b
 const tPlotW = tW - tPad.l - tPad.r
 
@@ -775,13 +775,13 @@ onMounted(fetchDashboard)
 
 .trend-legend {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 .trend-legend-item {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
+  gap: 4px;
+  font-size: 12px;
   color: #64748b;
 }
 .trend-dot {
@@ -799,17 +799,17 @@ onMounted(fetchDashboard)
   pointer-events: none;
   background: #1e293b;
   border-radius: 8px;
-  padding: 8px 11px;
+  padding: 6px 9px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   white-space: nowrap;
   z-index: 10;
   box-shadow: 0 4px 12px rgba(0,0,0,.18);
 }
 
 .trend-tooltip__year {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 700;
   color: #94a3b8;
   margin: 0 0 2px;
@@ -818,23 +818,23 @@ onMounted(fetchDashboard)
 .trend-tooltip__row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .trend-tooltip__dot {
-  width: 6px; height: 6px;
+  width: 5px; height: 5px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .trend-tooltip__label {
-  font-size: 12px;
+  font-size: 10px;
   color: #cbd5e1;
   flex: 1;
 }
 
 .trend-tooltip__val {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   color: #f1f5f9;
 }

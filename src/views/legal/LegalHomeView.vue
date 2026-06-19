@@ -395,10 +395,8 @@ const quarterLabel = computed(() => {
 // ── KPI 카드 데이터 ──────────────────────────────────
 const progressCard = computed(() => {
   const kpi = dashboardData.value?.kpi
-  const requested = kpi?.requested ?? 0
   const decided = kpi?.decided ?? 0
-  const unrequested = kpi?.unrequested ?? 0
-  const total = requested + unrequested
+  const total = dashboardData.value?.cycleProgress?.targetPatentCount ?? 0
   const progressRate = total ? Math.round((decided / total) * 100) : 0
   return {
     label: '분기 진행률',

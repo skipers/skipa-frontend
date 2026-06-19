@@ -1127,12 +1127,13 @@ function mapStatus(status?: string): 'REGISTERED' | 'EXPIRED' | 'ABANDONED' {
   return 'ABANDONED'
 }
 
-function scoreToGrade(score?: number): 'S' | 'A' | 'B' | 'C' | undefined {
+function scoreToGrade(score?: number | null): 'S' | 'A' | 'B' | 'C' | 'D' | undefined {
   if (score == null) return undefined
   if (score >= 90) return 'S'
-  if (score >= 75) return 'A'
-  if (score >= 60) return 'B'
-  return 'C'
+  if (score >= 80) return 'A'
+  if (score >= 70) return 'B'
+  if (score >= 60) return 'C'
+  return 'D'
 }
 
 const patent = computed(() => {
@@ -1465,13 +1466,13 @@ const miniScores = computed(() => [
   { label: '사업성', value: aiScores.value.biz },
 ])
 
+const latestReportScore = computed(() => patentData.value?.latestReportScore ?? null)
+
 const reportGrade = computed<string | null>(
-  () => latestReport.value?.valueGrade ?? reportJson.value?.report?.summary?.overall_grade ?? null
+  () => scoreToGrade(latestReportScore.value) ?? null
 )
 
-const totalScore = computed(
-  () => latestReport.value?.totalScore ?? reportJson.value?.report?.summary?.overall_score_out_of_100 ?? 0
-)
+const totalScore = computed(() => latestReportScore.value ?? 0)
 
 const overallOpinion = computed<string>(() => reportJson.value?.report?.summary?.overall_opinion ?? '')
 
@@ -1777,7 +1778,7 @@ function handleChatKeydown(e: KeyboardEvent) {
 // ── 의견 제출 ────────────────────────────────────────
 interface SubmittedOpinion { decision: 'KEEP' | 'DISPOSE'; comment: string; submittedAt: string }
 const submittedOpinion = ref<SubmittedOpinion | null>(null)
-const opinionForm = reactive<{ decision: 'KEEP' | 'DISPOSE' | ''; comment: string }>({ decision: '', comment: '' })
+const opinionForm = reactive<{ decision: 'MAINTAIN' | 'ABANDON' | ''; comment: string }>({ decision: '', comment: '' })
 const opinionSubmitting = ref(false)
 
 const opinionOptions = [
@@ -1887,14 +1888,13 @@ async function submitOpinion() {
   if (!opinionForm.decision) return
   opinionSubmitting.value = true
   try {
-    const apiOpinion = opinionForm.decision === 'KEEP' ? 'MAINTAIN' : 'ABANDON'
     const result = await businessReviewsApi.submitOpinion(
       props.patentId,
-      apiOpinion,
+      opinionForm.decision,
       opinionForm.comment || undefined,
     )
     submittedOpinion.value = {
-      decision: opinionForm.decision as 'KEEP' | 'DISPOSE',
+      decision: opinionForm.decision === 'MAINTAIN' ? 'KEEP' : 'DISPOSE',
       comment: opinionForm.comment,
       submittedAt: result.submittedAt ?? new Date().toISOString().slice(0, 10),
     }
@@ -2338,6 +2338,7 @@ async function openHistoryReport(reportId: number) {
 .grade-badge--a { background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-color: #93c5fd; color: #1e3a8a; }
 .grade-badge--b { background: linear-gradient(135deg, #fff7ed, #fed7aa); border-color: #fdba74; color: #7c2d12; }
 .grade-badge--c { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); border-color: #cbd5e1; color: #475569; }
+.grade-badge--d { background: linear-gradient(135deg, #fef2f2, #fee2e2); border-color: #fca5a5; color: #991b1b; }
 .grade-badge--none { background: #f8fafc; border-color: #e2e8f0; color: #94a3b8; }
 
 /* ── 탭바 (sticky: 앱바 60px 바로 아래) ─────────────── */
@@ -2452,6 +2453,7 @@ async function openHistoryReport(reportId: number) {
 .side-grade--a { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e3a8a; }
 .side-grade--b { background: linear-gradient(135deg, #fff7ed, #fed7aa); color: #7c2d12; }
 .side-grade--c { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); color: #475569; }
+.side-grade--d { background: linear-gradient(135deg, #fef2f2, #fee2e2); color: #991b1b; }
 .side-grade--none { background: #f8fafc; color: #94a3b8; }
 
 .side-grade__total { display: flex; flex-direction: column; gap: 3px; }
@@ -2928,8 +2930,8 @@ async function openHistoryReport(reportId: number) {
 }
 .radio-card:hover { background: #f8fafc; border-color: #cbd5e1; }
 
-.radio-card--keep.radio-card--selected    { border-color: #22c55e; background: #f0fdf4; }
-.radio-card--dispose.radio-card--selected { border-color: #ef4444; background: #fef2f2; }
+.radio-card--maintain.radio-card--selected { border-color: #22c55e; background: #f0fdf4; }
+.radio-card--abandon.radio-card--selected  { border-color: #ef4444; background: #fef2f2; }
 
 .radio-input { display: none; }
 
@@ -2940,10 +2942,10 @@ async function openHistoryReport(reportId: number) {
   flex-shrink: 0;
   transition: border-color 0.13s, background 0.13s, box-shadow 0.13s;
 }
-.radio-card--keep.radio-card--selected .radio-indicator {
+.radio-card--maintain.radio-card--selected .radio-indicator {
   border-color: #22c55e; background: #22c55e; box-shadow: inset 0 0 0 4px #fff;
 }
-.radio-card--dispose.radio-card--selected .radio-indicator {
+.radio-card--abandon.radio-card--selected .radio-indicator {
   border-color: #ef4444; background: #ef4444; box-shadow: inset 0 0 0 4px #fff;
 }
 
@@ -3587,6 +3589,7 @@ details[open] .rpt-appendix__chevron { transform: rotate(180deg); }
 .eval-grade-badge--a { background: linear-gradient(135deg,#dbeafe,#bfdbfe); color: #1e3a8a; }
 .eval-grade-badge--b { background: linear-gradient(135deg,#fff7ed,#fed7aa); color: #7c2d12; }
 .eval-grade-badge--c { background: linear-gradient(135deg,#f1f5f9,#e2e8f0); color: #475569; }
+.eval-grade-badge--d { background: linear-gradient(135deg,#fef2f2,#fee2e2); color: #991b1b; }
 .eval-history-item__score {
   font-size: 15px; font-weight: 700; color: #0f172a;
 }

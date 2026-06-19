@@ -403,9 +403,9 @@ const filteredItems = computed(() => {
 
 // ── 마감일 ───────────────────────────────────────────
 const ddayValue = computed(() => {
-  const endDate = summaryData.value?.reviewCycle?.endDate
-  if (endDate) {
-    return Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+  const dueDate = summaryData.value?.reviewCycle?.deadline ?? summaryData.value?.reviewCycle?.endDate
+  if (dueDate) {
+    return Math.max(0, Math.ceil((new Date(dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
   }
   return 0
 })

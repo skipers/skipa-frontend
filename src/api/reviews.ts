@@ -13,6 +13,8 @@ export interface ReviewResponse {
   reportId?: number
   departmentId: number
   departmentName: string
+  currentDepartmentId?: number | null
+  currentDepartmentName?: string | null
   reviewCycleId: number
   reviewCycleYear: number
   reviewCycleQuarter: number
@@ -38,6 +40,7 @@ export interface ReviewTargetParams {
   departmentId?: number
   patentId?: number
   checked?: boolean
+  opinion?: string
   sort?: string
   page?: number
   size?: number

@@ -40,8 +40,7 @@
       <!-- 결과 건수 -->
       <div class="result-bar">
         <p class="result-count">
-          <span class="result-count__num">{{ filteredPatents.length }}</span>건
-          <span v-if="totalPages > 1" class="result-count__page">（{{ currentPage }} / {{ totalPages }} 페이지）</span>
+          <span class="result-count__num">{{ totalPatentCount.toLocaleString() }}</span>건
         </p>
       </div>
 
@@ -553,11 +552,13 @@ import TagInput from '@/components/ui/TagInput.vue'
 const router = useRouter()
 
 const patentItems = ref<PatentListItem[]>([])
+const totalPatentCount = ref(0)
 
 async function fetchPatents() {
   try {
     const res = await patentsApi.getPatents({ size: 200 })
     patentItems.value = res.items
+    totalPatentCount.value = res.totalItems
   } catch (err) {
     console.error('특허 목록 조회 오류:', err)
   }
