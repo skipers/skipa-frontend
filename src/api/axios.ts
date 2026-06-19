@@ -5,17 +5,18 @@ import axios, {
 } from 'axios'
 
 const TOKEN_KEY = 'skipa_access_token'
-const REFRESH_KEY = 'skipa_refresh_token'
+const LEGACY_REFRESH_KEY = 'skipa_refresh_token'
 const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh']
 
 export const tokenStorage = {
   getAccess: () => localStorage.getItem(TOKEN_KEY),
-  setAccess: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  getRefresh: () => localStorage.getItem(REFRESH_KEY),
-  setRefresh: (token: string) => localStorage.setItem(REFRESH_KEY, token),
+  setAccess: (token: string) => {
+    localStorage.setItem(TOKEN_KEY, token)
+    localStorage.removeItem(LEGACY_REFRESH_KEY)
+  },
   clear: () => {
     localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(REFRESH_KEY)
+    localStorage.removeItem(LEGACY_REFRESH_KEY)
   },
 }
 
@@ -23,6 +24,7 @@ const apiClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 15_000,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
   paramsSerializer: (params) => {
     const search = new URLSearchParams()
     for (const [key, value] of Object.entries(params)) {
@@ -65,7 +67,7 @@ function isAuthEndpoint(config?: AxiosRequestConfig) {
 
   try {
     const pathname = new URL(url, config?.baseURL ?? import.meta.env.VITE_API_BASE_URL).pathname
-    return AUTH_ENDPOINTS.includes(pathname)
+    return AUTH_ENDPOINTS.some(endpoint => pathname.endsWith(endpoint))
   } catch {
     return AUTH_ENDPOINTS.some(endpoint => url.startsWith(endpoint) || url.endsWith(endpoint))
   }
@@ -100,14 +102,6 @@ apiClient.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      const refreshToken = tokenStorage.getRefresh()
-
-      if (!refreshToken) {
-        tokenStorage.clear()
-        window.location.href = '/login'
-        return Promise.reject(normalizedError)
-      }
-
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
@@ -125,7 +119,8 @@ apiClient.interceptors.response.use(
       try {
         const { data } = await axios.post(
           `${import.meta.env.VITE_API_BASE_URL}/auth/refresh`,
-          { refreshToken },
+          {},
+          { withCredentials: true },
         )
         const newToken: string = data.data.accessToken
         tokenStorage.setAccess(newToken)

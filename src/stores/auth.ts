@@ -22,7 +22,6 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const data = await authApi.login(credentials.id, credentials.password)
       tokenStorage.setAccess(data.accessToken)
-      tokenStorage.setRefresh(data.refreshToken)
       await fetchMe()
       return user.value
     } finally {

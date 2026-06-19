@@ -10,16 +10,17 @@ import axios, {
 // ============================================================
 
 const TOKEN_KEY = 'skipa_access_token'
-const REFRESH_KEY = 'skipa_refresh_token'
+const LEGACY_REFRESH_KEY = 'skipa_refresh_token'
 
 export const tokenStorage = {
   getAccess: () => localStorage.getItem(TOKEN_KEY),
-  setAccess: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  getRefresh: () => localStorage.getItem(REFRESH_KEY),
-  setRefresh: (token: string) => localStorage.setItem(REFRESH_KEY, token),
+  setAccess: (token: string) => {
+    localStorage.setItem(TOKEN_KEY, token)
+    localStorage.removeItem(LEGACY_REFRESH_KEY)
+  },
   clear: () => {
     localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(REFRESH_KEY)
+    localStorage.removeItem(LEGACY_REFRESH_KEY)
   },
 }
 
@@ -31,6 +32,7 @@ const client: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? 'https://api.skipa.internal/v1',
   timeout: 15_000,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 })
 
 // ============================================================
@@ -80,15 +82,6 @@ client.interceptors.response.use(
 
     // 401 && 아직 재시도 안 한 요청
     if (error.response?.status === 401 && !originalRequest._retry) {
-      const refreshToken = tokenStorage.getRefresh()
-
-      // refresh token 없으면 바로 로그아웃
-      if (!refreshToken) {
-        tokenStorage.clear()
-        window.location.href = '/login'
-        return Promise.reject(error)
-      }
-
       if (isRefreshing) {
         // 이미 갱신 중이면 큐에 쌓아서 대기
         return new Promise((resolve, reject) => {
@@ -107,7 +100,8 @@ client.interceptors.response.use(
       try {
         const { data } = await axios.post(
           `${import.meta.env.VITE_API_BASE_URL ?? 'https://api.skipa.internal/v1'}/auth/refresh`,
-          { refreshToken },
+          {},
+          { withCredentials: true },
         )
         const newToken: string = data.data.accessToken
         tokenStorage.setAccess(newToken)
