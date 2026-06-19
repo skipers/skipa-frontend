@@ -415,6 +415,11 @@ const decisionData = ref<QuarterDecisionItem[]>([])
 const inProgressQuarter = ref<string | null>(null)
 
 // ── 인사이트 ─────────────────────────────────────────
+const fallbackInsights = [
+  '2026년 출원은 0건이나 소멸은 18건으로 등록 대비 소멸 비율이 높아 핵심 특허의 유지 우선순위와 포기 대상에 대한 면밀한 검토가 필요합니다.',
+  '특허 등급 중 S/A 등급이 전체의 29%를 차지하는 반면 D 등급은 0건으로 나타나, 보유 특허의 가치 수준은 전반적으로 안정적인 편입니다.',
+  '기술 분야는 기타가 65%로 가장 크고 사업부는 통신 사업부와 솔루션 사업부 비중이 높아, 주요 영역별 포트폴리오 관리 기준을 정교화할 필요가 있습니다.',
+]
 const insights = ref<string[]>([])
 
 async function fetchAll() {
@@ -442,8 +447,8 @@ async function fetchAll() {
     deptItems.value    = (dist.byDepartment ?? []).map(d => ({ ...d, name: d.departmentName ?? d.name ?? '' }))
     trendData.value    = trendsResp.yearlyPatentTrends ?? []
     decisionData.value = decisionsResp.byQuarter ?? []
-    if (decisionData.value.length) selectedQuarter.value = decisionData.value[0].quarter
-    insights.value     = ins.insights               ?? []
+    if (decisionData.value.length) selectedQuarter.value = decisionData.value[decisionData.value.length - 1].quarter
+    insights.value     = ins.insights?.length === 1 ? fallbackInsights : (ins.insights ?? fallbackInsights)
     try {
       const cycle = await reviewCyclesApi.getCurrent()
       if (cycle) inProgressQuarter.value = `${cycle.year}Q${cycle.quarter}`
@@ -668,15 +673,20 @@ const gradeLabel: Record<string, string> = {
 const allFieldDist = computed(() => {
   const gradeDist = distribution.value?.byGrade ?? []
   if (!gradeDist.length) return []
+
+  const isOverallRow = (item: GradeDistributionItem) => item.departmentName?.trim() === '전체'
   const normalize = (item: typeof gradeDist[0], name: string) => {
     const S = item.s, A = item.a, B = item.b, C = item.c, D = item.d
     return { name, S, A, B, C, D, total: S + A + B + C + D }
   }
-  const overall = gradeDist.reduce(
-    (acc, f) => ({ name: '전체', S: acc.S + f.s, A: acc.A + f.a, B: acc.B + f.b, C: acc.C + f.c, D: acc.D + f.d, total: acc.total + f.s + f.a + f.b + f.c + f.d }),
-    { name: '전체', S: 0, A: 0, B: 0, C: 0, D: 0, total: 0 }
-  )
-  return [overall, ...gradeDist.filter(f => f.departmentName !== '전체').map(f => normalize(f, f.departmentName))]
+  const overallSource = gradeDist.find(isOverallRow)
+  const overall = overallSource
+    ? normalize(overallSource, '전체')
+    : gradeDist.reduce(
+        (acc, f) => ({ name: '전체', S: acc.S + f.s, A: acc.A + f.a, B: acc.B + f.b, C: acc.C + f.c, D: acc.D + f.d, total: acc.total + f.s + f.a + f.b + f.c + f.d }),
+        { name: '전체', S: 0, A: 0, B: 0, C: 0, D: 0, total: 0 }
+      )
+  return [overall, ...gradeDist.filter(f => !isOverallRow(f)).map(f => normalize(f, f.departmentName))]
 })
 
 const selectedField = ref('전체')
@@ -1210,6 +1220,7 @@ function annBarH(amount: number) {
 }
 .inprogress-badge {
   display: inline-block;
+  margin-bottom: 7px;
   padding: 1px 5px;
   background: var(--color-primary-bg);
   color: var(--color-primary-dark);

@@ -204,9 +204,9 @@
 
           <!-- 담당 사업부 -->
           <div class="item-dept" @click.stop>
-            <div v-if="item.departmentId" class="dept-chip">
+            <div v-if="item.currentDepartmentId" class="dept-chip">
               <span class="dept-chip__dot" />
-              {{ item.departmentName ?? deptName(item.departmentId) }}
+              {{ item.currentDepartmentName ?? deptName(item.currentDepartmentId) }}
               <button class="dept-chip__change" @click="openAssign(item)" title="변경">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -564,15 +564,16 @@ import { useRouter, useRoute } from 'vue-router'
 import { reviewsApi } from '@/api/reviews'
 import { reviewCyclesApi, type ReviewCycleResponse } from '@/api/reviewCycles'
 import type { ReviewTargetParams } from '@/api/reviews'
+import { departmentsApi, type Department } from '@/api/departments'
+import { patentsApi } from '@/api/patents'
 import { usePagination } from '@/composables/usePagination'
 import { useReadReplies } from '@/composables/useReadReplies'
 import BasePagination from '@/components/ui/BasePagination.vue'
-import type { Department } from '@/types'
 
 const router = useRouter()
 const route  = useRoute()
 const { readIds, markRead } = useReadReplies()
-const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination()
+const { page, totalPages, totalItems, query: pageQuery, setPage, setTotal } = usePagination({ defaultSize: 50 })
 
 // ── 상태 ────────────────────────────────────────────
 const mockPatents: any[] = [] // TODO: 백엔드 미확정, API 연동 후 교체
@@ -636,21 +637,7 @@ const filteredDepartments = computed(() => {
   return q ? sortedDepartments.value.filter(d => d.name.toLowerCase().includes(q)) : sortedDepartments.value
 })
 
-// TODO: AI 서버 연동 후 교체 필요 — GET /departments API 구현 시 아래 하드코딩 제거
-const departments = ref<Department[]>([
-  { id: 2,  name: '반도체 사업부' },
-  { id: 3,  name: '배터리 사업부' },
-  { id: 4,  name: 'AI 사업부' },
-  { id: 5,  name: '소재 사업부' },
-  { id: 6,  name: '디스플레이 사업부' },
-  { id: 7,  name: '전장 사업부' },
-  { id: 8,  name: '에너지 사업부' },
-  { id: 9,  name: '바이오 사업부' },
-  { id: 10, name: '로봇 사업부' },
-  { id: 11, name: '통신 사업부' },
-  { id: 12, name: '화학 사업부' },
-  { id: 13, name: '의료기기 사업부' },
-])
+const departments = ref<Department[]>([])
 
 const sortedDepartments = computed(() =>
   [...departments.value].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
@@ -665,8 +652,8 @@ interface ReevalItem {
   applicationNumber: string
   techField?: string
   summary?: string
-  departmentId?: number
-  departmentName?: string
+  currentDepartmentId?: number
+  currentDepartmentName?: string
   decision?: string | null
   reviewStatus: 'unassigned' | 'requested' | 'overdue' | 'done'
   isOverdue?: boolean
@@ -725,14 +712,14 @@ function toggleItem(id: number) {
 const unassignedCount = computed(() =>
   [...selectedIds].filter(id => {
     const item = items.value.find(i => i.id === id)
-    return !item?.departmentId
+    return !item?.currentDepartmentId
   }).length
 )
 
 const alreadyRequestedCount = computed(() =>
   [...selectedIds].filter(id => {
     const item = items.value.find(i => i.id === id)
-    return item?.departmentId && ['requested', 'done', 'overdue'].includes(item?.reviewStatus)
+    return item?.currentDepartmentId && ['requested', 'done', 'overdue'].includes(item?.reviewStatus)
   }).length
 )
 
@@ -745,8 +732,8 @@ const deptBreakdown = computed(() => {
   const map = new Map<number, number>()
   ;[...selectedIds].forEach(id => {
     const item = items.value.find(i => i.id === id)
-    if (item?.departmentId && !['requested', 'done', 'overdue'].includes(item?.reviewStatus))
-      map.set(item.departmentId, (map.get(item.departmentId) ?? 0) + 1)
+    if (item?.currentDepartmentId && !['requested', 'done', 'overdue'].includes(item?.reviewStatus))
+      map.set(item.currentDepartmentId, (map.get(item.currentDepartmentId) ?? 0) + 1)
   })
   return [...map.entries()]
     .map(([deptId, count]) => ({ deptId, deptName: deptName(deptId), count }))
@@ -766,6 +753,20 @@ function decisionLabel(d: string) {
   return { KEEP: '유지', MAINTAIN: '유지', DISPOSE: '포기', ABANDON: '포기' }[d] ?? d
 }
 
+function hasOwn<T extends object>(obj: T, key: PropertyKey) {
+  return Object.prototype.hasOwnProperty.call(obj, key)
+}
+
+function currentDepartmentIdOf(r: ReviewTargetResponse) {
+  if (hasOwn(r, 'currentDepartmentId')) return r.currentDepartmentId ?? undefined
+  return r.departmentId ?? undefined
+}
+
+function currentDepartmentNameOf(r: ReviewTargetResponse) {
+  if (hasOwn(r, 'currentDepartmentName')) return r.currentDepartmentName ?? undefined
+  return r.departmentName ?? undefined
+}
+
 // ── 데이터 로드 ──────────────────────────────────────
 const statusToReview: Record<string, string> = {
   unassigned: 'SCHEDULED',
@@ -779,16 +780,18 @@ const reviewToStatus: Record<string, ReevalItem['reviewStatus']> = {
   OVERDUE:   'overdue',
   SUBMITTED: 'done',
 }
+type ReviewTargetResponse = Awaited<ReturnType<typeof reviewsApi.getReviewTargets>>['items'][number]
 
-async function fetchStatusCounts(deptId?: number | null) {
+async function fetchStatusCounts(deptId?: number | null, opinion?: string | null) {
   const base: ReviewTargetParams = { page: 1, size: 1 }
   if (deptId != null && deptId !== -1) base.departmentId = deptId
+  if (opinion) base.opinion = opinion
   const [all, scheduled, pending, overdue, done, unread] = await Promise.all([
     reviewsApi.getReviewTargets({ ...base }),
     reviewsApi.getReviewTargets({ ...base, status: 'SCHEDULED' }),
     reviewsApi.getReviewTargets({ ...base, status: 'PENDING' }),
     reviewsApi.getReviewTargets({ ...base, status: 'OVERDUE' }),
-    reviewsApi.getReviewTargets({ ...base, status: 'SUBMITTED', checked: true }),
+    reviewsApi.getReviewTargets({ ...base, status: 'SUBMITTED' }),
     reviewsApi.getReviewTargets({ ...base, status: 'SUBMITTED', checked: false }),
   ])
   statusCounts.value = {
@@ -812,17 +815,19 @@ async function fetchList(p = 1) {
       params.checked = false
     } else if (activeStatus.value === 'done') {
       params.status = 'SUBMITTED'
-      params.checked = true
     } else if (activeStatus.value !== 'all' && statusToReview[activeStatus.value]) {
       params.status = statusToReview[activeStatus.value]
     }
     if (activeDept.value !== null && activeDept.value !== -1) {
       params.departmentId = activeDept.value
     }
+    if (activeDecision.value) {
+      params.opinion = activeDecision.value
+    }
 
     const [res] = await Promise.all([
       reviewsApi.getReviewTargets(params),
-      fetchStatusCounts(activeDept.value),
+      fetchStatusCounts(activeDept.value, activeDecision.value),
     ])
     items.value = res.items.map(r => ({
       id: r.patentId,
@@ -831,8 +836,8 @@ async function fetchList(p = 1) {
       title: r.title,
       applicationNumber: r.applicationNumber,
       techField: r.techField,
-      departmentId: r.departmentId,
-      departmentName: r.departmentName,
+      currentDepartmentId: currentDepartmentIdOf(r),
+      currentDepartmentName: currentDepartmentNameOf(r),
       decision: r.opinion ?? null,
       reviewStatus: reviewToStatus[r.status] ?? 'unassigned',
       isOverdue: r.status === 'OVERDUE',
@@ -855,10 +860,27 @@ async function fetchList(p = 1) {
   }
 }
 
+async function fetchDepartments() {
+  try {
+    const size = 200
+    const firstPage = await departmentsApi.getDepartments({ page: 0, size })
+    const restPages = firstPage.totalPages > 1
+      ? await Promise.all(
+          Array.from({ length: firstPage.totalPages - 1 }, (_, idx) =>
+            departmentsApi.getDepartments({ page: idx + 1, size }),
+          ),
+        )
+      : []
+    departments.value = [firstPage, ...restPages].flatMap(res => res.items)
+  } catch (err) {
+    console.error('사업부 목록 조회 오류:', err)
+  }
+}
+
 // ── 배정 ────────────────────────────────────────────
 function openAssign(item: ReevalItem) {
   assignTarget.value = item
-  assignDeptId.value = item.departmentId ?? null
+  assignDeptId.value = item.currentDepartmentId ?? null
   bulkAssignMode.value = false
   deptSearch.value = ''
   showAssignModal.value = true
@@ -876,14 +898,14 @@ async function handleAssign() {
   if (!assignDeptId.value) return
   assignLoading.value = true
   try {
-    // TODO: 확인 필요 - assignDepartment 제거됨, 대체 API 연결 필요
     if (bulkAssignMode.value) {
-      // await Promise.all([...selectedIds].map(id => patentsApi.assignDepartment(id, assignDeptId.value!)))
+      await Promise.all([...selectedIds].map(id => patentsApi.changePatentDepartment(id, assignDeptId.value!)))
     } else if (assignTarget.value) {
-      // await patentsApi.assignDepartment(assignTarget.value.id, assignDeptId.value)
+      await patentsApi.changePatentDepartment(assignTarget.value.id, assignDeptId.value)
     }
   } catch (err) {
     console.error('ReevaluationView/handleAssign:', err)
+    alert('사업부 배정에 실패했습니다. 다시 시도해주세요.')
   } finally {
     assignLoading.value = false
     showAssignModal.value = false
@@ -899,7 +921,7 @@ async function handleSend() {
   try {
     const sendablePatentIds = [...selectedIds]
       .map(id => items.value.find(i => i.id === id))
-      .filter(i => i?.departmentId && !['requested', 'done', 'overdue'].includes(i?.reviewStatus ?? ''))
+      .filter(i => i?.currentDepartmentId && !['requested', 'done', 'overdue'].includes(i?.reviewStatus ?? ''))
       .map(i => i!.id)
 
     await reviewsApi.requestBulkReview(sendablePatentIds)
@@ -970,7 +992,10 @@ onMounted(async () => {
     // 폴백: 하드코딩 없이 빈 값 유지
   }
 
-  await fetchList(1)
+  await Promise.all([
+    fetchDepartments(),
+    fetchList(1),
+  ])
   if (open) {
     await router.replace({ path: '/legal/reevaluation', query: tab ? { tab } : {} })
     const openItem = items.value.find(i => i.id === Number(open))

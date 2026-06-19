@@ -18,7 +18,7 @@ export interface DepartmentUpdateRequest {
 }
 
 export const departmentsApi = {
-  getDepartments: async (params?: { keyword?: string }): Promise<PageResponse<Department>> => {
+  getDepartments: async (params?: { keyword?: string; page?: number; size?: number }): Promise<PageResponse<Department>> => {
     return apiClient.get('/departments', { params })
   },
 

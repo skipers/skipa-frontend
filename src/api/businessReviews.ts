@@ -40,6 +40,7 @@ export interface BusinessReviewSummaryResponse {
     quarter: number
     startDate: string
     endDate: string
+    deadline: string
   }
   kpi: {
     submitted: number
@@ -50,7 +51,7 @@ export interface BusinessReviewSummaryResponse {
 export interface BusinessReviewHistoryResponse {
   id: number
   patentId: number
-  reviewCycle: { id: number; year: number; quarter: number; startDate: string; endDate: string }
+  reviewCycle: { id: number; year: number; quarter: number; startDate: string; endDate: string; deadline: string }
   title: string
   applicationNumber: string
   opinion?: string

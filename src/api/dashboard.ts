@@ -8,6 +8,7 @@ export interface ReviewCycle {
   quarter: number
   startDate: string
   endDate: string
+  deadline: string
 }
 
 export type CycleStatusLabel =
