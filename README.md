@@ -200,6 +200,6 @@ chore: Playwright 의존성 업데이트
 
 ## 라이선스
 
-Copyright © 2024 SK. All rights reserved.
+Copyright © 2026 skipers. All rights reserved.
 
-본 소프트웨어는 SK 내부 프로젝트로, 무단 복제·배포·수정을 금합니다.
+본 소프트웨어는 SKALA 3기 내부 프로젝트로, 무단 복제·배포·수정을 금합니다.
